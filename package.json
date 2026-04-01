@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Inspect, highlight, and copy any element on any webpage.",
   "scripts": {
-    "postinstall": "curl -sL \"https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js\" -o lib/html2canvas.min.js",
+    "postinstall": "node scripts/postinstall.js",
     "build": "./build.sh",
     "build:chrome": "./build.sh chrome",
     "build:firefox": "./build.sh firefox"

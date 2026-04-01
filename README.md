@@ -34,13 +34,7 @@ body › main.content › section › div#main.container
 
 ## Install
 
-### From npm
-
-```sh
-npx claude-code-probe
-```
-
-Or clone and install:
+### Quick install
 
 ```sh
 git clone https://github.com/Jingquank/Claude-Code-Probe.git
@@ -48,25 +42,62 @@ cd Claude-Code-Probe
 npm install
 ```
 
-Then load the extension in your browser:
+`npm install` automatically downloads the html2canvas dependency and shows setup instructions in your terminal.
 
-### Chrome
+### Load in Chrome
 
-1. Go to `chrome://extensions` and enable **Developer mode**
-2. Click **Load unpacked** and select the project folder
+1. Open `chrome://extensions` in your browser
+2. Toggle on **Developer mode** (top right corner)
+3. Click **Load unpacked**
+4. Select the `Claude-Code-Probe` folder you just cloned
+5. The pixel-art Clawd icon appears in your toolbar — you're ready to go
 
-### Firefox
+### Load in Firefox
 
-1. Go to `about:debugging#/runtime/this-firefox`
-2. Click **Load Temporary Add-on** and select `manifest.json`
+1. Open `about:debugging#/runtime/this-firefox` in your browser
+2. Click **Load Temporary Add-on**
+3. Navigate to the `Claude-Code-Probe` folder and select `manifest.json`
+4. The icon appears in your toolbar
+
+> **Note:** Firefox temporary add-ons reset when you restart the browser. You'll need to reload it each session until the extension is approved on the Firefox Add-ons store.
 
 ## Usage
 
-1. Click the extension icon — badge shows **ON** and cursor becomes a crosshair
-2. Hover over elements — wireframe outlines appear with the info card
-3. Click an element — it locks the selection and shows the action toolbar
-4. Choose a copy action from the toolbar
-5. Press **Escape** to deselect, press again to exit Probe Mode
+1. **Activate** — Click the extension icon. The badge shows **ON** and your cursor becomes a crosshair.
+2. **Inspect** — Hover over elements. A wireframe outline follows your cursor with a floating info card showing element details.
+3. **Select** — Click any element to lock the selection. An action toolbar appears.
+4. **Copy** — Click one of the three buttons:
+   - **Copy Element** — copies a structured text breakdown to your clipboard
+   - **Copy Screenshot** — copies a PNG screenshot of the element
+   - **Copy Both** — copies text + screenshot together
+5. **Deselect** — Press **Escape** to deselect the element.
+6. **Exit** — Press **Escape** again to turn off Probe Mode.
+
+### What "Copy Element" gives you
+
+When you paste after copying an element, you get a structured summary like this:
+
+```
+/* Selector */
+main#content > div.hero-section > h1.title
+
+/* HTML */
+<div class="hero-section" data-testid="hero">
+  <h1 class="title">Welcome to our platfor…</h1>
+  <p class="subtitle">Build something amazi…</p>
+  <button class="cta-btn">Get Started</button>
+</div>
+
+/* Styles */
+display: flex; flex-direction: column; gap: 16px;
+padding: 48px 24px; background: rgb(26, 26, 46);
+font-size: 36px; font-weight: 600; color: rgb(255, 255, 255)
+
+/* Dimensions */
+842 × 320
+```
+
+This format is designed to paste directly into AI coding assistants like Claude Code, giving it full context about the element you're looking at.
 
 ## Built with
 
@@ -75,46 +106,37 @@ Then load the extension in your browser:
 - [Geist Mono](https://vercel.com/font) — UI typography
 - Claude brand colors and the pixel-art Clawd mascot
 
-## Building from source
+## Building distribution packages
+
+To create zip files for Chrome Web Store or Firefox Add-ons submission:
 
 ### Requirements
 
 - **OS:** macOS, Linux, or Windows (with bash)
-- **Node.js:** v18 or later (only needed for icon generation and build script)
-- **curl:** for downloading html2canvas
+- **Node.js:** v18 or later
+- **curl:** for downloading html2canvas (included on macOS and most Linux distros)
 
-### Step-by-step build instructions
+### Steps
 
-1. Clone the repository:
+1. Clone and install:
    ```sh
    git clone https://github.com/Jingquank/Claude-Code-Probe.git
    cd Claude-Code-Probe
+   npm install
    ```
 
-2. Download the html2canvas library (the only third-party dependency):
+2. Build the distribution zips:
    ```sh
-   curl -sL "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" -o lib/html2canvas.min.js
+   npm run build
    ```
 
-3. (Optional) Regenerate extension icons — requires the `canvas` npm package:
-   ```sh
-   npm install --no-save canvas
-   node icons/generate-icons.js
-   ```
-   The icon PNGs are already included in the repo, so this step is only needed if you want to regenerate them.
-
-4. Run the build script:
-   ```sh
-   ./build.sh
-   ```
-
-5. Output:
-   - `dist/claude-code-probe-chrome.zip` — Chrome Web Store submission
-   - `dist/claude-code-probe-firefox.zip` — Firefox Add-ons submission
+3. Output:
+   - `dist/claude-code-probe-chrome.zip` — Chrome Web Store package
+   - `dist/claude-code-probe-firefox.zip` — Firefox Add-ons package
 
 ### Source code notes
 
-All source files (`background.js`, `content.js`, `content.css`) are hand-written vanilla JavaScript and CSS — no transpilation, concatenation, or minification. The only machine-generated file is `lib/html2canvas.min.js`, which is an open-source third-party library ([html2canvas v1.4.1](https://github.com/nicktran/html2canvas), MIT license) downloaded directly from npm/CDN.
+All source files (`background.js`, `content.js`, `content.css`) are hand-written vanilla JavaScript and CSS — no transpilation, concatenation, or minification. The only machine-generated file is `lib/html2canvas.min.js`, which is an open-source third-party library ([html2canvas v1.4.1](https://github.com/niklasvh/html2canvas), MIT license) downloaded directly from npm/CDN.
 
 ## Privacy
 
