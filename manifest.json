@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "Claude Code Probe",
+  "version": "1.0.0",
+  "description": "Inspect, highlight, and copy any element on any webpage.",
+  "permissions": ["activeTab", "clipboardWrite"],
+  "action": {
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    },
+    "default_title": "Toggle Probe Mode"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "scripts": ["background.js"]
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["lib/html2canvas.min.js", "content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  }
+}
