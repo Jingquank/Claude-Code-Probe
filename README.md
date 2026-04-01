@@ -60,13 +60,46 @@ body › main.content › section › div#main.container
 - [Geist Mono](https://vercel.com/font) — UI typography
 - Claude brand colors and the pixel-art Clawd mascot
 
-## Building
+## Building from source
 
-```sh
-./build.sh
-```
+### Requirements
 
-Outputs Chrome and Firefox zip files to `dist/`.
+- **OS:** macOS, Linux, or Windows (with bash)
+- **Node.js:** v18 or later (only needed for icon generation and build script)
+- **curl:** for downloading html2canvas
+
+### Step-by-step build instructions
+
+1. Clone the repository:
+   ```sh
+   git clone https://github.com/Jingquank/Claude-Code-Probe.git
+   cd Claude-Code-Probe
+   ```
+
+2. Download the html2canvas library (the only third-party dependency):
+   ```sh
+   curl -sL "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" -o lib/html2canvas.min.js
+   ```
+
+3. (Optional) Regenerate extension icons — requires the `canvas` npm package:
+   ```sh
+   npm install --no-save canvas
+   node icons/generate-icons.js
+   ```
+   The icon PNGs are already included in the repo, so this step is only needed if you want to regenerate them.
+
+4. Run the build script:
+   ```sh
+   ./build.sh
+   ```
+
+5. Output:
+   - `dist/claude-code-probe-chrome.zip` — Chrome Web Store submission
+   - `dist/claude-code-probe-firefox.zip` — Firefox Add-ons submission
+
+### Source code notes
+
+All source files (`background.js`, `content.js`, `content.css`) are hand-written vanilla JavaScript and CSS — no transpilation, concatenation, or minification. The only machine-generated file is `lib/html2canvas.min.js`, which is an open-source third-party library ([html2canvas v1.4.1](https://github.com/nicktran/html2canvas), MIT license) downloaded directly from npm/CDN.
 
 ## Privacy
 
