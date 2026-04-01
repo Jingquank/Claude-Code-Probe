@@ -34,11 +34,26 @@ body › main.content › section › div#main.container
 
 ## Install
 
+### From npm
+
+```sh
+npx claude-code-probe
+```
+
+Or clone and install:
+
+```sh
+git clone https://github.com/Jingquank/Claude-Code-Probe.git
+cd Claude-Code-Probe
+npm install
+```
+
+Then load the extension in your browser:
+
 ### Chrome
 
-1. Download the [latest release](https://github.com/Jingquank/Claude-Code-Probe/releases) or clone this repo
-2. Go to `chrome://extensions` and enable **Developer mode**
-3. Click **Load unpacked** and select the project folder
+1. Go to `chrome://extensions` and enable **Developer mode**
+2. Click **Load unpacked** and select the project folder
 
 ### Firefox
 
