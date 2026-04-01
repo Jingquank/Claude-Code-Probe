@@ -35,8 +35,8 @@
       "id": "claude-code-probe@probe.dev",
       "strict_min_version": "121.0",
       "data_collection_permissions": {
-        "required": [],
-        "reason": "This extension does not collect, store, or transmit any user data."
+        "required": ["none"],
+        "optional": []
       }
     }
   }
