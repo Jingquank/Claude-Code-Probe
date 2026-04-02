@@ -397,18 +397,23 @@
     toolbarEl.id = "ccp-toolbar";
 
     const buttons = [
-      { label: "Copy Element", icon: ICONS.code, action: () => copyElement(el) },
-      { label: "Copy Screenshot", icon: ICONS.camera, action: () => copyScreenshot(el) },
-      { label: "Copy Both", icon: ICONS.copy, action: () => copyBoth(el) },
+      { label: "Copy Element", icon: ICONS.code, action: (btnEl) => copyElement(el, btnEl) },
+      { label: "Copy Screenshot", icon: ICONS.camera, action: (btnEl) => copyScreenshot(el, btnEl) },
+      { label: "Copy Both", icon: ICONS.copy, action: (btnEl) => copyBoth(el, btnEl) },
     ];
 
     for (const btn of buttons) {
       const button = document.createElement("button");
-      button.innerHTML = btn.icon + `<span>${btn.label}</span>`;
+      button.dataset.origHtml = btn.icon + `<span>${btn.label}</span>`;
+      button.innerHTML = button.dataset.origHtml;
+      // Lock width after first render so it doesn't shift during state changes
+      requestAnimationFrame(() => {
+        button.style.minWidth = button.offsetWidth + "px";
+      });
       button.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        btn.action();
+        btn.action(button);
       });
       toolbarEl.appendChild(button);
     }
@@ -653,31 +658,63 @@
     }
   }
 
+  // ===== Button State Helpers =====
+  function setButtonLoading(btnEl) {
+    if (!btnEl) return;
+    btnEl.innerHTML = CLAWD_MINI + `<span>Copying...</span>`;
+    btnEl.disabled = true;
+    btnEl.style.opacity = "0.7";
+  }
+
+  function setButtonSuccess(btnEl, message) {
+    if (!btnEl) return;
+    btnEl.innerHTML = `<span>${message}</span>`;
+    btnEl.disabled = true;
+    setTimeout(() => {
+      if (btnEl && btnEl.dataset.origHtml) {
+        btnEl.innerHTML = btnEl.dataset.origHtml;
+        btnEl.disabled = false;
+        btnEl.style.opacity = "";
+      }
+    }, 1500);
+  }
+
+  function resetButton(btnEl) {
+    if (!btnEl) return;
+    if (btnEl.dataset.origHtml) {
+      btnEl.innerHTML = btnEl.dataset.origHtml;
+    }
+    btnEl.disabled = false;
+    btnEl.style.opacity = "";
+  }
+
   // ===== Clipboard Actions =====
-  async function copyElement(el) {
+  async function copyElement(el, btnEl) {
     try {
       const info = buildElementInfo(el);
       await navigator.clipboard.writeText(info);
-      showToast("Element info copied");
+      setButtonSuccess(btnEl, "Copied!");
     } catch (err) {
+      resetButton(btnEl);
       showToast("Failed to copy: " + err.message, true);
     }
   }
 
-  async function copyScreenshot(el) {
+  async function copyScreenshot(el, btnEl) {
     try {
-      showToast("Copying...", false, true);
+      setButtonLoading(btnEl);
       const blob = await captureElementScreenshot(el);
       const ok = await writeImageToClipboard(blob);
-      showToast(ok ? "Screenshot copied" : "Screenshot downloaded");
+      setButtonSuccess(btnEl, ok ? "Copied!" : "Downloaded!");
     } catch (err) {
+      resetButton(btnEl);
       showToast("Failed to capture: " + err.message, true);
     }
   }
 
-  async function copyBoth(el) {
+  async function copyBoth(el, btnEl) {
     try {
-      showToast("Copying...", false, true);
+      setButtonLoading(btnEl);
       const info = buildElementInfo(el);
       const blob = await captureElementScreenshot(el);
 
@@ -687,9 +724,8 @@
           "image/png": Promise.resolve(blob),
         });
         await navigator.clipboard.write([item]);
-        showToast("Element + Screenshot copied");
+        setButtonSuccess(btnEl, "Copied!");
       } catch {
-        // Fallback: copy text, download image
         await navigator.clipboard.writeText(info);
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
@@ -697,9 +733,10 @@
         a.download = "element-screenshot.png";
         a.click();
         URL.revokeObjectURL(url);
-        showToast("Text copied, screenshot downloaded");
+        setButtonSuccess(btnEl, "Text copied, image downloaded!");
       }
     } catch (err) {
+      resetButton(btnEl);
       showToast("Failed to copy: " + err.message, true);
     }
   }

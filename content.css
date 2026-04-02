@@ -208,6 +208,7 @@
   align-items: center;
   gap: 6px;
   white-space: nowrap;
+  justify-content: center;
   transition: background 0.15s, border-color 0.15s;
   box-sizing: border-box;
 }
