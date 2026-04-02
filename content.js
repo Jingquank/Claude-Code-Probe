@@ -12,6 +12,9 @@
   let toastTimer = null;
   let rafId = null;
 
+  // ===== Clawd Mini (for toast loading state) =====
+  const CLAWD_MINI = `<svg viewBox="-4 -4 120 80" width="28" height="20" fill="none" style="flex-shrink:0;overflow:visible"><rect x="8" y="0" width="96" height="56" rx="4" fill="#C27C5C"/><rect x="-4" y="25.6" width="12" height="14.4" rx="3" fill="#C27C5C"/><rect x="104" y="25.6" width="12" height="14.4" rx="3" fill="#C27C5C"/><rect x="28" y="14" width="8" height="16" rx="2" fill="#141413"/><rect x="76" y="14" width="8" height="16" rx="2" fill="#141413"/><rect x="16" y="56" width="9.6" height="20" rx="2" fill="#8B5A42"><animate attributeName="height" values="20;16;20" dur="0.4s" begin="0s" repeatCount="indefinite"/></rect><rect x="30.4" y="56" width="9.6" height="20" rx="2" fill="#8B5A42"><animate attributeName="height" values="20;16;20" dur="0.4s" begin="0.1s" repeatCount="indefinite"/></rect><rect x="72" y="56" width="9.6" height="20" rx="2" fill="#8B5A42"><animate attributeName="height" values="20;16;20" dur="0.4s" begin="0.2s" repeatCount="indefinite"/></rect><rect x="86.4" y="56" width="9.6" height="20" rx="2" fill="#8B5A42"><animate attributeName="height" values="20;16;20" dur="0.4s" begin="0.3s" repeatCount="indefinite"/></rect></svg>`;
+
   // ===== SVG Icons =====
   const ICONS = {
     code: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
@@ -494,6 +497,9 @@
     return parts.join(" > ");
   }
 
+  // ===== Firefox detection =====
+  const isFirefox = typeof browser !== "undefined";
+
   // ===== Resolve background color =====
   function resolveBackgroundColor(el) {
     let current = el;
@@ -555,63 +561,96 @@
     return `<${tag}${attrs}>\n${parts.map((p) => childIndent + p).join("\n")}\n${indent}</${tag}>`;
   }
 
-  // ===== Computed Styles Summary =====
-  function buildComputedSummary(el) {
-    const s = getComputedStyle(el);
-    const props = [];
-
-    // Layout
-    if (s.display && s.display !== "block") props.push(`display: ${s.display}`);
-    if (s.flexDirection && s.display.includes("flex") && s.flexDirection !== "row") props.push(`flex-direction: ${s.flexDirection}`);
-    if (s.gap && s.gap !== "normal" && s.gap !== "0px") props.push(`gap: ${s.gap}`);
-    if (s.gridTemplateColumns && s.display.includes("grid")) props.push(`grid-template-columns: ${s.gridTemplateColumns}`);
-
-    // Box
-    if (s.padding && s.padding !== "0px") props.push(`padding: ${s.padding}`);
-    if (s.margin && s.margin !== "0px") props.push(`margin: ${s.margin}`);
-
-    // Visual
-    const bg = s.backgroundColor;
-    if (bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent") props.push(`background: ${bg}`);
-    if (s.color) props.push(`color: ${s.color}`);
-    const border = s.border;
-    if (border && !border.startsWith("0px")) props.push(`border: ${border}`);
-    if (s.borderRadius && s.borderRadius !== "0px") props.push(`border-radius: ${s.borderRadius}`);
-
-    // Typography
-    if (s.fontFamily) {
-      const ff = s.fontFamily.split(",")[0].trim().replace(/"/g, "");
-      props.push(`font-family: ${ff}`);
-    }
-    if (s.fontSize) props.push(`font-size: ${s.fontSize}`);
-    if (s.fontWeight && s.fontWeight !== "400" && s.fontWeight !== "normal") props.push(`font-weight: ${s.fontWeight}`);
-    if (s.lineHeight && s.lineHeight !== "normal") props.push(`line-height: ${s.lineHeight}`);
-
-    return props.join("; ");
-  }
-
   // ===== Build Structured Element Info =====
   function buildElementInfo(el) {
+    const url = window.location.href;
     const selector = buildSelectorPath(el);
     const skeleton = buildSkeletonHTML(el);
-    const styles = buildComputedSummary(el);
-    const rect = el.getBoundingClientRect();
-    const w = Math.round(rect.width);
-    const h = Math.round(rect.height);
 
     return [
+      `/* URL */`,
+      url,
+      ``,
       `/* Selector */`,
       selector,
       ``,
       `/* HTML */`,
       skeleton,
-      ``,
-      `/* Styles */`,
-      styles,
-      ``,
-      `/* Dimensions */`,
-      `${w} \u00d7 ${h}`,
     ].join("\n");
+  }
+
+  // ===== Screenshot Capture =====
+  async function captureElementScreenshot(el) {
+    if (isFirefox) {
+      // Firefox: use background script to capture visible tab, then crop
+      const rect = el.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+
+      const response = await new Promise((resolve) => {
+        chrome.runtime.sendMessage({ type: "CAPTURE_TAB" }, resolve);
+      });
+
+      if (response.error) throw new Error(response.error);
+
+      const img = await new Promise((resolve, reject) => {
+        const i = new Image();
+        i.onload = () => resolve(i);
+        i.onerror = () => reject(new Error("Failed to load screenshot"));
+        i.src = response.dataUrl;
+      });
+
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(rect.width * dpr);
+      canvas.height = Math.round(rect.height * dpr);
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(
+        img,
+        Math.round(rect.left * dpr),
+        Math.round(rect.top * dpr),
+        Math.round(rect.width * dpr),
+        Math.round(rect.height * dpr),
+        0,
+        0,
+        canvas.width,
+        canvas.height
+      );
+
+      return new Promise((resolve, reject) => {
+        canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob failed"))), "image/png");
+      });
+    } else {
+      // Chrome: use html2canvas
+      const bgColor = resolveBackgroundColor(el);
+      const canvas = await html2canvas(el, {
+        backgroundColor: bgColor,
+        logging: false,
+        useCORS: true,
+        scale: window.devicePixelRatio || 1,
+      });
+
+      return new Promise((resolve, reject) => {
+        canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob failed"))), "image/png");
+      });
+    }
+  }
+
+  async function writeImageToClipboard(blob) {
+    try {
+      const item = new ClipboardItem({
+        "image/png": Promise.resolve(blob),
+      });
+      await navigator.clipboard.write([item]);
+      return true;
+    } catch {
+      // Firefox fallback: download the image if clipboard write fails
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "element-screenshot.png";
+      a.click();
+      URL.revokeObjectURL(url);
+      return false;
+    }
   }
 
   // ===== Clipboard Actions =====
@@ -627,24 +666,10 @@
 
   async function copyScreenshot(el) {
     try {
-      showToast("Capturing screenshot...");
-      const bgColor = resolveBackgroundColor(el);
-      const canvas = await html2canvas(el, {
-        backgroundColor: bgColor,
-        logging: false,
-        useCORS: true,
-        scale: window.devicePixelRatio || 1,
-      });
-
-      const blob = await new Promise((resolve, reject) => {
-        canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob failed"))), "image/png");
-      });
-
-      const item = new ClipboardItem({
-        "image/png": Promise.resolve(blob),
-      });
-      await navigator.clipboard.write([item]);
-      showToast("Screenshot copied");
+      showToast("Copying...", false, true);
+      const blob = await captureElementScreenshot(el);
+      const ok = await writeImageToClipboard(blob);
+      showToast(ok ? "Screenshot copied" : "Screenshot downloaded");
     } catch (err) {
       showToast("Failed to capture: " + err.message, true);
     }
@@ -652,43 +677,67 @@
 
   async function copyBoth(el) {
     try {
-      showToast("Capturing...");
+      showToast("Copying...", false, true);
       const info = buildElementInfo(el);
-      const bgColor = resolveBackgroundColor(el);
-      const canvas = await html2canvas(el, {
-        backgroundColor: bgColor,
-        logging: false,
-        useCORS: true,
-        scale: window.devicePixelRatio || 1,
-      });
+      const blob = await captureElementScreenshot(el);
 
-      const blob = await new Promise((resolve, reject) => {
-        canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob failed"))), "image/png");
-      });
-
-      const item = new ClipboardItem({
-        "text/plain": new Blob([info], { type: "text/plain" }),
-        "image/png": Promise.resolve(blob),
-      });
-      await navigator.clipboard.write([item]);
-      showToast("Element + Screenshot copied");
+      try {
+        const item = new ClipboardItem({
+          "text/plain": new Blob([info], { type: "text/plain" }),
+          "image/png": Promise.resolve(blob),
+        });
+        await navigator.clipboard.write([item]);
+        showToast("Element + Screenshot copied");
+      } catch {
+        // Fallback: copy text, download image
+        await navigator.clipboard.writeText(info);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "element-screenshot.png";
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast("Text copied, screenshot downloaded");
+      }
     } catch (err) {
       showToast("Failed to copy: " + err.message, true);
     }
   }
 
   // ===== Toast =====
-  function showToast(message, isError = false) {
+  function showToast(message, isError = false, isLoading = false) {
     if (toastTimer) clearTimeout(toastTimer);
 
     if (!toastEl) {
       toastEl = document.createElement("div");
       toastEl.id = "ccp-toast";
-      document.documentElement.appendChild(toastEl);
     }
 
-    toastEl.textContent = message;
+    if (isLoading) {
+      toastEl.innerHTML = CLAWD_MINI + `<span>${message}</span>`;
+    } else {
+      toastEl.textContent = message;
+    }
     toastEl.className = isError ? "ccp-toast-error" : "";
+
+    // Position next to toolbar if visible, otherwise fixed bottom-right
+    if (toolbarEl && toolbarEl.parentElement) {
+      document.documentElement.appendChild(toastEl);
+      const toolbarRect = toolbarEl.getBoundingClientRect();
+      toastEl.style.position = "fixed";
+      toastEl.style.top = toolbarRect.top + "px";
+      toastEl.style.left = (toolbarRect.right + 8) + "px";
+      toastEl.style.height = toolbarRect.height + "px";
+      toastEl.style.zIndex = "2147483647";
+    } else {
+      document.documentElement.appendChild(toastEl);
+      toastEl.style.position = "fixed";
+      toastEl.style.bottom = "24px";
+      toastEl.style.right = "24px";
+      toastEl.style.top = "";
+      toastEl.style.left = "";
+      toastEl.style.zIndex = "2147483647";
+    }
 
     // Force reflow for transition
     toastEl.offsetHeight;

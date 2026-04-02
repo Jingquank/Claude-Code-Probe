@@ -38,11 +38,18 @@ chrome.action.onClicked.addListener(async (tab) => {
   }
 });
 
-// Handle deactivation from content script (Escape key)
-chrome.runtime.onMessage.addListener((msg, sender) => {
+// Handle messages from content script
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === "DEACTIVATE" && sender.tab) {
     activeTabs.delete(sender.tab.id);
     chrome.action.setBadgeText({ tabId: sender.tab.id, text: "" });
+  }
+
+  if (msg.type === "CAPTURE_TAB" && sender.tab) {
+    chrome.tabs.captureVisibleTab(sender.tab.windowId, { format: "png" })
+      .then((dataUrl) => sendResponse({ dataUrl }))
+      .catch((err) => sendResponse({ error: err.message }));
+    return true; // keep message channel open for async response
   }
 });
 
