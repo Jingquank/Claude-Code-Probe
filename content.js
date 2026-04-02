@@ -494,6 +494,51 @@
     return parts.join(" > ");
   }
 
+  // ===== Normalize CSS color to rgb (handles oklch and other modern color functions) =====
+  function normalizeColor(color) {
+    if (!color || !color.includes("oklch")) return color;
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = 1;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = color;
+      ctx.fillRect(0, 0, 1, 1);
+      const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data;
+      return a < 255
+        ? `rgba(${r},${g},${b},${(a / 255).toFixed(3)})`
+        : `rgb(${r},${g},${b})`;
+    } catch {
+      return color;
+    }
+  }
+
+  // ===== Temporarily override oklch colors in element subtree for html2canvas =====
+  function applyColorNormalization(el) {
+    const COLOR_PROPS = [
+      "color", "backgroundColor",
+      "borderTopColor", "borderRightColor", "borderBottomColor", "borderLeftColor",
+      "outlineColor", "textDecorationColor", "caretColor", "columnRuleColor",
+    ];
+    const overrides = [];
+    [el, ...el.querySelectorAll("*")].forEach((node) => {
+      if (!(node instanceof HTMLElement)) return;
+      const s = getComputedStyle(node);
+      COLOR_PROPS.forEach((prop) => {
+        const val = s[prop];
+        if (val && val.includes("oklch")) {
+          const rgb = normalizeColor(val);
+          if (rgb !== val) {
+            overrides.push({ node, prop, original: node.style[prop] });
+            node.style[prop] = rgb;
+          }
+        }
+      });
+    });
+    return () => overrides.forEach(({ node, prop, original }) => {
+      node.style[prop] = original;
+    });
+  }
+
   // ===== Resolve background color =====
   function resolveBackgroundColor(el) {
     let current = el;
@@ -501,7 +546,7 @@
       const bg = getComputedStyle(current).backgroundColor;
       // Skip transparent / rgba with 0 alpha
       if (bg && bg !== "transparent" && bg !== "rgba(0, 0, 0, 0)") {
-        return bg;
+        return normalizeColor(bg);
       }
       current = current.parentElement;
     }
@@ -629,12 +674,14 @@
     try {
       showToast("Capturing screenshot...");
       const bgColor = resolveBackgroundColor(el);
+      const restoreColors = applyColorNormalization(el);
       const canvas = await html2canvas(el, {
         backgroundColor: bgColor,
         logging: false,
         useCORS: true,
         scale: window.devicePixelRatio || 1,
       });
+      restoreColors();
 
       const blob = await new Promise((resolve, reject) => {
         canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob failed"))), "image/png");
@@ -655,12 +702,14 @@
       showToast("Capturing...");
       const info = buildElementInfo(el);
       const bgColor = resolveBackgroundColor(el);
+      const restoreColors = applyColorNormalization(el);
       const canvas = await html2canvas(el, {
         backgroundColor: bgColor,
         logging: false,
         useCORS: true,
         scale: window.devicePixelRatio || 1,
       });
+      restoreColors();
 
       const blob = await new Promise((resolve, reject) => {
         canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob failed"))), "image/png");
