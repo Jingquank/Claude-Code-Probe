@@ -23,6 +23,10 @@ Point at any element. Copy it. Paste it into Claude Code.
 
 ## Install
 
+**[Install from Chrome Web Store](https://chromewebstore.google.com/detail/igboajiogegaabhkjehjmdgmfkcopogj?utm_source=item-share-cb)**
+
+### From source
+
 ```sh
 git clone https://github.com/Jingquank/Claude-Code-Probe.git
 cd Claude-Code-Probe
