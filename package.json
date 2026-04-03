@@ -1,6 +1,6 @@
 {
   "name": "claude-code-probe",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Inspect, highlight, and copy any element on any webpage.",
   "scripts": {
     "postinstall": "node scripts/postinstall.js",
