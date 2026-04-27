@@ -62,6 +62,79 @@
     </circle>
   </svg>`;
 
+  // ===== Style formatting helpers =====
+  function colorSwatch(rawColor) {
+    if (!rawColor) return "";
+    const m = rawColor.match(/^rgba?\([^)]*,\s*([\d.]+)\s*\)$/);
+    const alpha = m ? parseFloat(m[1]) : 1;
+    const cls = alpha < 1 ? "ccp-color-swatch ccp-color-swatch-alpha" : "ccp-color-swatch";
+    return `<span class="${cls}" style="background-color:${rawColor}"></span>`;
+  }
+
+  function formatColor(c) {
+    if (!c) return c;
+    const m = c.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([\d.]+))?\s*\)$/);
+    if (!m) return c;
+    const a = m[4] !== undefined ? parseFloat(m[4]) : 1;
+    if (a === 0) return "transparent";
+    const hex = (n) => parseInt(n, 10).toString(16).padStart(2, "0");
+    const base = `#${hex(m[1])}${hex(m[2])}${hex(m[3])}`;
+    return a < 1 ? `${base}@${Math.round(a * 100)}%` : base;
+  }
+
+  function splitShadows(s) {
+    const out = [];
+    let depth = 0;
+    let start = 0;
+    for (let i = 0; i < s.length; i++) {
+      const ch = s[i];
+      if (ch === "(") depth++;
+      else if (ch === ")") depth--;
+      else if (ch === "," && depth === 0) {
+        out.push(s.slice(start, i).trim());
+        start = i + 1;
+      }
+    }
+    out.push(s.slice(start).trim());
+    return out;
+  }
+
+  function formatShadow(s) {
+    return splitShadows(s)
+      .map((part) => {
+        const colorMatch = part.match(/rgba?\([^)]+\)/);
+        if (!colorMatch) return part;
+        return `${colorSwatch(colorMatch[0])}${formatColor(colorMatch[0])}`;
+      })
+      .join(", ");
+  }
+
+  function hasDirectText(el) {
+    for (const node of el.childNodes) {
+      if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) return true;
+    }
+    return false;
+  }
+
+  function getDirectText(el) {
+    let out = "";
+    for (const node of el.childNodes) {
+      if (node.nodeType === Node.TEXT_NODE) out += node.textContent;
+    }
+    return out.trim().replace(/\s+/g, " ");
+  }
+
+  // Read cursor without the probe-mode crosshair override.
+  // Temporarily strips the override class for a synchronous style read; no paint occurs.
+  function getRealCursor(el) {
+    const root = document.documentElement;
+    const wasActive = root.classList.contains("ccp-probe-active");
+    if (wasActive) root.classList.remove("ccp-probe-active");
+    const cursor = getComputedStyle(el).cursor;
+    if (wasActive) root.classList.add("ccp-probe-active");
+    return cursor;
+  }
+
   // ===== Message Listener =====
   chrome.runtime.onMessage.addListener((msg) => {
     if (msg.type === "TOGGLE_PROBE") {
@@ -226,16 +299,32 @@
       (classes ? `<span class="ccp-label-class">${classes}</span>` : "") +
       `<span class="ccp-label-size">${w} x ${h}</span>`;
 
+    const elHasText = hasDirectText(el);
+
+    // Text preview line: first ~40 chars of direct text content
+    let lineT = "";
+    if (elHasText) {
+      const text = getDirectText(el);
+      const preview = text.length > 40 ? text.slice(0, 40) + "\u2026" : text;
+      const escaped = preview.replace(/[&<>"']/g, (ch) => (
+        { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]
+      ));
+      lineT = `<div class="ccp-label-line ccp-line-text"><span class="ccp-label-text">"${escaped}"</span></div>`;
+    }
+
     // Line 2: key computed properties
     const props = [];
     const display = style.display;
     const position = style.position;
     if (display && display !== "block") props.push(display);
     if (position && position !== "static") props.push(`pos:${position}`);
-    const fontSize = style.fontSize;
-    if (fontSize) props.push(fontSize);
-    const fontWeight = style.fontWeight;
-    if (fontWeight && fontWeight !== "400" && fontWeight !== "normal") props.push(`w:${fontWeight}`);
+    // Font props only when element has direct text content
+    if (elHasText) {
+      if (style.fontSize) props.push(style.fontSize);
+      if (style.fontWeight && style.fontWeight !== "400" && style.fontWeight !== "normal") {
+        props.push(`w:${style.fontWeight}`);
+      }
+    }
     // Accessibility hints
     const role = el.getAttribute("role");
     if (role) props.push(`role="${role}"`);
@@ -247,7 +336,92 @@
 
     let line2 = "";
     if (props.length > 0) {
-      line2 = `<div class="ccp-label-line"><span class="ccp-label-prop">${props.join('<span class="ccp-label-sep"> · </span>')}</span></div>`;
+      line2 = `<div class="ccp-label-line ccp-line-meta"><span class="ccp-label-prop">${props.join('<span class="ccp-label-sep"> · </span>')}</span></div>`;
+    }
+
+    // Visual line: background, text color, border, radius, shadow, opacity, cursor, transform, z-index
+    const visuals = [];
+
+    // Background color
+    const bg = style.backgroundColor;
+    if (bg && bg !== "transparent" && bg !== "rgba(0, 0, 0, 0)") {
+      visuals.push(`bg:${colorSwatch(bg)}${formatColor(bg)}`);
+    }
+
+    // Text color (only when element has direct text)
+    if (elHasText && style.color) {
+      visuals.push(`color:${colorSwatch(style.color)}${formatColor(style.color)}`);
+    }
+
+    // Border (stroke)
+    const bw = {
+      top: parseFloat(style.borderTopWidth) || 0,
+      right: parseFloat(style.borderRightWidth) || 0,
+      bottom: parseFloat(style.borderBottomWidth) || 0,
+      left: parseFloat(style.borderLeftWidth) || 0,
+    };
+    const anyBorderWidth = bw.top || bw.right || bw.bottom || bw.left;
+    if (anyBorderWidth && style.borderTopStyle !== "none") {
+      const allWidthsEqual = bw.top === bw.right && bw.right === bw.bottom && bw.bottom === bw.left;
+      const allStylesEqual =
+        style.borderTopStyle === style.borderRightStyle &&
+        style.borderRightStyle === style.borderBottomStyle &&
+        style.borderBottomStyle === style.borderLeftStyle;
+      const allColorsEqual =
+        style.borderTopColor === style.borderRightColor &&
+        style.borderRightColor === style.borderBottomColor &&
+        style.borderBottomColor === style.borderLeftColor;
+      if (allWidthsEqual && allStylesEqual && allColorsEqual) {
+        visuals.push(
+          `border:${bw.top}px ${style.borderTopStyle} ${colorSwatch(style.borderTopColor)}${formatColor(style.borderTopColor)}`
+        );
+      } else {
+        visuals.push(`border:${bw.top}/${bw.right}/${bw.bottom}/${bw.left}px`);
+      }
+    }
+
+    // Border radius
+    const radii = [
+      style.borderTopLeftRadius,
+      style.borderTopRightRadius,
+      style.borderBottomRightRadius,
+      style.borderBottomLeftRadius,
+    ];
+    if (radii.some((v) => v && v !== "0px")) {
+      const allSame = radii.every((v) => v === radii[0]);
+      visuals.push(allSame ? `radius:${radii[0]}` : `radius:${radii.join(" ")}`);
+    }
+
+    // Box shadow
+    if (style.boxShadow && style.boxShadow !== "none") {
+      visuals.push(`shadow:${formatShadow(style.boxShadow)}`);
+    }
+
+    // Opacity (when < 1)
+    const opacity = parseFloat(style.opacity);
+    if (!Number.isNaN(opacity) && opacity < 1) {
+      visuals.push(`opacity:${opacity}`);
+    }
+
+    // Cursor (read without probe-mode override)
+    const cursor = getRealCursor(el);
+    if (cursor && cursor !== "auto" && cursor !== "default") {
+      visuals.push(`cursor:${cursor}`);
+    }
+
+    // Transform (when present)
+    if (style.transform && style.transform !== "none") {
+      visuals.push(`transform:${style.transform}`);
+    }
+
+    // Z-index (when explicitly set)
+    if (style.zIndex && style.zIndex !== "auto") {
+      visuals.push(`z:${style.zIndex}`);
+    }
+
+    let lineV = "";
+    if (visuals.length > 0) {
+      lineV = `<div class="ccp-label-line ccp-line-visual"><span class="ccp-label-prop">${visuals.join('<span class="ccp-label-sep"> · </span>')}</span></div>`;
     }
 
     // Line 3: breadcrumb path (up to 4 ancestors)
@@ -267,10 +441,8 @@
     }
     let line3 = "";
     if (crumbs.length > 0) {
-      const path = crumbs.join('<span class="ccp-label-sep"> › </span>') +
-        '<span class="ccp-label-sep"> › </span>' +
-        `<span class="ccp-label-tag">${tag}${id || classes}</span>`;
-      line3 = `<div class="ccp-label-line ccp-label-marquee"><span class="ccp-label-breadcrumb ccp-marquee-inner">${path}<span class="ccp-label-sep">&nbsp;&nbsp;&nbsp;·&nbsp;&nbsp;&nbsp;</span>${path}</span></div>`;
+      const path = crumbs.join('<span class="ccp-label-sep"> › </span>');
+      line3 = `<div class="ccp-label-line ccp-label-marquee ccp-line-breadcrumb"><span class="ccp-label-breadcrumb ccp-marquee-inner">${path}<span class="ccp-label-sep">&nbsp;&nbsp;&nbsp;·&nbsp;&nbsp;&nbsp;</span>${path}</span></div>`;
     }
 
     // Preserve Clawd mascot, update only the content wrapper
@@ -281,13 +453,12 @@
       labelEl.appendChild(contentWrap);
     }
     contentWrap.innerHTML =
-      `<div class="ccp-label-line">${line1}</div>` + line2 + line3;
+      `<div class="ccp-label-line ccp-line-identity">${line1}</div>` + lineT + line2 + lineV + line3;
 
     labelEl.style.display = "block";
 
     // Position: above element by default, below if near top
-    const lineCount = 1 + (line2 ? 1 : 0) + (line3 ? 1 : 0);
-    const labelHeight = 14 + lineCount * 16;
+    const labelHeight = labelEl.offsetHeight || 40;
     const gap = 6;
     let top = rect.top - labelHeight - gap;
     if (top < 4) {
@@ -520,12 +691,25 @@
   }
 
   // ===== Skeleton HTML Builder =====
+  function formatAttrs(el) {
+    return Array.from(el.attributes)
+      .filter((a) => !a.name.startsWith("ccp-") && a.name !== "style")
+      .map((a) => {
+        let val = a.value;
+        if (a.name === "class" && val.length > 120) {
+          const tokens = val.split(/\s+/).filter(Boolean);
+          if (tokens.length > 6) {
+            val = `${tokens.slice(0, 3).join(" ")} \u2026 ${tokens.slice(-3).join(" ")}`;
+          }
+        }
+        return ` ${a.name}="${val}"`;
+      })
+      .join("");
+  }
+
   function buildSkeletonHTML(el, depth = 0, maxDepth = 3) {
     const tag = el.tagName.toLowerCase();
-    const attrs = Array.from(el.attributes)
-      .filter((a) => !a.name.startsWith("ccp-"))
-      .map((a) => ` ${a.name}="${a.value}"`)
-      .join("");
+    const attrs = formatAttrs(el);
 
     const selfClosing = ["img", "br", "hr", "input", "meta", "link", "area", "base", "col", "embed", "source", "track", "wbr"];
     if (selfClosing.includes(tag)) {
@@ -547,7 +731,7 @@
         if (depth + 1 >= maxDepth) {
           const n = child.children.length;
           const childTag = child.tagName.toLowerCase();
-          parts.push(`<${childTag}${Array.from(child.attributes).map((a) => ` ${a.name}="${a.value}"`).join("")}>${n > 0 ? `<!-- ${n} children -->` : "\u2026"}</${childTag}>`);
+          parts.push(`<${childTag}${formatAttrs(child)}>${n > 0 ? `<!-- ${n} children -->` : "\u2026"}</${childTag}>`);
         } else {
           parts.push(buildSkeletonHTML(child, depth + 1, maxDepth));
         }
@@ -566,22 +750,86 @@
     return `<${tag}${attrs}>\n${parts.map((p) => childIndent + p).join("\n")}\n${indent}</${tag}>`;
   }
 
+  // ===== Source-discovery helpers =====
+  function detectFramework() {
+    const probeReact = (node) =>
+      !!node && Object.keys(node).some((k) => k.startsWith("__reactFiber$"));
+    const probeVue = (node) =>
+      !!node && (node.__vue_app__ || node.__vue__ || node.__vueParentComponent);
+
+    const body = document.body;
+    if (probeReact(body)) return "react";
+    if (probeVue(body)) return "vue";
+    for (const child of body?.children || []) {
+      if (probeReact(child)) return "react";
+      if (probeVue(child)) return "vue";
+    }
+    return null;
+  }
+
+  function getReactComponentName(el) {
+    const fiberKey = Object.keys(el).find((k) => k.startsWith("__reactFiber$"));
+    if (!fiberKey) return null;
+    let fiber = el[fiberKey];
+    while (fiber) {
+      const t = fiber.type;
+      if (t && (typeof t === "function" || typeof t === "object")) {
+        const name =
+          t.displayName ||
+          t.name ||
+          (t.render && (t.render.displayName || t.render.name));
+        if (name && /^[A-Z]/.test(name)) return name;
+      }
+      fiber = fiber.return;
+    }
+    return null;
+  }
+
+  function getIdentifiers(el) {
+    const wanted = ["id", "data-testid", "data-cy", "data-component", "data-source-loc", "data-source-file"];
+    const out = [];
+    for (const attr of wanted) {
+      const v = el.getAttribute(attr);
+      if (v) out.push(`${attr}: ${v}`);
+    }
+    return out;
+  }
+
+  function getVisibleText(el) {
+    const raw = (el.textContent || "").replace(/\s+/g, " ").trim();
+    if (!raw) return "";
+    return raw.length > 200 ? raw.slice(0, 197) + "\u2026" : raw;
+  }
+
   // ===== Build Structured Element Info =====
   function buildElementInfo(el) {
-    const url = window.location.href;
-    const selector = buildSelectorPath(el);
+    const page = window.location.pathname || "/";
+    const framework = detectFramework();
+    const componentName = framework === "react" ? getReactComponentName(el) : null;
+    const identifiers = getIdentifiers(el);
+    const text = getVisibleText(el);
     const skeleton = buildSkeletonHTML(el);
 
-    return [
-      `/* URL */`,
-      url,
-      ``,
-      `/* Selector */`,
-      selector,
-      ``,
-      `/* HTML */`,
-      skeleton,
-    ].join("\n");
+    const lines = [
+      `<picked-element>`,
+      `<!-- Captured from the browser. Use to locate and edit the source. -->`,
+      `<page>${page}</page>`,
+    ];
+    if (framework) lines.push(`<framework>${framework}</framework>`);
+    if (componentName) lines.push(`<component>${componentName}</component>`);
+    if (identifiers.length > 0) {
+      lines.push(`<identifiers>`);
+      lines.push(...identifiers);
+      lines.push(`</identifiers>`);
+    }
+    if (text) lines.push(`<text>${text}</text>`);
+    lines.push(`<html>`);
+    lines.push("```html");
+    lines.push(skeleton);
+    lines.push("```");
+    lines.push(`</html>`);
+    lines.push(`</picked-element>`);
+    return lines.join("\n");
   }
 
   // ===== Screenshot Capture =====
