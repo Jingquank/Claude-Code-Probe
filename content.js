@@ -801,9 +801,28 @@
     return raw.length > 200 ? raw.slice(0, 197) + "\u2026" : raw;
   }
 
+  function isDevOrigin() {
+    const h = window.location.hostname;
+    if (!h) return false;
+    if (h === "localhost" || h === "0.0.0.0") return true;
+    if (h === "127.0.0.1" || h === "::1") return true;
+    if (h.endsWith(".local") || h.endsWith(".localhost")) return true;
+    if (/^10\./.test(h)) return true;
+    if (/^192\.168\./.test(h)) return true;
+    if (/^172\.(1[6-9]|2\d|3[01])\./.test(h)) return true;
+    return false;
+  }
+
+  function getPageString() {
+    const loc = window.location;
+    const path = loc.pathname || "/";
+    const tail = (loc.search || "") + (loc.hash || "");
+    return isDevOrigin() ? `${loc.origin}${path}${tail}` : `${path}${tail}`;
+  }
+
   // ===== Build Structured Element Info =====
   function buildElementInfo(el) {
-    const page = window.location.pathname || "/";
+    const page = getPageString();
     const framework = detectFramework();
     const componentName = framework === "react" ? getReactComponentName(el) : null;
     const identifiers = getIdentifiers(el);
