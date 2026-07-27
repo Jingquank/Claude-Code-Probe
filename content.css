@@ -247,11 +247,25 @@
   color: #3a3a35;
 }
 
-/* ===== Action Toolbar ===== */
+/* ===== Action Toolbar =====
+   #ccp-toolbar is a transparent rail holding two siblings: the action bar and
+   the Select Parent button. align-items:stretch keeps them exactly the same
+   height, and the rail glides on the same curve as the selection outline. */
 #ccp-toolbar {
   all: initial;
   position: fixed;
   z-index: 2147483647;
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  font-family: "Geist Mono", "SF Mono", "Fira Code", monospace;
+  box-sizing: border-box;
+  transition: top 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+              left 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#ccp-toolbar .ccp-bar {
+  all: initial;
   background: #141413;
   border: 1px solid rgba(217, 119, 87, 0.5);
   border-radius: 10px;
@@ -263,7 +277,7 @@
   box-sizing: border-box;
 }
 
-#ccp-toolbar button {
+#ccp-toolbar .ccp-bar button {
   all: initial;
   background: transparent;
   color: #faf9f5;
@@ -283,12 +297,12 @@
   box-sizing: border-box;
 }
 
-#ccp-toolbar button:hover {
+#ccp-toolbar .ccp-bar button:hover {
   background: rgba(217, 119, 87, 0.15);
   border-color: rgba(217, 119, 87, 0.5);
 }
 
-#ccp-toolbar button:active {
+#ccp-toolbar .ccp-bar button:active {
   background: rgba(217, 119, 87, 0.25);
 }
 
@@ -296,6 +310,47 @@
   width: 14px;
   height: 14px;
   flex-shrink: 0;
+}
+
+/* Select Parent — navigation, not a copy action, so it reads as terracotta on
+   the same dark chrome. No vertical padding: the height comes from stretch. */
+#ccp-toolbar .ccp-parent-btn {
+  all: initial;
+  background: #141413;
+  color: #d97757;
+  border: 1px solid #d97757;
+  border-radius: 10px;
+  padding: 0 14px;
+  font: 500 11px/1.4 "Geist Mono", "SF Mono", "Fira Code", monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  box-shadow: 0 4px 16px rgba(20, 20, 19, 0.6);
+  box-sizing: border-box;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, opacity 0.15s;
+}
+
+/* Solid invert — the fill floods to the accent and the label flips to near-black.
+   Both states must stay fully opaque: unlike the bar's buttons, this one sits on
+   the page, so a translucent fill lets the page show straight through. */
+#ccp-toolbar .ccp-parent-btn:hover {
+  background: #d97757;
+  color: #1a0d07;
+}
+
+#ccp-toolbar .ccp-parent-btn:active {
+  background: #b06848;
+  color: #1a0d07;
+}
+
+#ccp-toolbar .ccp-parent-btn.ccp-button-disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 /* ===== Toast Notification ===== */

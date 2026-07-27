@@ -8,6 +8,7 @@
   let overlayContainer = null;
   let labelEl = null;
   let toolbarEl = null;
+  let parentButtonEl = null;
   let toastEl = null;
   let toastTimer = null;
   let rafId = null;
@@ -19,7 +20,7 @@
   const ICONS = {
     code: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
     camera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>',
-    copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+    parent: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3"/><path d="M12 20v-8"/><polyline points="9 15 12 12 15 15"/></svg>',
   };
 
   // ===== Clawd Mascot SVG (mood="happy", from clawd-react) =====
@@ -567,10 +568,16 @@
     toolbarEl = document.createElement("div");
     toolbarEl.id = "ccp-toolbar";
 
+    // Copy actions live in the bar; Select Parent is a sibling button beside it.
+    // Both are flex children of #ccp-toolbar with align-items:stretch, so the
+    // button always matches the bar's height without hard-coded padding.
+    const bar = document.createElement("div");
+    bar.className = "ccp-bar";
+
+    // Actions read selectedElement at click time so they follow "Select Parent" hops
     const buttons = [
-      { label: "Copy Element", icon: ICONS.code, action: (btnEl) => copyElement(el, btnEl) },
-      { label: "Copy Screenshot", icon: ICONS.camera, action: (btnEl) => copyScreenshot(el, btnEl) },
-      { label: "Copy Both", icon: ICONS.copy, action: (btnEl) => copyBoth(el, btnEl) },
+      { label: "Copy Code", icon: ICONS.code, action: (btnEl) => copyElement(selectedElement, btnEl) },
+      { label: "Screenshot", icon: ICONS.camera, action: (btnEl) => copyScreenshot(selectedElement, btnEl) },
     ];
 
     for (const btn of buttons) {
@@ -586,15 +593,61 @@
         e.stopPropagation();
         btn.action(button);
       });
-      toolbarEl.appendChild(button);
+      bar.appendChild(button);
     }
 
+    parentButtonEl = document.createElement("button");
+    parentButtonEl.className = "ccp-parent-btn";
+    parentButtonEl.innerHTML = ICONS.parent + `<span>Select Parent</span>`;
+    parentButtonEl.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      selectParent();
+    });
+
+    toolbarEl.appendChild(bar);
+    toolbarEl.appendChild(parentButtonEl);
+
     document.documentElement.appendChild(toolbarEl);
-    positionToolbar(el);
+    updateParentButton();
+    positionToolbar(el, true);
   }
 
-  function positionToolbar(el) {
+  // ===== Select Parent =====
+  function getSelectableParent(el) {
+    const parent = el?.parentElement;
+    // Stop at <body> — <html> has no meaningful selector or screenshot
+    if (!parent || parent === document.documentElement) return null;
+    return parent;
+  }
+
+  function updateParentButton() {
+    if (!parentButtonEl) return;
+    const disabled = !getSelectableParent(selectedElement);
+    parentButtonEl.disabled = disabled;
+    parentButtonEl.classList.toggle("ccp-button-disabled", disabled);
+    parentButtonEl.title = disabled
+      ? "No parent element to select"
+      : "Select this element's parent";
+  }
+
+  function selectParent() {
+    const parent = getSelectableParent(selectedElement);
+    if (!parent) return;
+
+    selectedElement = parent;
+    hoveredElement = parent;
+    updateOverlay(parent);
+    positionToolbar(parent);
+    updateParentButton();
+  }
+
+  // `instant` skips the glide — used for the first placement, where there is no
+  // previous position worth animating from.
+  function positionToolbar(el, instant) {
     if (!toolbarEl) return;
+
+    if (instant) toolbarEl.style.transition = "none";
 
     const rect = el.getBoundingClientRect();
     const toolbarRect = toolbarEl.getBoundingClientRect();
@@ -619,6 +672,11 @@
 
     toolbarEl.style.top = top + "px";
     toolbarEl.style.left = left + "px";
+
+    if (instant) {
+      void toolbarEl.offsetWidth; // flush the jump before re-enabling the glide
+      toolbarEl.style.transition = "";
+    }
   }
 
   function removeToolbar() {
@@ -626,6 +684,7 @@
       toolbarEl.remove();
       toolbarEl = null;
     }
+    parentButtonEl = null;
   }
 
   // ===== Selector Builder =====
@@ -638,9 +697,15 @@
       return `${tag}#${el.id}`;
     }
 
+    // A test id identifies far better than a pile of utility classes
+    const testId = el.getAttribute("data-testid") || el.getAttribute("data-test");
+    if (testId) {
+      return `${tag}[data-testid="${testId}"]`;
+    }
+
     const classes = Array.from(el.classList)
       .filter((c) => !c.startsWith("ccp-"))
-      .slice(0, 3);
+      .slice(0, 2);
     if (classes.length > 0) {
       selector += classes.map((c) => `.${c}`).join("");
     }
@@ -661,6 +726,13 @@
   }
 
   function buildSelectorPath(el) {
+    // An id or test id on the element itself already resolves — no path needed
+    if (el.id) return `#${el.id}`;
+    const ownTestId = el.getAttribute("data-testid") || el.getAttribute("data-test");
+    if (ownTestId && document.querySelectorAll(`[data-testid="${ownTestId}"]`).length === 1) {
+      return buildSelector(el);
+    }
+
     const parts = [];
     let current = el;
     while (current && current !== document.documentElement) {
@@ -691,28 +763,25 @@
   }
 
   // ===== Skeleton HTML Builder =====
+  // Attributes are reproduced whole \u2014 on a utility-CSS project the class list is
+  // the construct being pointed at, so eliding the middle of it removes the edit target.
+  // Source-tooling attributes are dropped: they are already reported as `source:`.
+  const TOOLING_ATTR = /^(data-inspector|data-source|data-v-inspector)/;
+
   function formatAttrs(el) {
     return Array.from(el.attributes)
-      .filter((a) => !a.name.startsWith("ccp-") && a.name !== "style")
-      .map((a) => {
-        let val = a.value;
-        if (a.name === "class" && val.length > 120) {
-          const tokens = val.split(/\s+/).filter(Boolean);
-          if (tokens.length > 6) {
-            val = `${tokens.slice(0, 3).join(" ")} \u2026 ${tokens.slice(-3).join(" ")}`;
-          }
-        }
-        return ` ${a.name}="${val}"`;
-      })
+      .filter((a) => !a.name.startsWith("ccp-") && a.name !== "style" && !TOOLING_ATTR.test(a.name))
+      .map((a) => ` ${a.name}="${a.value}"`)
       .join("");
   }
+
+  const SELF_CLOSING = ["img", "br", "hr", "input", "meta", "link", "area", "base", "col", "embed", "source", "track", "wbr"];
 
   function buildSkeletonHTML(el, depth = 0, maxDepth = 3) {
     const tag = el.tagName.toLowerCase();
     const attrs = formatAttrs(el);
 
-    const selfClosing = ["img", "br", "hr", "input", "meta", "link", "area", "base", "col", "embed", "source", "track", "wbr"];
-    if (selfClosing.includes(tag)) {
+    if (SELF_CLOSING.includes(tag)) {
       return `<${tag}${attrs} />`;
     }
 
@@ -751,50 +820,6 @@
   }
 
   // ===== Source-discovery helpers =====
-  function detectFramework() {
-    const probeReact = (node) =>
-      !!node && Object.keys(node).some((k) => k.startsWith("__reactFiber$"));
-    const probeVue = (node) =>
-      !!node && (node.__vue_app__ || node.__vue__ || node.__vueParentComponent);
-
-    const body = document.body;
-    if (probeReact(body)) return "react";
-    if (probeVue(body)) return "vue";
-    for (const child of body?.children || []) {
-      if (probeReact(child)) return "react";
-      if (probeVue(child)) return "vue";
-    }
-    return null;
-  }
-
-  function getReactComponentName(el) {
-    const fiberKey = Object.keys(el).find((k) => k.startsWith("__reactFiber$"));
-    if (!fiberKey) return null;
-    let fiber = el[fiberKey];
-    while (fiber) {
-      const t = fiber.type;
-      if (t && (typeof t === "function" || typeof t === "object")) {
-        const name =
-          t.displayName ||
-          t.name ||
-          (t.render && (t.render.displayName || t.render.name));
-        if (name && /^[A-Z]/.test(name)) return name;
-      }
-      fiber = fiber.return;
-    }
-    return null;
-  }
-
-  function getIdentifiers(el) {
-    const wanted = ["id", "data-testid", "data-cy", "data-component", "data-source-loc", "data-source-file"];
-    const out = [];
-    for (const attr of wanted) {
-      const v = el.getAttribute(attr);
-      if (v) out.push(`${attr}: ${v}`);
-    }
-    return out;
-  }
-
   function getVisibleText(el) {
     const raw = (el.textContent || "").replace(/\s+/g, " ").trim();
     if (!raw) return "";
@@ -820,35 +845,267 @@
     return isDevOrigin() ? `${loc.origin}${path}${tail}` : `${path}${tail}`;
   }
 
-  // ===== Build Structured Element Info =====
-  function buildElementInfo(el) {
-    const page = getPageString();
-    const framework = detectFramework();
-    const componentName = framework === "react" ? getReactComponentName(el) : null;
-    const identifiers = getIdentifiers(el);
-    const text = getVisibleText(el);
-    const skeleton = buildSkeletonHTML(el);
+  // ===== Pointer fields =====
+  // The payload's job is to point at a source construct, not to describe the DOM.
+  // Each helper returns a string, an array of lines, or null to be omitted.
 
-    const lines = [
-      `<picked-element>`,
-      `<!-- Captured from the browser. Use to locate and edit the source. -->`,
-      `<page>${page}</page>`,
-    ];
-    if (framework) lines.push(`<framework>${framework}</framework>`);
-    if (componentName) lines.push(`<component>${componentName}</component>`);
-    if (identifiers.length > 0) {
-      lines.push(`<identifiers>`);
-      lines.push(...identifiers);
-      lines.push(`</identifiers>`);
+  const OUR_CHROME = "#ccp-toolbar,#ccp-label,#ccp-overlay-container";
+
+  // Trim an absolute path down to something that reads as project-relative.
+  function toProjectPath(p) {
+    const m = p.match(/\/(?:src|app|pages|components|lib|routes)\//);
+    if (m) return p.slice(p.indexOf(m[0]) + 1);
+    const parts = p.split("/");
+    return parts.length > 2 ? parts.slice(-2).join("/") : p;
+  }
+
+  // Source location, read from whatever the dev tooling already emits as attributes.
+  function readSourceAttrs(node) {
+    const relPath = node.getAttribute("data-inspector-relative-path");
+    if (relPath) {
+      const line = node.getAttribute("data-inspector-line");
+      const col = node.getAttribute("data-inspector-column");
+      return relPath + (line ? `:${line}` : "") + (line && col ? `:${col}` : "");
     }
-    if (text) lines.push(`<text>${text}</text>`);
-    lines.push(`<html>`);
-    lines.push("```html");
-    lines.push(skeleton);
-    lines.push("```");
-    lines.push(`</html>`);
-    lines.push(`</picked-element>`);
-    return lines.join("\n");
+    const inspector = node.getAttribute("data-v-inspector") || node.getAttribute("data-inspector");
+    if (inspector) return toProjectPath(inspector);
+
+    const loc = node.getAttribute("data-source-loc");
+    if (loc) return toProjectPath(loc);
+
+    const file = node.getAttribute("data-source-file");
+    if (file) {
+      const line = node.getAttribute("data-source-line");
+      return toProjectPath(file) + (line ? `:${line}` : "");
+    }
+    return null;
+  }
+
+  function getSourceLocation(el) {
+    const own = readSourceAttrs(el);
+    if (own) return own;
+
+    // Fall back to the nearest annotated ancestor, said out loud so the pointer isn't
+    // mistaken for the element's own location.
+    let node = el.parentElement;
+    for (let i = 0; node && i < 3; i++, node = node.parentElement) {
+      const found = readSourceAttrs(node);
+      if (found) return `${found} (nearest annotated ancestor: ${briefName(node)})`;
+    }
+    return null;
+  }
+
+  // Component ancestry. Reading fibers needs page-world access — see README.
+  function getComponentChain(el, max = 3) {
+    const names = [];
+    const fiberKey = Object.keys(el).find((k) => k.startsWith("__reactFiber$"));
+    if (fiberKey) {
+      let fiber = el[fiberKey];
+      while (fiber && names.length < max) {
+        const t = fiber.type;
+        const name =
+          t && (typeof t === "function" || typeof t === "object")
+            ? t.displayName || t.name || (t.render && (t.render.displayName || t.render.name))
+            : null;
+        if (name && /^[A-Z]/.test(name) && names[names.length - 1] !== name) names.push(name);
+        fiber = fiber.return;
+      }
+    }
+    if (names.length === 0) {
+      let c = el.__vueParentComponent;
+      while (c && names.length < max) {
+        const n = c.type && (c.type.__name || c.type.name);
+        if (n && names[names.length - 1] !== n) names.push(n);
+        c = c.parent;
+      }
+    }
+    if (names.length === 0) {
+      const host = el.closest("[data-component]");
+      if (host) names.push(host.getAttribute("data-component"));
+    }
+    return names.length > 0 ? names.join(" <- ") : null;
+  }
+
+  // The function names bound to the element — names only, never values.
+  function getHandlers(el) {
+    const out = [];
+    for (const attr of el.attributes) {
+      if (!/^on[a-z]+$/i.test(attr.name) || !attr.value) continue;
+      const called = attr.value.match(/([A-Za-z_$][\w$]*)\s*\(/);
+      out.push(`${attr.name}=${called ? called[1] : attr.value.slice(0, 24)}`);
+    }
+    const propsKey = Object.keys(el).find((k) => k.startsWith("__reactProps$"));
+    if (propsKey) {
+      const props = el[propsKey] || {};
+      for (const k of Object.keys(props)) {
+        if (!/^on[A-Z]/.test(k) || typeof props[k] !== "function") continue;
+        out.push(`${k}=${props[k].name || "anonymous"}`);
+      }
+    }
+    return out.length > 0 ? out.join(", ") : null;
+  }
+
+  function cssAttrSelector(name, value) {
+    return `[${name}="${value.replace(/["\\]/g, "\\$&")}"]`;
+  }
+
+  function countMatches(selector) {
+    try {
+      return document.querySelectorAll(selector).length;
+    } catch {
+      return 0;
+    }
+  }
+
+  // First non-empty text node inside the element — what a grep for source would hit.
+  function firstTextNode(el) {
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) {
+      const t = node.textContent.replace(/\s+/g, " ").trim();
+      if (t) return t;
+    }
+    return "";
+  }
+
+  // How many text nodes elsewhere in the page carry exactly this string. Ancestors and
+  // descendants are excluded by walking text nodes rather than elements.
+  function countTextElsewhere(el, target) {
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    let node;
+    let n = 0;
+    while ((node = walker.nextNode())) {
+      if (el.contains(node)) continue;
+      const parent = node.parentElement;
+      if (!parent || parent.closest(OUR_CHROME)) continue;
+      if (node.textContent.replace(/\s+/g, " ").trim() === target) n++;
+      if (n > 99) break;
+    }
+    return n;
+  }
+
+  // The best search target on the element, with a verdict on whether it actually resolves.
+  function getAnchor(el) {
+    const lines = [];
+    for (const name of ["data-testid", "data-test", "data-cy", "data-component", "id"]) {
+      const v = el.getAttribute(name);
+      if (!v) continue;
+      const n = countMatches(name === "id" ? cssAttrSelector("id", v) : cssAttrSelector(name, v));
+      lines.push(`${name}="${v}" ${n === 1 ? "(unique in page)" : `(${n} matches)`}`);
+      break;
+    }
+
+    const text = firstTextNode(el);
+    if (text) {
+      const shown = text.length > 40 ? text.slice(0, 40) + "\u2026" : text;
+      const n = countTextElsewhere(el, text);
+      lines.push(
+        n === 0
+          ? `text "${shown}" (unique in page)`
+          : `text "${shown}" (also on ${n} other element${n > 1 ? "s" : ""} - weak grep target)`
+      );
+    }
+    return lines.length > 0 ? lines : null;
+  }
+
+  function briefName(node) {
+    if (!node) return null;
+    const tag = node.tagName.toLowerCase();
+    if (node.id) return `${tag}#${node.id}`;
+    const cls = Array.from(node.classList).filter((c) => !c.startsWith("ccp-"))[0];
+    return cls ? `${tag}.${cls}` : tag;
+  }
+
+  function siblingLabel(node) {
+    if (!node) return null;
+    const text = firstTextNode(node);
+    const hint = text ? ` "${text.length > 20 ? text.slice(0, 20) + "\u2026" : text}"` : "";
+    return briefName(node) + hint;
+  }
+
+  // Where the element sits — what "insert after this" needs in order to resolve.
+  function getPosition(el) {
+    const parent = el.parentElement;
+    if (!parent || parent === document.documentElement) return null;
+
+    const kids = Array.from(parent.children);
+    const lines = [`child ${kids.indexOf(el) + 1} of ${kids.length} in ${briefName(parent)}`];
+
+    const after = siblingLabel(el.previousElementSibling);
+    const before = siblingLabel(el.nextElementSibling);
+    const neighbours = [after && `after ${after}`, before && `before ${before}`].filter(Boolean);
+    if (neighbours.length > 0) lines.push(neighbours.join(", "));
+
+    return lines;
+  }
+
+  // Tag + sorted class list: two siblings sharing one are almost always one template.
+  function signatureOf(node) {
+    const cls = Array.from(node.classList)
+      .filter((c) => !c.startsWith("ccp-"))
+      .sort()
+      .join(".");
+    return node.tagName + (cls ? "." + cls : "");
+  }
+
+  function getRepetition(el) {
+    const parent = el.parentElement;
+    if (!parent) return null;
+    const sig = signatureOf(el);
+    const twins = Array.from(parent.children).filter((c) => signatureOf(c) === sig);
+    if (twins.length < 2) return null;
+    return [
+      `${twins.indexOf(el) + 1} of ${twins.length} identical siblings - likely one template; change`,
+      `the component or the data unless this instance alone is meant`,
+    ];
+  }
+
+  // The element's own tag, whole, with its children summarised rather than reproduced.
+  function buildRootTag(el) {
+    const tag = el.tagName.toLowerCase();
+    const attrs = formatAttrs(el);
+    if (SELF_CLOSING.includes(tag)) return `<${tag}${attrs} />`;
+
+    const n = el.children.length;
+    if (n > 0) return `<${tag}${attrs}> \u2026 ${n} child${n > 1 ? "ren" : ""} </${tag}>`;
+
+    const text = getDirectText(el);
+    const inner = text.length > 60 ? text.slice(0, 57) + "\u2026" : text;
+    return `<${tag}${attrs}>${inner}</${tag}>`;
+  }
+
+  // ===== Build Structured Element Info =====
+  // A fenced comment header: no per-field tags, and the fence both delimits the block
+  // from the surrounding prompt and stops "#" from rendering as a markdown heading.
+  function buildElementInfo(el) {
+    const source = getSourceLocation(el);
+    const component = getComponentChain(el);
+
+    const fields = [];
+    const push = (key, value) => {
+      if (!value || (Array.isArray(value) && value.length === 0)) return;
+      fields.push({ key, lines: Array.isArray(value) ? value : [value] });
+    };
+
+    push("source", source);
+    push("component", component);
+    push("page", getPageString());
+    push("anchor", getAnchor(el));
+    push("handlers", getHandlers(el));
+    push("selector", buildSelectorPath(el));
+    push("position", getPosition(el));
+    push("repeated", getRepetition(el));
+    push("text", getVisibleText(el));
+
+    const header = fields
+      .map((f) => f.lines.map((l, i) => (i === 0 ? `# ${f.key}: ` : "#   ") + l).join("\n"))
+      .join("\n");
+
+    // With a file or component to open, the agent reads the real source and a rendered
+    // subtree is a lossy copy of it. With neither, the subtree is all the payload has.
+    const html = source || component ? buildRootTag(el) : buildSkeletonHTML(el);
+
+    return "```\n" + header + "\n" + html + "\n```";
   }
 
   // ===== Screenshot Capture =====
@@ -976,35 +1233,6 @@
     } catch (err) {
       resetButton(btnEl);
       showToast("Failed to capture: " + err.message, true);
-    }
-  }
-
-  async function copyBoth(el, btnEl) {
-    try {
-      setButtonLoading(btnEl);
-      const info = buildElementInfo(el);
-      const blob = await captureElementScreenshot(el);
-
-      try {
-        const item = new ClipboardItem({
-          "text/plain": new Blob([info], { type: "text/plain" }),
-          "image/png": Promise.resolve(blob),
-        });
-        await navigator.clipboard.write([item]);
-        setButtonSuccess(btnEl, "Copied!");
-      } catch {
-        await navigator.clipboard.writeText(info);
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "element-screenshot.png";
-        a.click();
-        URL.revokeObjectURL(url);
-        setButtonSuccess(btnEl, "Text copied, image downloaded!");
-      }
-    } catch (err) {
-      resetButton(btnEl);
-      showToast("Failed to copy: " + err.message, true);
     }
   }
 

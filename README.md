@@ -47,28 +47,44 @@ Then load in your browser:
 
 | | What you get |
 |---|---|
-| **Copy Element** | Page URL + CSS selector + skeleton HTML |
-| **Copy Screenshot** | PNG of the element |
-| **Copy Both** | Both in one clipboard |
+| **Copy Code** | Where the element came from in your source, and how to find it again |
+| **Screenshot** | PNG of the element |
+| **Select Parent** | Moves the selection up one level in the DOM — click again to keep climbing |
 
 Paste into Claude Code and it knows exactly which element you mean.
 
-### What "Copy Element" outputs
+### What "Copy Code" outputs
 
+A pointer, not a description — it tells the agent which construct you mean, then gets out
+of the way so your own instruction is the loudest thing in the prompt.
+
+````
 ```
-/* URL */
-https://myapp.com/dashboard
-
-/* Selector */
-main#content > div.card:nth-child(3)
-
-/* HTML */
-<div class="card p-6 rounded-xl" data-testid="plan-card">
-  <h3 class="text-lg font-semibold">Pro Plan</h3>
-  <p class="text-gray-500">For teams that need…</p>
-  <button class="btn btn-primary">Upgrade</button>
-</div>
+# source: src/components/PlanCard.tsx:42:6
+# page: localhost:5173/pricing
+# anchor: data-testid="plan-card" (unique in page)
+#   text "Pro Plan" (unique in page)
+# selector: div[data-testid="plan-card"]
+# position: child 2 of 3 in div.grid
+#   after div.card "Starter", before div.card "Team"
+# repeated: 2 of 3 identical siblings - likely one template; change
+#   the component or the data unless this instance alone is meant
+# text: Pro Plan For teams that need more. Upgrade
+<div class="card flex flex-col gap-3 rounded-xl border p-6 shadow-sm" data-testid="plan-card"> … 3 children </div>
 ```
+````
+
+Notes on the fields:
+
+- **source** is best-effort. It reads the attributes dev tooling already emits —
+  `data-inspector-*` (react-dev-inspector), `data-v-inspector` (vite-plugin-vue-inspector),
+  `data-source-loc` / `data-source-file`. No plugin, no line.
+- **repeated** only appears when the element has identical siblings. It's the difference
+  between editing one card and editing the component that renders all of them.
+- The **HTML** is the element's own tag with its children summarised, because with a source
+  pointer the agent should read the real JSX rather than a rendered copy of it. When neither
+  a source location nor a component name resolves, the full skeleton comes back instead —
+  it's the only concrete description left.
 
 ## Privacy
 
