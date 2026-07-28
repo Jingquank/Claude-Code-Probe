@@ -130,7 +130,11 @@
   z-index: 2147483647;
   border: 1px solid rgba(217, 119, 87, 0.25);
   box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(20, 20, 19, 0.4);
-  max-width: 460px;
+  /* box-sizing so the max-height the layout pass sets means the whole box */
+  box-sizing: border-box;
+  max-width: min(460px, calc(100vw - 8px));
+  /* visible so Clawd can walk along the top edge; layoutChrome switches this to
+     hidden only when the label has to be capped to fit a very short viewport */
   overflow: visible;
   display: block;
   transition: top 0.15s cubic-bezier(0.4, 0, 0.2, 1),
@@ -417,6 +421,27 @@
   opacity: 0.35;
   cursor: not-allowed;
   pointer-events: none;
+}
+
+/* Narrow viewports: drop to icons so the rail stops overflowing the screen.
+   Driven by a class rather than a media query because the JS has to re-measure
+   the buttons' locked widths whenever the density flips. */
+#ccp-toolbar.ccp-compact .ccp-bar button span,
+#ccp-toolbar.ccp-compact .ccp-parent-btn span {
+  display: none;
+}
+
+#ccp-toolbar.ccp-compact .ccp-bar button,
+#ccp-toolbar.ccp-compact .ccp-parent-btn {
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+/* Placement that tracks the viewport has to be instantaneous — gliding to each
+   new scroll position smears the chrome across the page. !important because
+   #ccp-label and #ccp-toolbar both set transition at ID specificity. */
+.ccp-no-transition {
+  transition: none !important;
 }
 
 /* ===== Toast Notification ===== */

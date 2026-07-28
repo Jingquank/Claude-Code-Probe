@@ -12,6 +12,7 @@
   let toastEl = null;
   let toastTimer = null;
   let rafId = null;
+  let viewportRafId = null;
 
   // ===== Clawd Mini (for toast loading state) =====
   const CLAWD_MINI = `<svg viewBox="-4 -4 120 80" width="28" height="20" fill="none" style="flex-shrink:0;overflow:visible"><rect x="8" y="0" width="96" height="56" rx="4" fill="#C27C5C"/><rect x="-4" y="25.6" width="12" height="14.4" rx="3" fill="#C27C5C"/><rect x="104" y="25.6" width="12" height="14.4" rx="3" fill="#C27C5C"/><rect x="28" y="14" width="8" height="16" rx="2" fill="#141413"/><rect x="76" y="14" width="8" height="16" rx="2" fill="#141413"/><rect x="16" y="56" width="9.6" height="20" rx="2" fill="#8B5A42"><animate attributeName="height" values="20;16;20" dur="0.4s" begin="0s" repeatCount="indefinite"/></rect><rect x="30.4" y="56" width="9.6" height="20" rx="2" fill="#8B5A42"><animate attributeName="height" values="20;16;20" dur="0.4s" begin="0.1s" repeatCount="indefinite"/></rect><rect x="72" y="56" width="9.6" height="20" rx="2" fill="#8B5A42"><animate attributeName="height" values="20;16;20" dur="0.4s" begin="0.2s" repeatCount="indefinite"/></rect><rect x="86.4" y="56" width="9.6" height="20" rx="2" fill="#8B5A42"><animate attributeName="height" values="20;16;20" dur="0.4s" begin="0.3s" repeatCount="indefinite"/></rect></svg>`;
@@ -155,6 +156,9 @@
     document.addEventListener("mousemove", onMouseMove, true);
     document.addEventListener("click", onClick, true);
     document.addEventListener("keydown", onKeyDown, true);
+    // Capture, so scrolling any nested container counts too
+    document.addEventListener("scroll", onViewportChange, { capture: true, passive: true });
+    window.addEventListener("resize", onViewportChange);
   }
 
   function deactivate() {
@@ -165,9 +169,15 @@
     document.removeEventListener("mousemove", onMouseMove, true);
     document.removeEventListener("click", onClick, true);
     document.removeEventListener("keydown", onKeyDown, true);
+    document.removeEventListener("scroll", onViewportChange, true);
+    window.removeEventListener("resize", onViewportChange);
     if (rafId) {
       cancelAnimationFrame(rafId);
       rafId = null;
+    }
+    if (viewportRafId) {
+      cancelAnimationFrame(viewportRafId);
+      viewportRafId = null;
     }
     removeOverlay();
     removeToolbar();
@@ -297,7 +307,10 @@
     el.style.height = Math.max(0, height) + "px";
   }
 
-  function updateOverlay(el) {
+  // `options.keepContent` re-places the chrome without rebuilding the label's
+  // markup — used while tracking the viewport, where rewriting innerHTML every
+  // frame would restart the breadcrumb marquee and churn layout for nothing.
+  function updateOverlay(el, options) {
     const rect = el.getBoundingClientRect();
     const style = getComputedStyle(el);
 
@@ -355,8 +368,9 @@
 
     applyRadiiToOverlay(el, rect, border);
 
-    // Label
-    updateLabel(el, rect);
+    // Label content, then one pass that places both it and the toolbar
+    if (!options || !options.keepContent) updateLabel(el, rect);
+    layoutChrome(el, options);
   }
 
   function applyRadiiToOverlay(el, rect, border) {
@@ -403,6 +417,187 @@
     const path = ants.querySelector("path");
     path.setAttribute("transform", "translate(2,2)");
     path.setAttribute("d", roundedRectPath(w, h, radiiInPixels(radii, w)));
+  }
+
+  // ===== Selection chrome placement =====
+  //
+  // The label and the toolbar are placed in a single pass so they cannot land
+  // on top of each other. Each strategy positions every visible box at once and
+  // is accepted only if all of them fit on screen and clear each other, which
+  // makes collision impossible by construction rather than by luck.
+  //
+  // Everything anchors to the element's *visible* rect (element ∩ viewport),
+  // never the raw rect — an element taller than the screen has a rect.bottom
+  // thousands of pixels below the fold, and anchoring to it throws the chrome
+  // clean off the page.
+  //
+  // test/placement.mjs is the executable spec for this function and the harness
+  // it powers runs a 23-case matrix against it. The harness's live sweep
+  // reconciles the two; run it after changing either.
+
+  const CHROME = { margin: 4, gap: 6, pair: 6, minLabelHeight: 24 };
+  const NARROW_TOOLBAR = 470;
+
+  function overlapArea(a, b) {
+    const x = Math.max(0, Math.min(a.left + a.w, b.left + b.w) - Math.max(a.left, b.left));
+    const y = Math.max(0, Math.min(a.top + a.h, b.top + b.h) - Math.max(a.top, b.top));
+    return x * y;
+  }
+
+  // `toolbar` is null while merely hovering — then the label is placed alone.
+  function computeChromeLayout(rect, label, toolbar, vw, vh) {
+    const M = CHROME.margin, GAP = CHROME.gap, PAIR = CHROME.pair;
+
+    const T = toolbar
+      ? { w: toolbar.w, h: toolbar.h, hidden: false }
+      : { w: 0, h: 0, hidden: true };
+
+    // The toolbar is interactive — clipping it breaks the tool — so it is the
+    // hard constraint and the label yields: first by shrinking, then by
+    // disappearing once not even one line will fit.
+    const room = vh - 2 * M - (T.hidden ? 0 : T.h + PAIR);
+    const labelH = Math.min(label.h, Math.max(0, room));
+    const labelHidden = labelH < CHROME.minLabelHeight;
+    const L = { w: label.w, h: labelHidden ? 0 : labelH, hidden: labelHidden };
+
+    // Whichever boxes are actually shown stack into one unit.
+    const stack = labelHidden ? 0 : L.h + PAIR;
+    const clusterH =
+      (labelHidden ? 0 : L.h) + (T.hidden ? 0 : T.h) + (labelHidden || T.hidden ? 0 : PAIR);
+
+    const vis = {
+      top: Math.max(rect.top, 0),
+      left: Math.max(rect.left, 0),
+      bottom: Math.min(rect.bottom, vh),
+      right: Math.min(rect.right, vw),
+    };
+
+    const clampLeft = (left, w) => Math.max(M, Math.min(left, vw - w - M));
+    const fitsV = (top, h) => top >= M && top + h <= vh - M;
+    const mk = (box, top, left) =>
+      ({ top, left: clampLeft(left, box.w), w: box.w, h: box.h, hidden: box.hidden });
+
+    // A placement is valid only if every box it puts on screen stays on screen.
+    const ok = (lb, tb) =>
+      (tb.hidden || fitsV(tb.top, T.h)) && (lb.hidden || fitsV(lb.top, L.h));
+
+    // label on top, toolbar beneath it, moving as one unit
+    const cluster = (top, strategy, left) => {
+      const at = left === undefined ? vis.left : left;
+      const lb = mk(L, top, at);
+      const tb = mk(T, top + stack, at);
+      return ok(lb, tb) ? { strategy: strategy, label: lb, toolbar: tb } : null;
+    };
+
+    const dock = (atTop) => {
+      const top = atTop ? M : Math.max(M, vh - M - clusterH);
+      return cluster(top, "docked") || {
+        strategy: "docked",
+        label: mk(L, top, vis.left),
+        toolbar: mk(T, top + stack, vis.left),
+      };
+    };
+
+    // Scrolled entirely out of view — dock to the edge it disappeared behind.
+    if (vis.bottom < vis.top || vis.right < vis.left) return dock(rect.bottom < 0);
+
+    // The ordinary case, and the one that reads best: label above, actions below.
+    const outsideSplit = () => {
+      const lb = mk(L, vis.top - GAP - L.h, vis.left);
+      const tb = mk(T, vis.bottom + GAP, vis.left);
+      return ok(lb, tb) ? { strategy: "outside-split", label: lb, toolbar: tb } : null;
+    };
+
+    // Element is bigger than the viewport: hug its visible top and bottom edges.
+    const insideSplit = () => {
+      const lb = mk(L, vis.top + GAP, vis.left + GAP);
+      const tb = mk(T, vis.bottom - GAP - T.h, vis.left + GAP);
+      return ok(lb, tb) && overlapArea(lb, tb) === 0
+        ? { strategy: "inside-split", label: lb, toolbar: tb } : null;
+    };
+
+    // In order of how little they intrude on the element itself.
+    return (
+      outsideSplit() ||
+      cluster(vis.bottom + GAP, "cluster-below") ||
+      cluster(vis.top - GAP - clusterH, "cluster-above") ||
+      insideSplit() ||
+      cluster(vis.top + GAP, "cluster-inside-top", vis.left + GAP) ||
+      dock(false)
+    );
+  }
+
+  // Widths are locked after layout so the buttons don't shift when a label
+  // swaps to "COPIED"; they have to be cleared first or we re-measure the lock.
+  function lockButtonWidths() {
+    if (!toolbarEl) return;
+    const buttons = toolbarEl.querySelectorAll("button");
+    for (const button of buttons) button.style.minWidth = "";
+    for (const button of buttons) button.style.minWidth = button.offsetWidth + "px";
+  }
+
+  // Below the breakpoint the buttons collapse to icons, which changes their
+  // natural width — so the locks have to be recomputed when it flips.
+  function updateToolbarDensity(vw) {
+    if (!toolbarEl) return;
+    const narrow = vw < NARROW_TOOLBAR;
+    if (toolbarEl.classList.contains("ccp-compact") === narrow) return;
+    toolbarEl.classList.toggle("ccp-compact", narrow);
+    lockButtonWidths();
+  }
+
+  // `instant` skips the glide on both boxes — for viewport tracking, where
+  // animating would smear the chrome across the screen as you scroll.
+  // `newToolbar` skips it on the toolbar alone: a toolbar that was just created
+  // has no previous position worth animating from, while the label does and
+  // should glide from wherever hover left it.
+  function layoutChrome(el, options) {
+    if (!labelEl || !el) return;
+
+    const instant = !!(options && options.instant);
+    const toolbarInstant = instant || !!(options && options.newToolbar);
+    const vw = document.documentElement.clientWidth;
+    const vh = document.documentElement.clientHeight;
+
+    updateToolbarDensity(vw);
+
+    // Measure at natural size. The label has to be shown to be measurable — a
+    // pass that hid it must not leave it unmeasurable, or it could never come
+    // back when the viewport grows — and a max-height left over from an earlier
+    // pass would be mistaken for its real height.
+    labelEl.style.display = "block";
+    labelEl.style.maxHeight = "";
+    labelEl.style.overflow = "";
+    const label = { w: labelEl.offsetWidth, h: labelEl.offsetHeight };
+    const toolbar = toolbarEl ? { w: toolbarEl.offsetWidth, h: toolbarEl.offsetHeight } : null;
+
+    const layout = computeChromeLayout(el.getBoundingClientRect(), label, toolbar, vw, vh);
+
+    if (instant) labelEl.classList.add("ccp-no-transition");
+    if (toolbarInstant && toolbarEl) toolbarEl.classList.add("ccp-no-transition");
+
+    labelEl.style.display = layout.label.hidden ? "none" : "block";
+    if (!layout.label.hidden) {
+      labelEl.style.top = layout.label.top + "px";
+      labelEl.style.left = layout.label.left + "px";
+      // Only clip when the label actually had to give up height — Clawd walks
+      // outside the box, so overflow stays visible in every ordinary case.
+      if (layout.label.h < label.h) {
+        labelEl.style.maxHeight = layout.label.h + "px";
+        labelEl.style.overflow = "hidden";
+      }
+    }
+
+    if (toolbarEl) {
+      toolbarEl.style.top = layout.toolbar.top + "px";
+      toolbarEl.style.left = layout.toolbar.left + "px";
+    }
+
+    if (instant || toolbarInstant) {
+      void labelEl.offsetWidth; // flush the jump before re-enabling the glide
+      labelEl.classList.remove("ccp-no-transition");
+      if (toolbarEl) toolbarEl.classList.remove("ccp-no-transition");
+    }
   }
 
   function updateLabel(el, rect) {
@@ -582,25 +777,8 @@
     contentWrap.innerHTML =
       `<div class="ccp-label-line ccp-line-identity">${line1}</div>` + lineT + line2 + lineV + line3;
 
+    // Visible so it can be measured; layoutChrome does the placing.
     labelEl.style.display = "block";
-
-    // Position: above element by default, below if near top
-    const labelHeight = labelEl.offsetHeight || 40;
-    const gap = 6;
-    let top = rect.top - labelHeight - gap;
-    if (top < 4) {
-      top = rect.bottom + gap;
-    }
-    let left = rect.left;
-    // Clamp to viewport
-    const labelWidth = labelEl.offsetWidth || 150;
-    if (left + labelWidth > window.innerWidth - 4) {
-      left = window.innerWidth - labelWidth - 4;
-    }
-    if (left < 4) left = 4;
-
-    labelEl.style.top = top + "px";
-    labelEl.style.left = left + "px";
   }
 
   // ===== Event Handlers =====
@@ -617,6 +795,20 @@
       if (hoveredElement && probeActive) {
         updateOverlay(hoveredElement);
       }
+    });
+  }
+
+  // The chrome is position:fixed, so anything that moves the element relative to
+  // the viewport invalidates every box we've drawn. Hover repairs itself on the
+  // next mousemove, but a selection would otherwise sit frozen at stale
+  // coordinates until you clicked something else.
+  function onViewportChange() {
+    if (!probeActive || viewportRafId) return;
+    viewportRafId = requestAnimationFrame(() => {
+      viewportRafId = null;
+      const el = selectedElement || hoveredElement;
+      if (!probeActive || !el) return;
+      updateOverlay(el, { instant: true, keepContent: true });
     });
   }
 
@@ -710,10 +902,6 @@
       const button = document.createElement("button");
       button.dataset.origHtml = btn.icon + `<span>${btn.label}</span>`;
       button.innerHTML = button.dataset.origHtml;
-      // Lock width after first render so it doesn't shift during state changes
-      requestAnimationFrame(() => {
-        button.style.minWidth = button.offsetWidth + "px";
-      });
       button.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -736,7 +924,12 @@
 
     document.documentElement.appendChild(toolbarEl);
     updateParentButton();
-    positionToolbar(el, true);
+
+    // Lock widths before placing: the toolbar has to be measured at its final
+    // size, or it gets positioned against a width that then changes under it.
+    updateToolbarDensity(document.documentElement.clientWidth);
+    lockButtonWidths();
+    layoutChrome(el, { newToolbar: true });
   }
 
   // ===== Select Parent =====
@@ -763,46 +956,8 @@
 
     selectedElement = parent;
     hoveredElement = parent;
-    updateOverlay(parent);
-    positionToolbar(parent);
+    updateOverlay(parent); // glides both boxes to the parent's geometry
     updateParentButton();
-  }
-
-  // `instant` skips the glide — used for the first placement, where there is no
-  // previous position worth animating from.
-  function positionToolbar(el, instant) {
-    if (!toolbarEl) return;
-
-    if (instant) toolbarEl.style.transition = "none";
-
-    const rect = el.getBoundingClientRect();
-    const toolbarRect = toolbarEl.getBoundingClientRect();
-    const gap = 8;
-
-    // Vertical: prefer below, then above
-    let top;
-    if (rect.bottom + gap + toolbarRect.height < window.innerHeight) {
-      top = rect.bottom + gap;
-    } else if (rect.top - gap - toolbarRect.height > 0) {
-      top = rect.top - gap - toolbarRect.height;
-    } else {
-      top = Math.max(4, window.innerHeight - toolbarRect.height - 4);
-    }
-
-    // Horizontal: align left, clamp to viewport
-    let left = rect.left;
-    if (left + toolbarRect.width > window.innerWidth - 4) {
-      left = window.innerWidth - toolbarRect.width - 4;
-    }
-    if (left < 4) left = 4;
-
-    toolbarEl.style.top = top + "px";
-    toolbarEl.style.left = left + "px";
-
-    if (instant) {
-      void toolbarEl.offsetWidth; // flush the jump before re-enabling the glide
-      toolbarEl.style.transition = "";
-    }
   }
 
   function removeToolbar() {
