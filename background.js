@@ -45,12 +45,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     chrome.action.setBadgeText({ tabId: sender.tab.id, text: "" });
   }
 
-  if (msg.type === "CAPTURE_TAB" && sender.tab) {
-    chrome.tabs.captureVisibleTab(sender.tab.windowId, { format: "png" })
-      .then((dataUrl) => sendResponse({ dataUrl }))
-      .catch((err) => sendResponse({ error: err.message }));
-    return true; // keep message channel open for async response
-  }
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {

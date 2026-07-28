@@ -1026,9 +1026,6 @@
     return parts.join(" > ");
   }
 
-  // ===== Firefox detection =====
-  const isFirefox = typeof browser !== "undefined";
-
   // ===== Resolve background color =====
   function resolveBackgroundColor(el) {
     let current = el;
@@ -1391,57 +1388,16 @@
 
   // ===== Screenshot Capture =====
   async function captureElementScreenshot(el) {
-    if (isFirefox) {
-      // Firefox: use background script to capture visible tab, then crop
-      const rect = el.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1;
+    const canvas = await html2canvas(el, {
+      backgroundColor: resolveBackgroundColor(el),
+      logging: false,
+      useCORS: true,
+      scale: window.devicePixelRatio || 1,
+    });
 
-      const response = await new Promise((resolve) => {
-        chrome.runtime.sendMessage({ type: "CAPTURE_TAB" }, resolve);
-      });
-
-      if (response.error) throw new Error(response.error);
-
-      const img = await new Promise((resolve, reject) => {
-        const i = new Image();
-        i.onload = () => resolve(i);
-        i.onerror = () => reject(new Error("Failed to load screenshot"));
-        i.src = response.dataUrl;
-      });
-
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.round(rect.width * dpr);
-      canvas.height = Math.round(rect.height * dpr);
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(
-        img,
-        Math.round(rect.left * dpr),
-        Math.round(rect.top * dpr),
-        Math.round(rect.width * dpr),
-        Math.round(rect.height * dpr),
-        0,
-        0,
-        canvas.width,
-        canvas.height
-      );
-
-      return new Promise((resolve, reject) => {
-        canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob failed"))), "image/png");
-      });
-    } else {
-      // Chrome: use html2canvas
-      const bgColor = resolveBackgroundColor(el);
-      const canvas = await html2canvas(el, {
-        backgroundColor: bgColor,
-        logging: false,
-        useCORS: true,
-        scale: window.devicePixelRatio || 1,
-      });
-
-      return new Promise((resolve, reject) => {
-        canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob failed"))), "image/png");
-      });
-    }
+    return new Promise((resolve, reject) => {
+      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob failed"))), "image/png");
+    });
   }
 
   async function writeImageToClipboard(blob) {
@@ -1452,7 +1408,8 @@
       await navigator.clipboard.write([item]);
       return true;
     } catch {
-      // Firefox fallback: download the image if clipboard write fails
+      // Clipboard writes need a focused document and can be denied outright;
+      // fall back to handing the user the file instead of losing the capture.
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;

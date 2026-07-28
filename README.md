@@ -33,10 +33,7 @@ cd Claude-Code-Probe
 npm install
 ```
 
-Then load in your browser:
-
-- **Chrome** — `chrome://extensions` → Developer mode → Load unpacked → select the folder
-- **Firefox** — `about:debugging#/runtime/this-firefox` → Load Temporary Add-on → select `manifest.json`
+Then load it: `chrome://extensions` → Developer mode → Load unpacked → select the folder.
 
 ## How it works
 
@@ -107,7 +104,7 @@ Notes on the fields:
 
 ```sh
 npm install     # fetches html2canvas into lib/
-npm run build   # writes dist/chrome and dist/firefox, and a zip of each
+npm run build   # writes dist/chrome, and a zip of it ready for the Web Store
 ```
 
 Load unpacked from the repo root while you work — `dist/` is build output and every

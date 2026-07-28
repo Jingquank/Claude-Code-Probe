@@ -46,6 +46,5 @@ if (!fs.existsSync(outFile)) {
 
 console.log(`  To use Claude Code Probe:
 
-  Chrome  →  chrome://extensions → Developer mode → Load unpacked → select this folder
-  Firefox →  about:debugging#/runtime/this-firefox → Load Temporary Add-on → select manifest.json
+  chrome://extensions → Developer mode → Load unpacked → select this folder
 `);
