@@ -12,35 +12,101 @@
   pointer-events: none;
 }
 
-#ccp-overlay-container > div {
+/* Every box carries the inspected element's own corner radii, written per corner
+   from JS — see applyRadii() in content.js for why a single calc() won't do. */
+#ccp-overlay-container > div,
+#ccp-overlay-container > svg {
   position: fixed;
+  box-sizing: border-box;
   transition: top 0.15s cubic-bezier(0.4, 0, 0.2, 1),
               left 0.15s cubic-bezier(0.4, 0, 0.2, 1),
               width 0.15s cubic-bezier(0.4, 0, 0.2, 1),
               height 0.15s cubic-bezier(0.4, 0, 0.2, 1),
-              opacity 0.15s ease,
-              box-shadow 0.15s ease;
+              opacity 0.15s ease;
 }
 
-/* Hover state — outline only */
-#ccp-margin-box  { border: 1px dashed rgba(217, 119, 87, 0.3); border-radius: 6px; }
-#ccp-border-box  {
-  border: 2px solid rgba(217, 119, 87, 0.75);
-  border-radius: 4px;
-  box-shadow: 0 0 6px rgba(217, 119, 87, 0.25), 0 0 12px rgba(217, 119, 87, 0.1);
-}
-#ccp-padding-box { border: 1px dashed rgba(106, 155, 204, 0.3); border-radius: 3px; }
+/* Hover — box-model hints, with the outline itself drawn as marching dashes */
+#ccp-margin-box  { border: 1px dashed rgba(217, 119, 87, 0.3); }
+#ccp-padding-box { border: 1px dashed rgba(106, 155, 204, 0.3); }
 #ccp-content-box { border: none; }
 
-/* Selected state */
+/* An SVG path rather than a border, so the dashes travel around the corner arc
+   instead of breaking at it — and so per-corner radii come out right. */
+#ccp-ants { overflow: visible; }
+#ccp-ants path {
+  fill: none;
+  stroke: rgba(217, 119, 87, 0.85);
+  stroke-width: 2;
+  stroke-dasharray: 7 5;
+  animation: ccp-march 0.55s linear infinite;
+}
+@keyframes ccp-march { to { stroke-dashoffset: -12; } }
+
+/* Selected — a gradient sweeping the stroke, and the same gradient blurred inward.
+   Both are one oversized square spun by transform: composited, so the cost doesn't
+   grow with the element, and no @property needed for Firefox. */
+#ccp-border-box,
+#ccp-bloom { display: none; }
+
+#ccp-overlay-container.ccp-selected #ccp-ants { display: none; }
+#ccp-overlay-container.ccp-selected #ccp-border-box,
+#ccp-overlay-container.ccp-selected #ccp-bloom { display: block; }
 #ccp-overlay-container.ccp-selected #ccp-margin-box,
-#ccp-overlay-container.ccp-selected #ccp-padding-box,
-#ccp-overlay-container.ccp-selected #ccp-content-box {
+#ccp-overlay-container.ccp-selected #ccp-padding-box {
   border-color: transparent;
 }
-#ccp-overlay-container.ccp-selected #ccp-border-box {
-  border: 2px solid #d97757;
-  box-shadow: 0 0 8px rgba(217, 119, 87, 0.35), 0 0 20px rgba(217, 119, 87, 0.12);
+
+#ccp-border-box {
+  padding: 2px;
+  overflow: hidden;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+
+#ccp-bloom {
+  overflow: hidden;
+  -webkit-mask: radial-gradient(closest-side, transparent 25%, #000 95%);
+  mask: radial-gradient(closest-side, transparent 25%, #000 95%);
+}
+
+.ccp-spin {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  animation: ccp-spin 10s linear infinite;
+  will-change: transform;
+}
+
+@keyframes ccp-spin {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to   { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+#ccp-sweep-spin {
+  background: conic-gradient(transparent 0deg, #d97757 90deg, #ffd9c7 180deg, #d97757 270deg, transparent 360deg);
+}
+
+#ccp-bloom-spin {
+  background: conic-gradient(
+    transparent 0deg,
+    rgba(217, 119, 87, 0.75) 90deg,
+    rgba(255, 217, 199, 0.6) 180deg,
+    rgba(217, 119, 87, 0.75) 270deg,
+    transparent 360deg
+  );
+  filter: blur(16px);
+}
+
+/* Elements too big for the effect to read (a whole page, say) get a plain stroke
+   rather than a spun square the size of the document */
+#ccp-overlay-container.ccp-plain #ccp-sweep-spin { display: none; }
+#ccp-overlay-container.ccp-plain #ccp-border-box { background: #d97757; }
+#ccp-overlay-container.ccp-plain #ccp-bloom { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  #ccp-ants path, .ccp-spin { animation: none; }
 }
 
 /* ===== Element Label ===== */

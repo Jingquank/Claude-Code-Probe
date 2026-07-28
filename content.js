@@ -173,6 +173,67 @@
     removeToolbar();
   }
 
+  // ===== Corner radius =====
+  const CORNERS = [
+    "borderTopLeftRadius",
+    "borderTopRightRadius",
+    "borderBottomRightRadius",
+    "borderBottomLeftRadius",
+  ];
+  const RADIUS_FALLBACK = 4;
+  const MAX_SWEEP_DIAGONAL = 2600;
+
+  function readRadii(el) {
+    const style = getComputedStyle(el);
+    const values = CORNERS.map((c) => style[c]);
+    const square = values.every((v) => v.split(" ").every((p) => parseFloat(p) === 0));
+    return { values, square };
+  }
+
+  // Each corner is written as its own longhand. A single calc() on the shorthand
+  // cannot offset a multi-value radius like "20px 4px 20px 4px" — it computes to
+  // invalid and the radius silently collapses to square.
+  function applyRadii(target, radii, offset) {
+    CORNERS.forEach((corner, i) => {
+      target.style[corner] = radii.square
+        ? `${Math.max(0, RADIUS_FALLBACK + offset)}px`
+        : radii.values[i]
+            .split(" ")
+            .map((p) => `max(0px, calc(${p} + ${offset}px))`)
+            .join(" ");
+    });
+  }
+
+  // Corner radii in px for the SVG path. Only the horizontal component is used,
+  // so a percentage resolves against the width.
+  function radiiInPixels(radii, width) {
+    if (radii.square) return [RADIUS_FALLBACK, RADIUS_FALLBACK, RADIUS_FALLBACK, RADIUS_FALLBACK];
+    return radii.values.map((v) => {
+      const horizontal = v.split(" ")[0];
+      const n = parseFloat(horizontal) || 0;
+      return horizontal.includes("%") ? (n / 100) * width : n;
+    });
+  }
+
+  // Rounded-rect path with four independent corners, scaled down if adjacent
+  // radii would overlap (the same clamp the CSS box model applies).
+  function roundedRectPath(w, h, r) {
+    const k = Math.min(
+      1,
+      w / (r[0] + r[1] || 1),
+      w / (r[3] + r[2] || 1),
+      h / (r[0] + r[3] || 1),
+      h / (r[1] + r[2] || 1)
+    );
+    const [tl, tr, br, bl] = r.map((v) => Math.max(0, v * k));
+    return (
+      `M ${tl} 0 H ${w - tr} A ${tr} ${tr} 0 0 1 ${w} ${tr}` +
+      ` V ${h - br} A ${br} ${br} 0 0 1 ${w - br} ${h}` +
+      ` H ${bl} A ${bl} ${bl} 0 0 1 0 ${h - bl}` +
+      ` V ${tl} A ${tl} ${tl} 0 0 1 ${tl} 0 Z`
+    );
+  }
+
   // ===== Overlay DOM =====
   function createOverlay() {
     if (overlayContainer) return;
@@ -180,12 +241,26 @@
     overlayContainer = document.createElement("div");
     overlayContainer.id = "ccp-overlay-container";
 
-    const ids = ["ccp-margin-box", "ccp-border-box", "ccp-padding-box", "ccp-content-box"];
+    const ids = ["ccp-margin-box", "ccp-bloom", "ccp-padding-box", "ccp-content-box", "ccp-border-box"];
     for (const id of ids) {
       const div = document.createElement("div");
       div.id = id;
       overlayContainer.appendChild(div);
     }
+
+    // the two spinners carry the gradient; they share a duration and start
+    // together, so the bloom stays in phase with the stroke
+    for (const [parentId, spinId] of [["ccp-border-box", "ccp-sweep-spin"], ["ccp-bloom", "ccp-bloom-spin"]]) {
+      const spin = document.createElement("div");
+      spin.id = spinId;
+      spin.className = "ccp-spin";
+      overlayContainer.querySelector("#" + parentId).appendChild(spin);
+    }
+
+    const ants = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    ants.id = "ccp-ants";
+    ants.appendChild(document.createElementNS("http://www.w3.org/2000/svg", "path"));
+    overlayContainer.appendChild(ants);
 
     labelEl = document.createElement("div");
     labelEl.id = "ccp-label";
@@ -254,9 +329,6 @@
       rect.height + margin.top + margin.bottom
     );
 
-    // Border box (= bounding rect)
-    positionBox("ccp-border-box", rect.top, rect.left, rect.width, rect.height);
-
     // Padding box
     positionBox(
       "ccp-padding-box",
@@ -275,8 +347,62 @@
       rect.height - border.top - border.bottom - padding.top - padding.bottom
     );
 
+    // Sweep ring — sits 2px outside the element, so its radius grows to match
+    positionBox("ccp-border-box", rect.top - 2, rect.left - 2, rect.width + 4, rect.height + 4);
+
+    // Inner bloom — exactly the element's box
+    positionBox("ccp-bloom", rect.top, rect.left, rect.width, rect.height);
+
+    applyRadiiToOverlay(el, rect, border);
+
     // Label
     updateLabel(el, rect);
+  }
+
+  function applyRadiiToOverlay(el, rect, border) {
+    const radii = readRadii(el);
+    const thickest = Math.max(border.top, border.right, border.bottom, border.left);
+
+    const setRadii = (id, offset) => {
+      const node = document.getElementById(id);
+      if (node) applyRadii(node, radii, offset);
+    };
+    setRadii("ccp-margin-box", 0);
+    setRadii("ccp-bloom", 0);
+    setRadii("ccp-border-box", 2);
+    setRadii("ccp-padding-box", -thickest);
+
+    // One square, large enough to cover the box's diagonal at any rotation, spun
+    // by transform — so the gradient rotates without repainting on every frame.
+    // Past a point that square would be a huge layer for no visible gain (Select
+    // Parent walks up to <body> routinely), so those fall back to a plain stroke.
+    const diagonal = Math.ceil(Math.hypot(rect.width + 4, rect.height + 4));
+    const oversized = diagonal > MAX_SWEEP_DIAGONAL;
+    if (overlayContainer) overlayContainer.classList.toggle("ccp-plain", oversized);
+
+    if (!oversized) {
+      for (const id of ["ccp-sweep-spin", "ccp-bloom-spin"]) {
+        const spin = document.getElementById(id);
+        if (!spin) continue;
+        spin.style.width = diagonal + "px";
+        spin.style.height = diagonal + "px";
+      }
+    }
+
+    // Marching dashes: the svg starts 2px out so a 2px stroke centred on the
+    // element's edge is fully inside it
+    const ants = document.getElementById("ccp-ants");
+    if (!ants) return;
+    const w = rect.width;
+    const h = rect.height;
+    ants.style.top = rect.top - 2 + "px";
+    ants.style.left = rect.left - 2 + "px";
+    ants.style.width = w + 4 + "px";
+    ants.style.height = h + 4 + "px";
+    ants.setAttribute("viewBox", `0 0 ${w + 4} ${h + 4}`);
+    const path = ants.querySelector("path");
+    path.setAttribute("transform", "translate(2,2)");
+    path.setAttribute("d", roundedRectPath(w, h, radiiInPixels(radii, w)));
   }
 
   function updateLabel(el, rect) {
