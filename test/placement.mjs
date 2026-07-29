@@ -4,11 +4,20 @@
 // extension so the harness can evaluate the whole matrix with no browser and
 // no extension installed:
 //
-//   label   -> content.js:587  (tail of updateLabel)
-//   toolbar -> content.js:773  (positionToolbar)
+//   label   -> the tail of updateLabel, as it stood in 1.1.0
+//   toolbar -> positionToolbar, as it stood in 1.1.0
+//
+// Neither function exists in content.js any more — both were replaced by the
+// single computeChromeLayout() pass, which runSimV2 below mirrors. They are kept
+// only as the "before" column in test/sim.mjs. (This comment used to cite
+// content.js:587 and :773; those line numbers went stale the moment the
+// functions were removed, so they are not repeated here.)
 //
 // They are deliberately verbatim, warts included. Live mode measures the real
 // #ccp-label / #ccp-toolbar and is the check that this transcription is honest.
+//
+// GEOMETRY in content.js is the other half of this mirror: M / GAP / PAIR /
+// MIN_LABEL_H below must match GEOMETRY.margin / .gap / .pair / .minLabelHeight.
 
 // ===== Current algorithms =====
 

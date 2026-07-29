@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en" data-ccp-theme="terracotta-dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude Code Probe — Settings</title>
+<!--
+  tokens.css and content.css are the real stylesheets the content script uses.
+  Loading them here rather than restyling a lookalike is what stops the preview
+  drifting: the mock below uses the same ids and classes as the injected chrome,
+  so it renders through the same rules. settings.css adds the page shell and
+  the few overrides the mock needs — mainly undoing position: fixed.
+-->
+<link rel="stylesheet" href="../tokens.css">
+<link rel="stylesheet" href="../content.css">
+<link rel="stylesheet" href="settings.css">
+</head>
+<body>
+
+<main class="sp">
+  <header class="sp-header">
+    <h1>Claude Code Probe</h1>
+    <p class="sp-version">Settings</p>
+  </header>
+
+  <div class="sp-body">
+
+    <!-- Settings column. Scrolls; the preview rail does not. -->
+    <div class="sp-scroll">
+
+      <section class="sp-section">
+        <h2 class="sp-legend" id="appearance-legend">Appearance</h2>
+        <p class="sp-sub">
+          Theme for the probe's own interface — the selection outline, the info
+          panel and the toolbar. Nothing on the page you are inspecting changes.
+          <strong>System</strong> follows your operating system's light and dark
+          setting, and switches with it.
+        </p>
+        <div class="sp-pills" role="radiogroup" aria-labelledby="appearance-legend" id="theme-pills"></div>
+        <p class="sp-saved" id="saved-note" role="status" aria-live="polite"></p>
+      </section>
+
+      <hr class="sp-hr">
+
+      <!--
+        Not yet available. These are real behaviours the extension already has,
+        shown here so the shape of the page is honest about where it is going —
+        but they are not wired to anything, so they are disabled, labelled, and
+        removed from the tab order.
+      -->
+      <section class="sp-section sp-future" aria-labelledby="behaviour-legend">
+        <h2 class="sp-legend" id="behaviour-legend">
+          Behaviour <span class="sp-tag">not in this release</span>
+        </h2>
+        <div class="sp-row" aria-disabled="true" title="Not configurable yet">
+          <span class="sp-row-label">Copy screenshots to the clipboard</span>
+          <span class="sp-toggle sp-on" aria-hidden="true"></span>
+        </div>
+        <div class="sp-row" aria-disabled="true" title="Not configurable yet">
+          <span class="sp-row-label">Include a source pointer in Copy Code</span>
+          <span class="sp-toggle sp-on" aria-hidden="true"></span>
+        </div>
+        <div class="sp-row" aria-disabled="true" title="Not configurable yet">
+          <span class="sp-row-label">Collapse the toolbar on narrow pages</span>
+          <span class="sp-toggle sp-on" aria-hidden="true"></span>
+        </div>
+      </section>
+
+      <hr class="sp-hr">
+
+      <section class="sp-section sp-future" aria-labelledby="motion-legend">
+        <h2 class="sp-legend" id="motion-legend">
+          Motion <span class="sp-tag">not in this release</span>
+        </h2>
+        <div class="sp-row" aria-disabled="true" title="Not configurable yet">
+          <span class="sp-row-label">Marching-ants hover outline</span>
+          <span class="sp-toggle sp-on" aria-hidden="true"></span>
+        </div>
+        <div class="sp-row" aria-disabled="true" title="Not configurable yet">
+          <span class="sp-row-label">Clawd</span>
+          <span class="sp-toggle sp-on" aria-hidden="true"></span>
+        </div>
+        <p class="sp-sub">
+          All of the probe's animation already stops when your system asks for
+          reduced motion.
+        </p>
+      </section>
+
+      <!--
+        These point at the repository rather than at ../PRIVACY.md and
+        ../DESIGN.md: build.sh ships no markdown, so relative links would 404 in
+        the packaged extension even though they resolve when loaded from source.
+      -->
+      <footer class="sp-footer">
+        <p>
+          Your theme is stored on this device and never leaves it.
+          <a href="https://github.com/Jingquank/Claude-Code-Probe/blob/main/PRIVACY.md"
+             target="_blank" rel="noreferrer">Privacy</a> ·
+          <a href="https://github.com/Jingquank/Claude-Code-Probe/blob/main/DESIGN.md"
+             target="_blank" rel="noreferrer">Design</a>
+        </p>
+      </footer>
+
+    </div>
+
+    <!--
+      Preview rail. 300px, which is below the toolbar's 470px compact breakpoint,
+      so what renders here is the narrow-viewport state: icon-only buttons. It is
+      a real state, just not the common one — hence the label.
+    -->
+    <aside class="sp-rail">
+      <h2 class="sp-legend">Preview <span class="sp-tag">narrow</span></h2>
+      <p class="sp-sub">
+        At this width the toolbar collapses to icons, the same as it does on a
+        narrow page. Button labels are hidden in this state.
+      </p>
+
+      <div class="sp-preview">
+        <div class="ccp-mock">
+
+          <!-- The gear, in the corner it actually occupies -->
+          <button type="button" id="ccp-settings-btn" tabindex="-1" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </button>
+
+          <!-- A stand-in for the element being inspected -->
+          <div class="sp-element">
+            <span class="sp-element-title">Pro Plan</span>
+            <span class="sp-element-body">For teams that need more.</span>
+          </div>
+
+          <!--
+            The info panel, with the same markup updateLabel() builds. Kept short
+            on purpose: #ccp-label is white-space: nowrap, so a longer readout
+            would overflow 300px rather than wrap.
+          -->
+          <div id="ccp-label">
+            <!--
+              Clawd, so --ccp-clawd-body and --ccp-clawd-leg get previewed too.
+              This is the compact silhouette rather than the full mascot from
+              content.js — a static preview does not need the walk cycle, and
+              settings.css holds it still.
+            -->
+            <div class="ccp-clawd" aria-hidden="true">
+              <svg viewBox="-4 -4 120 80" fill="none">
+                <rect class="ccp-clawd-body" x="8" y="0" width="96" height="56" rx="4"/>
+                <rect class="ccp-clawd-body" x="-4" y="25.6" width="12" height="14.4" rx="3"/>
+                <rect class="ccp-clawd-body" x="104" y="25.6" width="12" height="14.4" rx="3"/>
+                <rect class="ccp-clawd-eye" x="28" y="14" width="8" height="16" rx="2"/>
+                <rect class="ccp-clawd-eye" x="76" y="14" width="8" height="16" rx="2"/>
+                <rect class="ccp-clawd-leg" x="16" y="56" width="9.6" height="20" rx="2"/>
+                <rect class="ccp-clawd-leg" x="30.4" y="56" width="9.6" height="20" rx="2"/>
+                <rect class="ccp-clawd-leg" x="72" y="56" width="9.6" height="20" rx="2"/>
+                <rect class="ccp-clawd-leg" x="86.4" y="56" width="9.6" height="20" rx="2"/>
+              </svg>
+            </div>
+            <div class="ccp-label-content">
+              <div class="ccp-label-line ccp-line-identity">
+                <span class="ccp-label-tag">div</span
+                ><span class="ccp-label-class">.card</span>
+                <span class="ccp-label-size">320 × 208</span>
+              </div>
+              <div class="ccp-label-line ccp-line-meta">
+                <span class="ccp-label-prop">flex</span>
+                <span class="ccp-label-sep">·</span>
+                <span class="ccp-label-prop">column</span>
+              </div>
+              <div class="ccp-label-line ccp-line-visual">
+                <span class="ccp-label-prop"><span class="ccp-color-swatch" style="background-color:#ffffff"></span>#ffffff</span>
+                <span class="ccp-label-sep">·</span>
+                <span class="ccp-label-prop">radius 12px</span>
+              </div>
+              <div class="ccp-label-line ccp-line-breadcrumb ccp-label-breadcrumb">
+                div.grid <span class="ccp-label-sep">›</span> <span class="ccp-label-tag">div</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- The toolbar, in its .ccp-compact state -->
+          <div id="ccp-toolbar" class="ccp-compact">
+            <div class="ccp-bar">
+              <button type="button" tabindex="-1" title="Copy Code">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg><span>Copy Code</span>
+              </button>
+              <button type="button" tabindex="-1" title="Screenshot">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span>Screenshot</span>
+              </button>
+            </div>
+            <button type="button" class="ccp-parent-btn" tabindex="-1" title="Select Parent">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3"/><path d="M12 20v-8"/><polyline points="9 15 12 12 15 15"/></svg><span>Select Parent</span>
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </aside>
+
+  </div>
+</main>
+
+<script src="settings.js"></script>
+</body>
+</html>

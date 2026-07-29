@@ -13,52 +13,132 @@
   let toastTimer = null;
   let rafId = null;
   let viewportRafId = null;
+  let settingsButtonEl = null;
+
+  // ===== Geometry =====
+  // The one group of design values that stays in JS instead of moving to
+  // tokens.css. computeChromeLayout() is a pure function — test/placement.mjs
+  // mirrors it and validates it over 8280 configurations with no DOM at all — so
+  // it cannot call getComputedStyle to read a custom property. Keeping these
+  // here is what keeps that spec runnable. DESIGN.md records this as the single
+  // deliberate exception to "tokens drive both CSS and JS".
+  //
+  // margin/gap/pair/minLabelHeight are mirrored as M / GAP / PAIR / MIN_LABEL_H
+  // in test/placement.mjs:136-153. Change them here and change them there.
+  const GEOMETRY = {
+    margin: 4,
+    gap: 6,
+    pair: 6,
+    minLabelHeight: 24,
+    narrowToolbar: 470, // the .ccp-compact breakpoint
+    radiusFallback: 4, // assumed corner radius when the element is square
+    maxSweepDiagonal: 2600, // past this the spun outline degrades to .ccp-plain
+  };
+
+  // ===== Theme =====
+  // Stored as a single id in chrome.storage.local and applied by writing
+  // data-ccp-theme onto <html>, which every token block in tokens.css keys off.
+  // One attribute themes all five injected roots, because custom properties
+  // inherit and `all: initial` does not reset them (CSS Cascade 4 §3.2).
+  const THEME_KEY = "theme";
+  const DEFAULT_THEME = "terracotta-dark";
+  const darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
+  let themePref = DEFAULT_THEME;
+
+  // "system" has no palette of its own — it picks one of the two terracotta
+  // blocks. Resolving here rather than duplicating every block inside an @media
+  // query keeps tokens.css single-source, and lets the settings page preview
+  // exactly what the page will render.
+  function resolveTheme(pref) {
+    if (pref !== "system") return pref;
+    return darkQuery.matches ? "terracotta-dark" : "terracotta-light";
+  }
+
+  function applyTheme() {
+    document.documentElement.dataset.ccpTheme = resolveTheme(themePref);
+  }
+
+  // Read a token from <html>. Only for the handful of values that genuinely have
+  // to reach JS: the toast is positioned entirely from script, and the loading
+  // state is written as an inline style. Everything else stays in CSS.
+  function token(name, fallback) {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return v || fallback;
+  }
+
+  // Fired immediately at script load, not on activate(), so the first paint of
+  // the chrome already has the right palette. activate() applies whatever has
+  // arrived by then; until it does, the tokens.css :root block is the default,
+  // so an unresolved read shows terracotta-dark rather than an unstyled box.
+  chrome.storage?.local.get(THEME_KEY, (stored) => {
+    if (stored && typeof stored[THEME_KEY] === "string") themePref = stored[THEME_KEY];
+    if (probeActive) applyTheme();
+  });
+
+  // Repaints an already-open page when the settings tab changes the theme.
+  // storage.onChanged fires in content scripts directly, so this needs no
+  // message plumbing through the service worker.
+  chrome.storage?.onChanged.addListener((changes, area) => {
+    if (area !== "local" || !changes[THEME_KEY]) return;
+    themePref = changes[THEME_KEY].newValue || DEFAULT_THEME;
+    if (probeActive) applyTheme();
+  });
+
+  // Follow the OS live, but only while "system" is selected.
+  darkQuery.addEventListener("change", () => {
+    if (themePref === "system" && probeActive) applyTheme();
+  });
+
+  // Clawd's colours arrive from tokens.css via the .ccp-clawd-* classes rather
+  // than fill="" attributes: var() is not resolved inside an SVG presentation
+  // attribute, only in a real style rule. See content.css.
 
   // ===== Clawd Mini (for toast loading state) =====
-  const CLAWD_MINI = `<svg viewBox="-4 -4 120 80" width="28" height="20" fill="none" style="flex-shrink:0;overflow:visible"><rect x="8" y="0" width="96" height="56" rx="4" fill="#C27C5C"/><rect x="-4" y="25.6" width="12" height="14.4" rx="3" fill="#C27C5C"/><rect x="104" y="25.6" width="12" height="14.4" rx="3" fill="#C27C5C"/><rect x="28" y="14" width="8" height="16" rx="2" fill="#141413"/><rect x="76" y="14" width="8" height="16" rx="2" fill="#141413"/><rect x="16" y="56" width="9.6" height="20" rx="2" fill="#8B5A42"><animate attributeName="height" values="20;16;20" dur="0.4s" begin="0s" repeatCount="indefinite"/></rect><rect x="30.4" y="56" width="9.6" height="20" rx="2" fill="#8B5A42"><animate attributeName="height" values="20;16;20" dur="0.4s" begin="0.1s" repeatCount="indefinite"/></rect><rect x="72" y="56" width="9.6" height="20" rx="2" fill="#8B5A42"><animate attributeName="height" values="20;16;20" dur="0.4s" begin="0.2s" repeatCount="indefinite"/></rect><rect x="86.4" y="56" width="9.6" height="20" rx="2" fill="#8B5A42"><animate attributeName="height" values="20;16;20" dur="0.4s" begin="0.3s" repeatCount="indefinite"/></rect></svg>`;
+  const CLAWD_MINI = `<svg viewBox="-4 -4 120 80" width="28" height="20" fill="none" style="flex-shrink:0;overflow:visible"><rect class="ccp-clawd-body" x="8" y="0" width="96" height="56" rx="4"/><rect class="ccp-clawd-body" x="-4" y="25.6" width="12" height="14.4" rx="3"/><rect class="ccp-clawd-body" x="104" y="25.6" width="12" height="14.4" rx="3"/><rect class="ccp-clawd-eye" x="28" y="14" width="8" height="16" rx="2"/><rect class="ccp-clawd-eye" x="76" y="14" width="8" height="16" rx="2"/><rect class="ccp-clawd-leg" x="16" y="56" width="9.6" height="20" rx="2"><animate attributeName="height" values="20;16;20" dur="0.4s" begin="0s" repeatCount="indefinite"/></rect><rect class="ccp-clawd-leg" x="30.4" y="56" width="9.6" height="20" rx="2"><animate attributeName="height" values="20;16;20" dur="0.4s" begin="0.1s" repeatCount="indefinite"/></rect><rect class="ccp-clawd-leg" x="72" y="56" width="9.6" height="20" rx="2"><animate attributeName="height" values="20;16;20" dur="0.4s" begin="0.2s" repeatCount="indefinite"/></rect><rect class="ccp-clawd-leg" x="86.4" y="56" width="9.6" height="20" rx="2"><animate attributeName="height" values="20;16;20" dur="0.4s" begin="0.3s" repeatCount="indefinite"/></rect></svg>`;
 
   // ===== SVG Icons =====
   const ICONS = {
     code: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
     camera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>',
     parent: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3"/><path d="M12 20v-8"/><polyline points="9 15 12 12 15 15"/></svg>',
+    settings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
   };
 
   // ===== Clawd Mascot SVG (mood="happy", from clawd-react) =====
   const CLAWD_SVG = `<svg viewBox="-16 -4 144 104" fill="none" xmlns="http://www.w3.org/2000/svg">
     <!-- Shadow -->
-    <ellipse cx="56" cy="91.5" rx="32" ry="4" fill="rgba(0,0,0,0.15)"/>
+    <ellipse class="ccp-clawd-shadow" cx="56" cy="91.5" rx="32" ry="4"/>
     <!-- Body -->
-    <rect x="8" y="0" width="96" height="56" rx="4" fill="#C27C5C"/>
+    <rect class="ccp-clawd-body" x="8" y="0" width="96" height="56" rx="4"/>
     <!-- Arm nubs -->
-    <rect x="-4" y="25.6" width="12" height="14.4" rx="3" fill="#C27C5C"/>
-    <rect x="104" y="25.6" width="12" height="14.4" rx="3" fill="#C27C5C"/>
+    <rect class="ccp-clawd-body" x="-4" y="25.6" width="12" height="14.4" rx="3"/>
+    <rect class="ccp-clawd-body" x="104" y="25.6" width="12" height="14.4" rx="3"/>
     <!-- Eyes -->
-    <rect x="28" y="14" width="8" height="16" rx="2" fill="#141413"/>
-    <rect x="76" y="14" width="8" height="16" rx="2" fill="#141413"/>
+    <rect class="ccp-clawd-eye" x="28" y="14" width="8" height="16" rx="2"/>
+    <rect class="ccp-clawd-eye" x="76" y="14" width="8" height="16" rx="2"/>
     <!-- Legs -->
-    <rect x="16" y="56" width="9.6" height="20" rx="2" fill="#8B5A42">
+    <rect class="ccp-clawd-leg" x="16" y="56" width="9.6" height="20" rx="2">
       <animate attributeName="height" values="20;16;20" dur="0.4s" begin="0s" repeatCount="indefinite"/>
     </rect>
-    <rect x="30.4" y="56" width="9.6" height="20" rx="2" fill="#8B5A42">
+    <rect class="ccp-clawd-leg" x="30.4" y="56" width="9.6" height="20" rx="2">
       <animate attributeName="height" values="20;16;20" dur="0.4s" begin="0.1s" repeatCount="indefinite"/>
     </rect>
-    <rect x="72" y="56" width="9.6" height="20" rx="2" fill="#8B5A42">
+    <rect class="ccp-clawd-leg" x="72" y="56" width="9.6" height="20" rx="2">
       <animate attributeName="height" values="20;16;20" dur="0.4s" begin="0.2s" repeatCount="indefinite"/>
     </rect>
-    <rect x="86.4" y="56" width="9.6" height="20" rx="2" fill="#8B5A42">
+    <rect class="ccp-clawd-leg" x="86.4" y="56" width="9.6" height="20" rx="2">
       <animate attributeName="height" values="20;16;20" dur="0.4s" begin="0.3s" repeatCount="indefinite"/>
     </rect>
     <!-- Sparkles -->
-    <circle cx="108" cy="8" r="3.5" fill="#d97757" opacity="0">
+    <circle class="ccp-clawd-spark" cx="108" cy="8" r="3.5" opacity="0">
       <animate attributeName="opacity" values="0;1;0" dur="1.5s" repeatCount="indefinite"/>
       <animate attributeName="r" values="1;3.5;1" dur="1.5s" repeatCount="indefinite"/>
     </circle>
-    <circle cx="116" cy="-2" r="2.5" fill="#d97757" opacity="0">
+    <circle class="ccp-clawd-spark" cx="116" cy="-2" r="2.5" opacity="0">
       <animate attributeName="opacity" values="0;1;0" dur="1.5s" begin="0.4s" repeatCount="indefinite"/>
       <animate attributeName="r" values="0.5;2.5;0.5" dur="1.5s" begin="0.4s" repeatCount="indefinite"/>
     </circle>
-    <circle cx="120" cy="18" r="2" fill="#d97757" opacity="0">
+    <circle class="ccp-clawd-spark" cx="120" cy="18" r="2" opacity="0">
       <animate attributeName="opacity" values="0;1;0" dur="1.5s" begin="0.8s" repeatCount="indefinite"/>
       <animate attributeName="r" values="0.5;2;0.5" dur="1.5s" begin="0.8s" repeatCount="indefinite"/>
     </circle>
@@ -151,8 +231,10 @@
   // ===== Activation / Deactivation =====
   function activate() {
     probeActive = true;
+    applyTheme();
     document.documentElement.classList.add("ccp-probe-active");
     createOverlay();
+    createSettingsButton();
     document.addEventListener("mousemove", onMouseMove, true);
     document.addEventListener("click", onClick, true);
     document.addEventListener("keydown", onKeyDown, true);
@@ -181,6 +263,64 @@
     }
     removeOverlay();
     removeToolbar();
+    removeSettingsButton();
+  }
+
+  // ===== Settings Button =====
+  // Pinned to the viewport's top-right corner for as long as probe mode is on.
+  // Mounted here rather than in showToolbar() on purpose: #ccp-toolbar is torn
+  // down and rebuilt on every click and removed entirely on deselect, so a
+  // button living inside it would disappear whenever nothing was selected.
+  function createSettingsButton() {
+    if (settingsButtonEl) return;
+    settingsButtonEl = document.createElement("button");
+    settingsButtonEl.id = "ccp-settings-btn";
+    settingsButtonEl.type = "button";
+    settingsButtonEl.title = "Probe settings";
+    settingsButtonEl.setAttribute("aria-label", "Probe settings");
+    settingsButtonEl.innerHTML = ICONS.settings;
+    // Capture-phase onClick on document swallows every page click, so this has
+    // to stop propagation the same way the toolbar's buttons do.
+    settingsButtonEl.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      // Content scripts cannot call chrome.runtime.openOptionsPage() — only the
+      // service worker can, hence the round trip.
+      chrome.runtime.sendMessage({ type: "OPEN_SETTINGS" });
+    });
+    document.documentElement.appendChild(settingsButtonEl);
+  }
+
+  function removeSettingsButton() {
+    if (settingsButtonEl) {
+      settingsButtonEl.remove();
+      settingsButtonEl = null;
+    }
+  }
+
+  // The gear is viewport-anchored, so it never enters computeChromeLayout() and
+  // the placement matrix is unaffected. It can still be sat on, though: three of
+  // the six strategies dock the label against the visible top edge, which at
+  // top-right is exactly where the gear is. The gear yields — same invariant the
+  // placement design already uses, where the interactive box wins and the other
+  // gives way. Opacity rather than display:none so its rect stays measurable and
+  // the collision can be seen to end.
+  function updateSettingsButtonVisibility() {
+    if (!settingsButtonEl) return;
+    const gear = settingsButtonEl.getBoundingClientRect();
+    const hit = (el) => {
+      if (!el || el.style.display === "none") return false;
+      const r = el.getBoundingClientRect();
+      return (
+        r.width > 0 &&
+        r.height > 0 &&
+        r.left < gear.right &&
+        r.right > gear.left &&
+        r.top < gear.bottom &&
+        r.bottom > gear.top
+      );
+    };
+    settingsButtonEl.classList.toggle("ccp-yielded", hit(labelEl) || hit(toolbarEl));
   }
 
   // ===== Corner radius =====
@@ -190,8 +330,6 @@
     "borderBottomRightRadius",
     "borderBottomLeftRadius",
   ];
-  const RADIUS_FALLBACK = 4;
-  const MAX_SWEEP_DIAGONAL = 2600;
 
   function readRadii(el) {
     const style = getComputedStyle(el);
@@ -206,7 +344,7 @@
   function applyRadii(target, radii, offset) {
     CORNERS.forEach((corner, i) => {
       target.style[corner] = radii.square
-        ? `${Math.max(0, RADIUS_FALLBACK + offset)}px`
+        ? `${Math.max(0, GEOMETRY.radiusFallback + offset)}px`
         : radii.values[i]
             .split(" ")
             .map((p) => `max(0px, calc(${p} + ${offset}px))`)
@@ -217,7 +355,10 @@
   // Corner radii in px for the SVG path. Only the horizontal component is used,
   // so a percentage resolves against the width.
   function radiiInPixels(radii, width) {
-    if (radii.square) return [RADIUS_FALLBACK, RADIUS_FALLBACK, RADIUS_FALLBACK, RADIUS_FALLBACK];
+    if (radii.square) {
+      const r = GEOMETRY.radiusFallback;
+      return [r, r, r, r];
+    }
     return radii.values.map((v) => {
       const horizontal = v.split(" ")[0];
       const n = parseFloat(horizontal) || 0;
@@ -391,7 +532,7 @@
     // Past a point that square would be a huge layer for no visible gain (Select
     // Parent walks up to <body> routinely), so those fall back to a plain stroke.
     const diagonal = Math.ceil(Math.hypot(rect.width + 4, rect.height + 4));
-    const oversized = diagonal > MAX_SWEEP_DIAGONAL;
+    const oversized = diagonal > GEOMETRY.maxSweepDiagonal;
     if (overlayContainer) overlayContainer.classList.toggle("ccp-plain", oversized);
 
     if (!oversized) {
@@ -435,9 +576,6 @@
   // it powers runs a 23-case matrix against it. The harness's live sweep
   // reconciles the two; run it after changing either.
 
-  const CHROME = { margin: 4, gap: 6, pair: 6, minLabelHeight: 24 };
-  const NARROW_TOOLBAR = 470;
-
   function overlapArea(a, b) {
     const x = Math.max(0, Math.min(a.left + a.w, b.left + b.w) - Math.max(a.left, b.left));
     const y = Math.max(0, Math.min(a.top + a.h, b.top + b.h) - Math.max(a.top, b.top));
@@ -446,7 +584,7 @@
 
   // `toolbar` is null while merely hovering — then the label is placed alone.
   function computeChromeLayout(rect, label, toolbar, vw, vh) {
-    const M = CHROME.margin, GAP = CHROME.gap, PAIR = CHROME.pair;
+    const M = GEOMETRY.margin, GAP = GEOMETRY.gap, PAIR = GEOMETRY.pair;
 
     const T = toolbar
       ? { w: toolbar.w, h: toolbar.h, hidden: false }
@@ -457,7 +595,7 @@
     // disappearing once not even one line will fit.
     const room = vh - 2 * M - (T.hidden ? 0 : T.h + PAIR);
     const labelH = Math.min(label.h, Math.max(0, room));
-    const labelHidden = labelH < CHROME.minLabelHeight;
+    const labelHidden = labelH < GEOMETRY.minLabelHeight;
     const L = { w: label.w, h: labelHidden ? 0 : labelH, hidden: labelHidden };
 
     // Whichever boxes are actually shown stack into one unit.
@@ -540,7 +678,7 @@
   // natural width — so the locks have to be recomputed when it flips.
   function updateToolbarDensity(vw) {
     if (!toolbarEl) return;
-    const narrow = vw < NARROW_TOOLBAR;
+    const narrow = vw < GEOMETRY.narrowToolbar;
     if (toolbarEl.classList.contains("ccp-compact") === narrow) return;
     toolbarEl.classList.toggle("ccp-compact", narrow);
     lockButtonWidths();
@@ -598,6 +736,10 @@
       labelEl.classList.remove("ccp-no-transition");
       if (toolbarEl) toolbarEl.classList.remove("ccp-no-transition");
     }
+
+    // Last, once both boxes are where they finally sit: hide the gear if either
+    // one landed on top of it.
+    updateSettingsButtonVisibility();
   }
 
   function updateLabel(el, rect) {
@@ -815,8 +957,13 @@
   function onClick(e) {
     if (!probeActive) return;
 
-    // Ignore clicks on our own toolbar
+    // Ignore clicks on our own chrome. Everything interactive we inject has to be
+    // listed here — this handler preventDefaults and stops propagation on every
+    // other click on the page, so anything missing gets its clicks eaten and
+    // selects the element behind it instead.
     if (toolbarEl && toolbarEl.contains(e.target)) return;
+    if (settingsButtonEl && settingsButtonEl.contains(e.target)) return;
+    if (toastEl && toastEl.contains(e.target)) return;
 
     e.preventDefault();
     e.stopImmediatePropagation();
@@ -859,12 +1006,16 @@
     // Use elementFromPoint to ignore our overlay
     const el = document.elementFromPoint(e.clientX, e.clientY);
     if (!el) return null;
-    // Skip our own elements
+    // Skip our own elements. The id check only catches a top-level root — an
+    // unprefixed child (a <span> inside a button, an SVG path) needs the
+    // closest() clauses, so every root we inject has to appear in both lists.
     if (
       el.id?.startsWith("ccp-") ||
       el.closest("#ccp-overlay-container") ||
       el.closest("#ccp-toolbar") ||
-      el.closest("#ccp-label")
+      el.closest("#ccp-label") ||
+      el.closest("#ccp-settings-btn") ||
+      el.closest("#ccp-toast")
     ) {
       return hoveredElement; // Keep current
     }
@@ -1037,6 +1188,9 @@
       }
       current = current.parentElement;
     }
+    // Not a design value and not themed: this is the browser's own default page
+    // background, reported as a fact about the page being inspected. Theming it
+    // would make the tool misreport what it is looking at.
     return "#ffffff";
   }
 
@@ -1127,7 +1281,11 @@
   // The payload's job is to point at a source construct, not to describe the DOM.
   // Each helper returns a string, an array of lines, or null to be omitted.
 
-  const OUR_CHROME = "#ccp-toolbar,#ccp-label,#ccp-overlay-container";
+  // Our own chrome is excluded from the page when counting how unique a text
+  // string or attribute is — otherwise the label's own readout of an element
+  // gets counted as a second occurrence of it.
+  const OUR_CHROME =
+    "#ccp-toolbar,#ccp-label,#ccp-overlay-container,#ccp-settings-btn,#ccp-toast";
 
   // Trim an absolute path down to something that reads as project-relative.
   function toProjectPath(p) {
@@ -1425,7 +1583,7 @@
     if (!btnEl) return;
     btnEl.innerHTML = CLAWD_MINI + `<span>Copying...</span>`;
     btnEl.disabled = true;
-    btnEl.style.opacity = "0.7";
+    btnEl.style.opacity = token("--ccp-opacity-loading", "0.7");
   }
 
   function setButtonSuccess(btnEl, message) {
@@ -1475,7 +1633,10 @@
   }
 
   // ===== Toast =====
-  function showToast(message, isError = false, isLoading = false) {
+  // The `isLoading` variant (CLAWD_MINI plus text) was never reachable — no
+  // caller ever passed a third argument, and the loading affordance in practice
+  // is setButtonLoading() on the button itself. Removed with the signature.
+  function showToast(message, isError = false) {
     if (toastTimer) clearTimeout(toastTimer);
 
     if (!toastEl) {
@@ -1483,30 +1644,30 @@
       toastEl.id = "ccp-toast";
     }
 
-    if (isLoading) {
-      toastEl.innerHTML = CLAWD_MINI + `<span>${message}</span>`;
-    } else {
-      toastEl.textContent = message;
-    }
+    toastEl.textContent = message;
     toastEl.className = isError ? "ccp-toast-error" : "";
+
+    const z = token("--ccp-z-chrome", "2147483647");
 
     // Position next to toolbar if visible, otherwise fixed bottom-right
     if (toolbarEl && toolbarEl.parentElement) {
       document.documentElement.appendChild(toastEl);
       const toolbarRect = toolbarEl.getBoundingClientRect();
+      const gap = parseFloat(token("--ccp-gap-section", "8px")) || 8;
       toastEl.style.position = "fixed";
       toastEl.style.top = toolbarRect.top + "px";
-      toastEl.style.left = (toolbarRect.right + 8) + "px";
+      toastEl.style.left = (toolbarRect.right + gap) + "px";
       toastEl.style.height = toolbarRect.height + "px";
-      toastEl.style.zIndex = "2147483647";
+      toastEl.style.zIndex = z;
     } else {
+      const inset = token("--ccp-toast-inset", "24px");
       document.documentElement.appendChild(toastEl);
       toastEl.style.position = "fixed";
-      toastEl.style.bottom = "24px";
-      toastEl.style.right = "24px";
+      toastEl.style.bottom = inset;
+      toastEl.style.right = inset;
       toastEl.style.top = "";
       toastEl.style.left = "";
-      toastEl.style.zIndex = "2147483647";
+      toastEl.style.zIndex = z;
     }
 
     // Force reflow for transition

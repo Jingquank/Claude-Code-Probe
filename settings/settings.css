@@ -1,0 +1,356 @@
+/* Settings page shell.
+   tokens.css and content.css are loaded first — this file adds only what the
+   page itself needs, plus the handful of overrides that let the real chrome be
+   rendered inline as a preview instead of pinned to the viewport.
+
+   Everything here is expressed in --ccp-* tokens, so the page follows the theme
+   you are choosing. Two grounds are derived from the surface rather than being
+   declared per theme: mixing toward --ccp-text lifts a dark surface and darkens
+   a light one, which gives a usable two-tone in either direction with no
+   theme-specific values. */
+
+:root {
+  --sp-ground: var(--ccp-surface);
+  --sp-raised: color-mix(in srgb, var(--ccp-surface) 94%, var(--ccp-text));
+  --sp-hairline: color-mix(in srgb, var(--ccp-surface) 84%, var(--ccp-text));
+  --sp-rail-width: 300px;
+  --sp-pad: 22px;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--sp-ground);
+  color: var(--ccp-text);
+  font: var(--ccp-text-base)/var(--ccp-leading-base) var(--ccp-font);
+  -webkit-font-smoothing: antialiased;
+}
+
+.sp {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  /* The rail collapses under the settings column on a narrow window. A container
+     query rather than a media query because the wrapper is max-width capped, so
+     its own width is what matters, not the viewport's. */
+  container-type: inline-size;
+}
+
+/* ===== Header ===== */
+.sp-header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--ccp-md);
+  padding: var(--sp-pad) var(--sp-pad) var(--ccp-lg);
+  border-bottom: 1px solid var(--sp-hairline);
+}
+
+.sp-header h1 {
+  margin: 0;
+  font-size: var(--ccp-text-lg);
+  font-weight: var(--ccp-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: var(--ccp-tracking-wide);
+  color: var(--ccp-text);
+}
+
+.sp-version {
+  margin: 0;
+  font-size: var(--ccp-text-sm);
+  text-transform: uppercase;
+  letter-spacing: var(--ccp-tracking-wide);
+  color: var(--ccp-text-muted);
+}
+
+/* ===== Two columns ===== */
+.sp-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr var(--sp-rail-width);
+  align-items: start;
+  min-height: 0;
+}
+
+.sp-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ccp-lg);
+  padding: var(--sp-pad);
+  min-width: 0;
+}
+
+/* Sticky, so the preview stays put while the settings list scrolls past it. */
+.sp-rail {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ccp-gap-section);
+  padding: var(--sp-pad);
+  background: var(--sp-raised);
+  border-left: 1px solid var(--sp-hairline);
+  min-height: 100%;
+}
+
+@container (max-width: 720px) {
+  .sp-body { grid-template-columns: 1fr; }
+  .sp-rail {
+    position: static;
+    border-left: 0;
+    border-top: 1px solid var(--sp-hairline);
+    min-height: 0;
+  }
+}
+
+/* ===== Section furniture ===== */
+.sp-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ccp-gap-section);
+}
+
+.sp-legend {
+  display: flex;
+  align-items: center;
+  gap: var(--ccp-sm);
+  margin: 0;
+  font-size: var(--ccp-text-sm);
+  font-weight: var(--ccp-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ccp-text-muted);
+}
+
+.sp-tag {
+  font-size: var(--ccp-text-sm);
+  font-weight: var(--ccp-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: var(--ccp-tracking-wide);
+  color: var(--ccp-accent);
+  border: 1px solid rgb(from var(--ccp-accent) r g b / 0.4);
+  border-radius: var(--ccp-radius-xs);
+  padding: 1px var(--ccp-gap-base);
+}
+
+.sp-sub {
+  margin: 0;
+  max-width: 62ch;
+  font-size: var(--ccp-text-sm);
+  line-height: var(--ccp-leading-base);
+  color: var(--ccp-text-muted);
+}
+
+.sp-sub strong { color: var(--ccp-text-dim); font-weight: var(--ccp-weight-medium); }
+
+.sp-hr { border: 0; border-top: 1px solid var(--sp-hairline); margin: 0; }
+
+/* ===== Theme pills =====
+   Content-width and free to wrap, so a row reads as a set of palettes rather
+   than a grid of equal cells. */
+.sp-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ccp-sm);
+}
+
+.sp-pill {
+  display: flex;
+  align-items: center;
+  gap: var(--ccp-sm);
+  padding: var(--ccp-gap-base) var(--ccp-md) var(--ccp-gap-base) var(--ccp-sm);
+  border: 1px solid var(--ccp-sep);
+  border-radius: 20px;
+  background: transparent;
+  color: var(--ccp-text-dim);
+  font: var(--ccp-weight-medium) var(--ccp-text-sm)/var(--ccp-leading-tight) var(--ccp-font);
+  text-transform: uppercase;
+  letter-spacing: var(--ccp-tracking-wide);
+  cursor: pointer;
+  transition: background var(--ccp-duration), border-color var(--ccp-duration),
+              color var(--ccp-duration);
+}
+
+.sp-pill:hover {
+  border-color: rgb(from var(--ccp-accent) r g b / 0.6);
+  color: var(--ccp-text);
+}
+
+.sp-pill:focus-visible {
+  outline: 2px solid var(--ccp-accent);
+  outline-offset: 2px;
+}
+
+.sp-pill[aria-checked="true"] {
+  background: var(--ccp-accent);
+  border-color: var(--ccp-accent);
+  color: var(--ccp-on-accent);
+}
+
+/* The swatch carries its own data-ccp-theme, so these stripes resolve against
+   that theme's tokens rather than the page's. No hex is repeated in JS or here —
+   the palette shown is literally the palette that will be applied. */
+.sp-sw {
+  display: flex;
+  flex: none;
+  width: 20px;
+  height: 10px;
+  border-radius: var(--ccp-radius-xs);
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgb(from var(--ccp-text) r g b / 0.18);
+}
+
+.sp-sw > i { flex: 1; }
+.sp-sw > i:nth-child(1) { background: var(--ccp-surface); }
+.sp-sw > i:nth-child(2) { background: var(--ccp-accent); }
+.sp-sw > i:nth-child(3) { background: var(--ccp-syntax-id); }
+.sp-sw > i:nth-child(4) { background: var(--ccp-syntax-class); }
+
+/* System shows both palettes it resolves between, split down the middle. */
+.sp-sw-split { display: flex; }
+.sp-sw-split > span { display: flex; flex: 1; }
+.sp-sw-split > span > i { flex: 1; }
+.sp-sw-split > span > i:nth-child(1) { background: var(--ccp-surface); }
+.sp-sw-split > span > i:nth-child(2) { background: var(--ccp-accent); }
+
+.sp-saved {
+  margin: 0;
+  min-height: 1.4em;
+  font-size: var(--ccp-text-sm);
+  color: var(--ccp-syntax-class);
+}
+
+/* ===== Not-yet-available rows ===== */
+.sp-future {
+  opacity: var(--ccp-opacity-disabled);
+  pointer-events: none;
+}
+
+.sp-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ccp-md);
+  padding: var(--ccp-gap-base) 0;
+}
+
+.sp-row-label { flex: 1; font-size: var(--ccp-text-base); color: var(--ccp-text); }
+
+.sp-toggle {
+  position: relative;
+  flex: none;
+  width: 30px;
+  height: 17px;
+  border-radius: 9px;
+  background: var(--ccp-sep);
+}
+
+.sp-toggle::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--ccp-text-muted);
+}
+
+.sp-toggle.sp-on { background: var(--ccp-accent); }
+.sp-toggle.sp-on::after { left: 15px; background: var(--ccp-on-accent); }
+
+/* ===== Footer ===== */
+.sp-footer {
+  margin-top: auto;
+  padding-top: var(--ccp-lg);
+  border-top: 1px solid var(--sp-hairline);
+  font-size: var(--ccp-text-sm);
+  color: var(--ccp-text-faint);
+}
+
+.sp-footer p { margin: 0; }
+.sp-footer a { color: var(--ccp-text-muted); }
+.sp-footer a:hover { color: var(--ccp-accent); }
+
+/* ===== The preview =====
+   content.css pins #ccp-label, #ccp-toolbar and #ccp-settings-btn to the
+   viewport. Inside .ccp-mock they have to flow instead. These are the only
+   overrides — everything else about their appearance comes from the real rules,
+   which is the point. Each selector is class + id so it outranks the id-only
+   rule it is overriding. */
+.sp-preview {
+  position: relative;
+  border-radius: var(--ccp-radius-md);
+  background: var(--sp-ground);
+  border: 1px solid var(--sp-hairline);
+  padding: var(--ccp-md);
+  /* A longer readout than the sample would overflow 300px rather than wrap,
+     because #ccp-label is white-space: nowrap. Clip it here so the rail's own
+     layout can't be pushed around. */
+  overflow: hidden;
+}
+
+.ccp-mock {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ccp-md);
+  /* Headroom for the gear in the corner and for Clawd, who stands above the
+     label's top edge. */
+  padding-top: 38px;
+}
+
+.ccp-mock #ccp-label,
+.ccp-mock #ccp-toolbar {
+  position: relative;
+  top: auto;
+  left: auto;
+  transition: none;
+}
+
+.ccp-mock #ccp-label {
+  width: max-content;
+  max-width: 100%;
+}
+
+.ccp-mock #ccp-settings-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  cursor: default;
+}
+
+/* A still preview. Clawd's walk would carry him out of the clipped frame, and a
+   pacing mascot beside a colour picker is a distraction from the colours. */
+.ccp-mock .ccp-clawd,
+.ccp-mock .ccp-clawd svg {
+  animation: none;
+}
+
+/* The element under inspection. Not part of the extension's chrome — it stands
+   in for the page, so it borrows the accent for its outline the same way the
+   real selection ring does. */
+.sp-element {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ccp-gap-pair);
+  padding: var(--ccp-md) var(--ccp-btn-x);
+  border: var(--ccp-ring) solid var(--ccp-accent);
+  border-radius: var(--ccp-radius-md);
+  background: rgb(from var(--ccp-accent) r g b / 0.07);
+}
+
+.sp-element-title {
+  font-size: var(--ccp-text-lg);
+  font-weight: var(--ccp-weight-bold);
+  color: var(--ccp-text);
+}
+
+.sp-element-body { font-size: var(--ccp-text-base); color: var(--ccp-text-muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  .sp-pill { transition: none; }
+}

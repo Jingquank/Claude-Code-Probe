@@ -1,5 +1,6 @@
-/* ===== Fonts ===== */
-@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&display=swap');
+/* Every design value here comes from tokens.css, which the manifest loads first
+   (order is cascade order). No literal colour should appear below this line —
+   test/tokens.mjs fails the build if one does. */
 
 /* ===== Overlay Container ===== */
 #ccp-overlay-container {
@@ -8,7 +9,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 2147483646;
+  z-index: var(--ccp-z-overlay);
   pointer-events: none;
 }
 
@@ -18,16 +19,18 @@
 #ccp-overlay-container > svg {
   position: fixed;
   box-sizing: border-box;
-  transition: top 0.15s cubic-bezier(0.4, 0, 0.2, 1),
-              left 0.15s cubic-bezier(0.4, 0, 0.2, 1),
-              width 0.15s cubic-bezier(0.4, 0, 0.2, 1),
-              height 0.15s cubic-bezier(0.4, 0, 0.2, 1),
-              opacity 0.15s ease;
+  transition: top var(--ccp-duration) var(--ccp-ease),
+              left var(--ccp-duration) var(--ccp-ease),
+              width var(--ccp-duration) var(--ccp-ease),
+              height var(--ccp-duration) var(--ccp-ease),
+              opacity var(--ccp-duration) ease;
 }
 
-/* Hover — box-model hints, with the outline itself drawn as marching dashes */
-#ccp-margin-box  { border: 1px dashed rgba(217, 119, 87, 0.3); }
-#ccp-padding-box { border: 1px dashed rgba(106, 155, 204, 0.3); }
+/* Hover — box-model hints, with the outline itself drawn as marching dashes.
+   The padding band borrows the id colour so the two bands stay distinguishable
+   in every theme without needing tokens of their own. */
+#ccp-margin-box  { border: 1px dashed rgb(from var(--ccp-accent) r g b / 0.3); }
+#ccp-padding-box { border: 1px dashed rgb(from var(--ccp-syntax-id) r g b / 0.3); }
 #ccp-content-box { border: none; }
 
 /* An SVG path rather than a border, so the dashes travel around the corner arc
@@ -35,8 +38,8 @@
 #ccp-ants { overflow: visible; }
 #ccp-ants path {
   fill: none;
-  stroke: rgba(217, 119, 87, 0.85);
-  stroke-width: 2;
+  stroke: rgb(from var(--ccp-accent) r g b / 0.85);
+  stroke-width: var(--ccp-ring);
   stroke-dasharray: 7 5;
   animation: ccp-march 0.55s linear infinite;
 }
@@ -44,7 +47,7 @@
 
 /* Selected — a gradient sweeping the stroke, and the same gradient blurred inward.
    Both are one oversized square spun by transform: composited, so the cost doesn't
-   grow with the element, and no @property needed for Firefox. */
+   grow with the element. */
 #ccp-border-box,
 #ccp-bloom { display: none; }
 
@@ -57,18 +60,18 @@
 }
 
 #ccp-border-box {
-  padding: 2px;
+  padding: var(--ccp-ring);
   overflow: hidden;
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask: linear-gradient(var(--ccp-mask) 0 0) content-box, linear-gradient(var(--ccp-mask) 0 0);
   -webkit-mask-composite: xor;
-  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(var(--ccp-mask) 0 0) content-box, linear-gradient(var(--ccp-mask) 0 0);
   mask-composite: exclude;
 }
 
 #ccp-bloom {
   overflow: hidden;
-  -webkit-mask: radial-gradient(closest-side, transparent 25%, #000 95%);
-  mask: radial-gradient(closest-side, transparent 25%, #000 95%);
+  -webkit-mask: radial-gradient(closest-side, transparent 25%, var(--ccp-mask) 95%);
+  mask: radial-gradient(closest-side, transparent 25%, var(--ccp-mask) 95%);
 }
 
 .ccp-spin {
@@ -85,15 +88,21 @@
 }
 
 #ccp-sweep-spin {
-  background: conic-gradient(transparent 0deg, #d97757 90deg, #ffd9c7 180deg, #d97757 270deg, transparent 360deg);
+  background: conic-gradient(
+    transparent 0deg,
+    var(--ccp-accent) 90deg,
+    var(--ccp-accent-light) 180deg,
+    var(--ccp-accent) 270deg,
+    transparent 360deg
+  );
 }
 
 #ccp-bloom-spin {
   background: conic-gradient(
     transparent 0deg,
-    rgba(217, 119, 87, 0.75) 90deg,
-    rgba(255, 217, 199, 0.6) 180deg,
-    rgba(217, 119, 87, 0.75) 270deg,
+    rgb(from var(--ccp-accent) r g b / 0.75) 90deg,
+    rgb(from var(--ccp-accent-light) r g b / 0.6) 180deg,
+    rgb(from var(--ccp-accent) r g b / 0.75) 270deg,
     transparent 360deg
   );
   filter: blur(16px);
@@ -102,34 +111,35 @@
 /* Elements too big for the effect to read (a whole page, say) get a plain stroke
    rather than a spun square the size of the document */
 #ccp-overlay-container.ccp-plain #ccp-sweep-spin { display: none; }
-#ccp-overlay-container.ccp-plain #ccp-border-box { background: #d97757; }
+#ccp-overlay-container.ccp-plain #ccp-border-box { background: var(--ccp-accent); }
 #ccp-overlay-container.ccp-plain #ccp-bloom { display: none; }
 
+/* Everything that moves on its own has to stop here. Clawd's walk and bob were
+   missing from this list — the mascot kept pacing for anyone who had asked the
+   OS for stillness. The marquee is included for the same reason. */
 @media (prefers-reduced-motion: reduce) {
-  #ccp-ants path, .ccp-spin { animation: none; }
+  #ccp-ants path,
+  .ccp-spin,
+  #ccp-label .ccp-clawd,
+  #ccp-label .ccp-clawd svg,
+  #ccp-label .ccp-marquee-inner {
+    animation: none;
+  }
 }
 
 /* ===== Element Label ===== */
 #ccp-label {
-  --ccp-xs: 4px;
-  --ccp-sm: 6px;
-  --ccp-md: 10px;
-  --ccp-lg: 14px;
-  --ccp-gap-tight: 2px;
-  --ccp-gap-pair: 3px;
-  --ccp-gap-base: 5px;
-  --ccp-gap-section: 8px;
   position: fixed;
-  background: #141413;
-  color: #faf9f5;
-  font: 11px/1.5 "Geist Mono", "SF Mono", "Fira Code", "Consolas", monospace;
+  background: var(--ccp-surface);
+  color: var(--ccp-text);
+  font: var(--ccp-text-base)/var(--ccp-leading-base) var(--ccp-font);
   padding: var(--ccp-sm) var(--ccp-md);
-  border-radius: 8px;
+  border-radius: var(--ccp-radius-md);
   white-space: nowrap;
   pointer-events: none;
-  z-index: 2147483647;
-  border: 1px solid rgba(217, 119, 87, 0.25);
-  box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(20, 20, 19, 0.4);
+  z-index: var(--ccp-z-chrome);
+  border: 1px solid rgb(from var(--ccp-accent) r g b / 0.25);
+  box-shadow: var(--ccp-shadow-card);
   /* box-sizing so the max-height the layout pass sets means the whole box */
   box-sizing: border-box;
   max-width: min(460px, calc(100vw - 8px));
@@ -137,16 +147,16 @@
      hidden only when the label has to be capped to fit a very short viewport */
   overflow: visible;
   display: block;
-  transition: top 0.15s cubic-bezier(0.4, 0, 0.2, 1),
-              left 0.15s cubic-bezier(0.4, 0, 0.2, 1),
-              opacity 0.12s ease;
+  transition: top var(--ccp-duration) var(--ccp-ease),
+              left var(--ccp-duration) var(--ccp-ease),
+              opacity var(--ccp-duration-fast) ease;
 }
 
 /* Clawd mascot — escapes the popup and walks along the top edge */
 #ccp-label .ccp-clawd {
   position: absolute;
   top: -17px;
-  left: 4px;
+  left: var(--ccp-xs);
   width: 26px;
   height: 20px;
   pointer-events: none;
@@ -177,18 +187,19 @@
   85% { transform: translateY(-1px); }
 }
 
-/* Sparkle animation for happy Clawd */
-@keyframes ccp-sparkle {
-  0% { opacity: 0; transform: scale(0); }
-  50% { opacity: 1; transform: scale(1); }
-  100% { opacity: 0; transform: scale(0); }
-}
+/* Clawd's sparkle and blink are <animate> elements inside CLAWD_SVG itself, not
+   CSS — the ccp-sparkle and ccp-blink keyframes that used to sit here were
+   referenced by no rule and have been removed. */
 
-/* Blink animation */
-@keyframes ccp-blink {
-  0%, 90%, 100% { height: 8px; }
-  95% { height: 0.5px; }
-}
+/* Clawd's palette. These are rules rather than fill="" attributes on the SVG
+   because var() is not resolved inside an SVG presentation attribute. Not scoped
+   under #ccp-label: CLAWD_MINI also appears inside a toolbar button and the
+   toast, both of which are outside the label. */
+.ccp-clawd-body   { fill: var(--ccp-clawd-body); }
+.ccp-clawd-leg    { fill: var(--ccp-clawd-leg); }
+.ccp-clawd-eye    { fill: var(--ccp-clawd-eye); }
+.ccp-clawd-spark  { fill: var(--ccp-accent); }
+.ccp-clawd-shadow { fill: var(--ccp-clawd-shadow); }
 
 #ccp-label .ccp-label-content {
   display: flex;
@@ -205,7 +216,7 @@
 
 /* Identity line — primary, slightly heavier */
 #ccp-label .ccp-line-identity {
-  font-size: 12px;
+  font-size: var(--ccp-text-lg);
 }
 
 /* Vertical rhythm — tight within a category, generous between categories */
@@ -223,73 +234,76 @@
 }
 
 #ccp-label .ccp-label-tag {
-  color: #d97757;
-  font-weight: 600;
+  color: var(--ccp-accent);
+  font-weight: var(--ccp-weight-bold);
 }
 
 #ccp-label .ccp-label-id {
-  color: #6a9bcc;
-  font-weight: 500;
+  color: var(--ccp-syntax-id);
+  font-weight: var(--ccp-weight-medium);
 }
 
 #ccp-label .ccp-label-class {
-  color: #788c5d;
+  color: var(--ccp-syntax-class);
 }
 
 #ccp-label .ccp-label-size {
-  color: #6a6a64;
+  color: var(--ccp-text-faint);
   margin-left: auto;
   padding-left: var(--ccp-md);
-  font-size: 10px;
+  font-size: var(--ccp-text-sm);
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0.02em;
+  letter-spacing: var(--ccp-tracking-num);
 }
 
 #ccp-label .ccp-label-prop {
-  color: #8a8780;
-  font-size: 10px;
+  color: var(--ccp-text-muted);
+  font-size: var(--ccp-text-sm);
 }
 
 #ccp-label .ccp-label-text {
-  color: #c8c5bc;
-  font-size: 10px;
+  color: var(--ccp-text-dim);
+  font-size: var(--ccp-text-sm);
   font-style: italic;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+/* The swatch's fill is the inspected page's own colour, written inline from JS.
+   It is never themed — see --ccp-checker in tokens.css. Only its border is
+   chrome, so only the border follows the theme. */
 #ccp-label .ccp-color-swatch {
   display: inline-block;
-  width: 9px;
-  height: 9px;
-  border-radius: 2px;
-  margin: 0 3px -1px 0;
+  width: var(--ccp-swatch);
+  height: var(--ccp-swatch);
+  border-radius: var(--ccp-radius-xs);
+  margin: 0 var(--ccp-gap-pair) -1px 0;
   vertical-align: baseline;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid var(--ccp-swatch-border);
   box-sizing: border-box;
 }
 
 #ccp-label .ccp-color-swatch.ccp-color-swatch-alpha {
   background-image:
-    linear-gradient(45deg, #555 25%, transparent 25%),
-    linear-gradient(-45deg, #555 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, #555 75%),
-    linear-gradient(-45deg, transparent 75%, #555 75%);
+    linear-gradient(45deg, var(--ccp-checker) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--ccp-checker) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--ccp-checker) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--ccp-checker) 75%);
   background-size: 6px 6px;
   background-position: 0 0, 0 3px, 3px -3px, -3px 0px;
 }
 
 #ccp-label .ccp-label-sep {
-  color: #3a3a35;
+  color: var(--ccp-sep);
   margin: 0 var(--ccp-xs);
 }
 
 #ccp-label .ccp-label-marquee {
   overflow: hidden;
   max-width: 380px;
-  mask-image: linear-gradient(to right, transparent, #000 8px, #000 calc(100% - 16px), transparent);
-  -webkit-mask-image: linear-gradient(to right, transparent, #000 8px, #000 calc(100% - 16px), transparent);
+  mask-image: linear-gradient(to right, transparent, var(--ccp-mask) 8px, var(--ccp-mask) calc(100% - 16px), transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, var(--ccp-mask) 8px, var(--ccp-mask) calc(100% - 16px), transparent);
 }
 
 #ccp-label .ccp-marquee-inner {
@@ -304,121 +318,128 @@
 }
 
 #ccp-label .ccp-label-breadcrumb {
-  color: #6a6a64;
-  font-size: 10px;
+  color: var(--ccp-text-faint);
+  font-size: var(--ccp-text-sm);
 }
 
 #ccp-label .ccp-label-breadcrumb .ccp-label-tag {
-  color: #b06848;
-  font-weight: 500;
+  color: var(--ccp-accent-dark);
+  font-weight: var(--ccp-weight-medium);
 }
 
 #ccp-label .ccp-label-breadcrumb .ccp-label-sep {
-  color: #3a3a35;
+  color: var(--ccp-sep);
 }
 
 /* ===== Action Toolbar =====
    #ccp-toolbar is a transparent rail holding two siblings: the action bar and
    the Select Parent button. align-items:stretch keeps them exactly the same
-   height, and the rail glides on the same curve as the selection outline. */
+   height, and the rail glides on the same curve as the selection outline.
+
+   `all: initial` on this and its descendants resets every regular property, so
+   font-family and box-sizing have to be re-declared below. Custom properties are
+   the one thing `all` does not reset (CSS Cascade 4 §3.2), which is why the
+   --ccp-* tokens still reach in here from :root. */
 #ccp-toolbar {
   all: initial;
   position: fixed;
-  z-index: 2147483647;
+  z-index: var(--ccp-z-chrome);
   display: flex;
   align-items: stretch;
-  gap: 8px;
-  font-family: "Geist Mono", "SF Mono", "Fira Code", monospace;
+  gap: var(--ccp-gap-section);
+  font-family: var(--ccp-font);
   box-sizing: border-box;
-  transition: top 0.15s cubic-bezier(0.4, 0, 0.2, 1),
-              left 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: top var(--ccp-duration) var(--ccp-ease),
+              left var(--ccp-duration) var(--ccp-ease);
 }
 
 #ccp-toolbar .ccp-bar {
   all: initial;
-  background: #141413;
-  border: 1px solid rgba(217, 119, 87, 0.5);
-  border-radius: 10px;
-  padding: 4px;
+  background: var(--ccp-surface);
+  border: 1px solid rgb(from var(--ccp-accent) r g b / 0.5);
+  border-radius: var(--ccp-radius-lg);
+  padding: var(--ccp-xs);
   display: flex;
-  gap: 4px;
-  box-shadow: 0 4px 16px rgba(20, 20, 19, 0.6);
-  font-family: "Geist Mono", "SF Mono", "Fira Code", monospace;
+  gap: var(--ccp-xs);
+  box-shadow: var(--ccp-shadow-bar);
+  font-family: var(--ccp-font);
   box-sizing: border-box;
 }
 
 #ccp-toolbar .ccp-bar button {
   all: initial;
   background: transparent;
-  color: #faf9f5;
+  color: var(--ccp-text);
   border: 1px solid transparent;
-  border-radius: 7px;
-  padding: 7px 12px;
-  font: 500 11px/1.4 "Geist Mono", "SF Mono", "Fira Code", monospace;
+  border-radius: var(--ccp-radius-sm);
+  padding: var(--ccp-btn-y) var(--ccp-btn-x);
+  font: var(--ccp-weight-medium) var(--ccp-text-base)/var(--ccp-leading-tight) var(--ccp-font);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: var(--ccp-tracking-wide);
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--ccp-sm);
   white-space: nowrap;
   justify-content: center;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background var(--ccp-duration), border-color var(--ccp-duration);
   box-sizing: border-box;
 }
 
 #ccp-toolbar .ccp-bar button:hover {
-  background: rgba(217, 119, 87, 0.15);
-  border-color: rgba(217, 119, 87, 0.5);
+  background: rgb(from var(--ccp-accent) r g b / 0.15);
+  border-color: rgb(from var(--ccp-accent) r g b / 0.5);
 }
 
 #ccp-toolbar .ccp-bar button:active {
-  background: rgba(217, 119, 87, 0.25);
+  background: rgb(from var(--ccp-accent) r g b / 0.25);
 }
 
-#ccp-toolbar button svg {
-  width: 14px;
-  height: 14px;
+#ccp-toolbar button svg,
+#ccp-settings-btn svg {
+  width: var(--ccp-icon);
+  height: var(--ccp-icon);
   flex-shrink: 0;
 }
 
-/* Select Parent — navigation, not a copy action, so it reads as terracotta on
-   the same dark chrome. No vertical padding: the height comes from stretch. */
+/* Select Parent — navigation, not a copy action, so it reads as the accent on
+   the same chrome. No vertical padding: the height comes from stretch. */
 #ccp-toolbar .ccp-parent-btn {
   all: initial;
-  background: #141413;
-  color: #d97757;
-  border: 1px solid #d97757;
-  border-radius: 10px;
-  padding: 0 14px;
-  font: 500 11px/1.4 "Geist Mono", "SF Mono", "Fira Code", monospace;
+  background: var(--ccp-surface);
+  color: var(--ccp-accent);
+  border: 1px solid var(--ccp-accent);
+  border-radius: var(--ccp-radius-lg);
+  padding: 0 var(--ccp-lg);
+  font: var(--ccp-weight-medium) var(--ccp-text-base)/var(--ccp-leading-tight) var(--ccp-font);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: var(--ccp-tracking-wide);
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--ccp-sm);
   white-space: nowrap;
-  box-shadow: 0 4px 16px rgba(20, 20, 19, 0.6);
+  box-shadow: var(--ccp-shadow-bar);
   box-sizing: border-box;
-  transition: background 0.15s, border-color 0.15s, color 0.15s, opacity 0.15s;
+  transition: background var(--ccp-duration), border-color var(--ccp-duration),
+              color var(--ccp-duration), opacity var(--ccp-duration);
 }
 
-/* Solid invert — the fill floods to the accent and the label flips to near-black.
-   Both states must stay fully opaque: unlike the bar's buttons, this one sits on
-   the page, so a translucent fill lets the page show straight through. */
+/* Solid invert — the fill floods to the accent and the label flips to the
+   on-accent ink. Both states must stay fully opaque: unlike the bar's buttons,
+   this one sits on the page, so a translucent fill lets the page show through. */
 #ccp-toolbar .ccp-parent-btn:hover {
-  background: #d97757;
-  color: #1a0d07;
+  background: var(--ccp-accent);
+  color: var(--ccp-on-accent);
 }
 
 #ccp-toolbar .ccp-parent-btn:active {
-  background: #b06848;
-  color: #1a0d07;
+  background: var(--ccp-accent-dark);
+  color: var(--ccp-on-accent);
 }
 
 #ccp-toolbar .ccp-parent-btn.ccp-button-disabled {
-  opacity: 0.35;
+  opacity: var(--ccp-opacity-disabled);
   cursor: not-allowed;
   pointer-events: none;
 }
@@ -433,8 +454,8 @@
 
 #ccp-toolbar.ccp-compact .ccp-bar button,
 #ccp-toolbar.ccp-compact .ccp-parent-btn {
-  padding-left: 10px;
-  padding-right: 10px;
+  padding-left: var(--ccp-md);
+  padding-right: var(--ccp-md);
 }
 
 /* Placement that tracks the viewport has to be instantaneous — gliding to each
@@ -444,24 +465,73 @@
   transition: none !important;
 }
 
+/* ===== Settings Button =====
+   Viewport chrome, not selection chrome: mounted by activate() and pinned to the
+   top-right corner for as long as probe mode is on, whether or not anything is
+   selected. Same opaque treatment as .ccp-parent-btn and for the same reason —
+   it sits directly on the page, so a translucent fill would let the page through.
+
+   Square and icon-only, which keeps its footprint small against the label. It
+   still collides: three of the placement strategies dock the label to the
+   visible top edge. layoutChrome() fades the button out when they overlap —
+   the interactive selection chrome wins, this yields. */
+#ccp-settings-btn {
+  all: initial;
+  position: fixed;
+  top: var(--ccp-btn-x);
+  right: var(--ccp-btn-x);
+  z-index: var(--ccp-z-chrome);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: var(--ccp-surface);
+  color: var(--ccp-accent);
+  border: 1px solid var(--ccp-accent);
+  border-radius: var(--ccp-radius-lg);
+  box-shadow: var(--ccp-shadow-bar);
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: background var(--ccp-duration), color var(--ccp-duration),
+              opacity var(--ccp-duration);
+}
+
+#ccp-settings-btn:hover {
+  background: var(--ccp-accent);
+  color: var(--ccp-on-accent);
+}
+
+#ccp-settings-btn:active {
+  background: var(--ccp-accent-dark);
+  color: var(--ccp-on-accent);
+}
+
+/* Yielded to the selection chrome. Not display:none — the layout pass has to
+   keep measuring its rect to know when the collision ends. */
+#ccp-settings-btn.ccp-yielded {
+  opacity: 0;
+  pointer-events: none;
+}
+
 /* ===== Toast Notification ===== */
 #ccp-toast {
   all: initial;
-  background: #d97757;
-  color: #141413;
-  padding: 4px 12px;
-  border-radius: 10px;
-  font: 500 11px/1.4 "Geist Mono", "SF Mono", "Fira Code", monospace;
+  background: var(--ccp-accent);
+  color: var(--ccp-on-accent);
+  padding: var(--ccp-xs) var(--ccp-btn-x);
+  border-radius: var(--ccp-radius-lg);
+  font: var(--ccp-weight-medium) var(--ccp-text-base)/var(--ccp-leading-tight) var(--ccp-font);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: var(--ccp-tracking-wide);
   opacity: 0;
-  transition: opacity 0.2s;
+  transition: opacity var(--ccp-duration-slow);
   pointer-events: none;
   white-space: nowrap;
   box-sizing: border-box;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--ccp-sm);
 }
 
 /* Toast is always positioned via JS */
@@ -471,8 +541,8 @@
 }
 
 #ccp-toast.ccp-toast-error {
-  background: #dc2626;
-  color: #fff;
+  background: var(--ccp-error);
+  color: var(--ccp-on-error);
 }
 
 /* ===== Probe Mode Cursor ===== */

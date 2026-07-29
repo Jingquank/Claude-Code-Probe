@@ -4,12 +4,22 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Probe chrome placement — harness</title>
+<!--
+  The real token layer, so the harness's own chrome can't drift from the
+  extension's. Only the values that exist as tokens are wired up below — the
+  accent and the dark surface/text pair. The HUD's own greys, the pass/fail
+  greens and reds, and the diagram's reference swatches stay literal: they are
+  dev-tool colours with no counterpart in the design system, and inventing
+  tokens for them would fit the system to the harness rather than the product.
+-->
+<link rel="stylesheet" href="../tokens.css">
 <style>
   * { box-sizing: border-box; }
   body {
     margin: 0;
     padding-left: 44px;           /* body gutter: the only strip where <body> itself hit-tests */
     font: 15px/1.5 system-ui, -apple-system, sans-serif;
+    /* The host page, not our chrome — deliberately independent of the theme. */
     background: #faf9f5;
     color: #141413;
   }
@@ -25,7 +35,7 @@
   .specimen {
     position: absolute;
     background: #f0eee7;
-    border: 2px solid #d97757;
+    border: 2px solid var(--ccp-accent);
     border-radius: 10px;
     padding: 12px 14px;
     font: 12px/1.4 ui-monospace, monospace;
@@ -38,7 +48,7 @@
   .fixed-bar {
     position: fixed; left: 44px; bottom: 0;
     width: 260px; height: 52px;
-    background: #141413; color: #faf9f5;
+    background: var(--ccp-surface); color: var(--ccp-text);
     border-radius: 10px 10px 0 0;
     font: 12px/52px ui-monospace, monospace; text-align: center;
     z-index: 5;
@@ -49,32 +59,32 @@
   #hud {
     position: fixed; top: 0; right: 0; z-index: 999999;
     width: 400px; max-height: 100vh; overflow-y: auto;
-    background: #141413; color: #faf9f5;
+    background: var(--ccp-surface); color: var(--ccp-text);
     font: 11px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
     padding: 12px 14px 18px;
     box-shadow: -8px 0 32px -12px rgba(0,0,0,.5);
   }
   #hud.hidden { display: none; }
-  #hud h1 { font-size: 12px; margin: 0 0 2px; letter-spacing: .06em; text-transform: uppercase; color: #d97757; }
+  #hud h1 { font-size: 12px; margin: 0 0 2px; letter-spacing: .06em; text-transform: uppercase; color: var(--ccp-accent); }
   #hud .sub { color: #8a867c; margin: 0 0 10px; }
   #hud kbd {
     background: #2a2a27; border: 1px solid #3d3d38; border-radius: 4px;
-    padding: 0 4px; font: inherit; color: #faf9f5;
+    padding: 0 4px; font: inherit; color: var(--ccp-text);
   }
   #hud .keys { margin: 0 0 12px; color: #8a867c; }
   #hud .keys div { margin: 2px 0; }
 
   #summary { margin: 0 0 10px; padding: 8px 10px; border-radius: 6px; background: #201f1d; }
   #summary.pass { border-left: 3px solid #4a9d5f; }
-  #summary.fail { border-left: 3px solid #d97757; }
+  #summary.fail { border-left: 3px solid var(--ccp-accent); }
 
   .row {
     border-top: 1px solid #2a2a27; padding: 8px 0;
     display: grid; grid-template-columns: 1fr 100px; gap: 8px; align-items: start;
   }
-  .row.active { background: #221f1c; box-shadow: inset 3px 0 0 #d97757; padding-left: 7px; }
-  .row .name { color: #faf9f5; }
-  .row .flags { color: #d97757; margin-top: 3px; }
+  .row.active { background: #221f1c; box-shadow: inset 3px 0 0 var(--ccp-accent); padding-left: 7px; }
+  .row .name { color: var(--ccp-text); }
+  .row .flags { color: var(--ccp-accent); margin-top: 3px; }
   .row .nums  { color: #6f6c64; margin-top: 3px; font-size: 10px; }
   .row .verdict { font-weight: 700; }
   .row .verdict.PASS { color: #4a9d5f; }
@@ -83,7 +93,7 @@
 
   .diagram { position: relative; width: 96px; background: #0d0d0c; border: 1px solid #3d3d38; overflow: hidden; }
   .diagram i { position: absolute; display: block; }
-  .diagram .el { background: rgba(217,119,87,.28); border: 1px solid #d97757; }
+  .diagram .el { background: rgb(from var(--ccp-accent) r g b / 0.28); border: 1px solid var(--ccp-accent); }
   .diagram .lb { background: rgba(250,249,245,.85); }
   .diagram .tb { background: rgba(120,170,255,.85); }
   .legend { color: #6f6c64; margin: 8px 0 0; }
@@ -105,7 +115,7 @@
   <div id="summary">Press <kbd>s</kbd> to simulate, or turn on probe mode and press <kbd>r</kbd>.</div>
   <div id="rows"></div>
   <p class="legend">
-    <span class="sw" style="background:rgba(217,119,87,.6)"></span>element &nbsp;
+    <span class="sw" style="background:rgb(from var(--ccp-accent) r g b / 0.6)"></span>element &nbsp;
     <span class="sw" style="background:rgba(250,249,245,.85)"></span>label &nbsp;
     <span class="sw" style="background:rgba(120,170,255,.85)"></span>toolbar
   </p>
@@ -114,7 +124,10 @@
 <main id="stage"></main>
 
 <script type="module">
-import { CASES, caseRect, evaluate, runSim as simulate } from "./placement.mjs";
+// runSimV2 is the algorithm content.js implements. This imported runSim — the
+// superseded two-positioner version — so simulate mode was comparing the live
+// chrome against a reference that has not been shipped since 1.1.0.
+import { CASES, caseRect, evaluate, runSimV2 as simulate } from "./placement.mjs";
 
 const vpw = () => document.documentElement.clientWidth;
 const vph = () => document.documentElement.clientHeight;

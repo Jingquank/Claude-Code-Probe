@@ -3,6 +3,13 @@
 <head>
   <meta charset="utf-8">
   <title>Select Parent — test fixture</title>
+  <!--
+    The palette here is deliberately NOT wired to tokens.css. This page stands in
+    for an arbitrary website under inspection, so its colours have to stay
+    independent of the probe's theme — if they followed it, the fixture would
+    change appearance every time the extension's own chrome did, and the swatches
+    the info panel reports would stop being a fair test.
+  -->
   <style>
     * { box-sizing: border-box; }
     body { font: 15px/1.5 system-ui, -apple-system, sans-serif; margin: 0; padding: 40px; background: #faf9f5; color: #141413; }

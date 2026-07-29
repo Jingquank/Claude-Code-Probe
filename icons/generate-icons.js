@@ -22,7 +22,9 @@ for (const size of sizes) {
   // Background circle
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.fillStyle = "#7C3AED";
+  // Matches --ccp-accent in tokens.css (terracotta-dark). Was #7C3AED, left
+  // over from before the terracotta identity — the shipped PNGs never used it.
+  ctx.fillStyle = "#d97757";
   ctx.fill();
 
   // Inner ring

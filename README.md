@@ -67,6 +67,31 @@ The panel and the toolbar are placed together in one pass, so they stay on scree
 off each other whatever the element's geometry — including elements taller than the
 window, and `<body>` itself.
 
+### Settings
+
+A gear sits in the top-right corner for as long as Probe Mode is on — whether or not
+anything is selected. It opens the settings page in a tab.
+
+One setting so far: **Theme.** Eight of them.
+
+| | |
+|---|---|
+| Terracotta Dark | the default — unchanged from before there was a switch |
+| Terracotta Light | same accent, light ground |
+| System | follows your OS, and switches when it does |
+| Dracula · Monokai · Nord · Solarized Dark · Tokyo Night | |
+
+The info panel already colours tag, `#id` and `.class` separately, which is the same
+thing an editor theme defines — so these map onto real palette roles rather than being
+approximations of them.
+
+Your choice is stored on this device with `chrome.storage.local` and never leaves it.
+Changing it repaints tabs that are already open; no reload.
+
+The gear hides itself when the info panel or the toolbar lands on top of it — three of
+the six placement strategies dock the panel to the top edge, which is where the gear
+lives. It comes back as soon as the panel moves.
+
 ### What "Copy Code" outputs
 
 A pointer, not a description — it tells the agent which construct you mean, then gets out
@@ -141,6 +166,23 @@ harness's own buttons. Serve it over HTTP: `file://` works only if the extension
 algorithm lives in two places. The live sweep is what keeps them honest: it measures the
 real `#ccp-label` and `#ccp-toolbar` and reports any case where they disagree with the
 simulation. Run it after touching placement.
+
+### Design tokens
+
+Every colour, typeface, radius, shadow and duration lives in `tokens.css` as a CSS
+custom property. A theme is one block of 19 declarations; nothing else changes.
+[DESIGN.md](DESIGN.md) is the contract — what the two token tiers are, why placement
+geometry deliberately stays in JavaScript, and which three values are never themed.
+
+```sh
+node test/tokens.mjs    # 71 checks
+```
+
+It fails the run on a colour literal left in `content.css`, a theme missing one of the
+19, a `var(--ccp-…)` nothing declares, a badge colour that has drifted from its theme,
+or text that can't be read against its own surface. Warnings are real too: the
+de-emphasised 10px grey is below WCAG AA in most themes, which DESIGN.md explains
+rather than hides.
 
 ## Privacy
 

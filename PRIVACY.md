@@ -1,6 +1,6 @@
 # Privacy Policy — Claude Code Probe
 
-**Last updated:** April 1, 2026
+**Last updated:** July 29, 2026
 
 ## Overview
 
@@ -16,6 +16,7 @@ Claude Code Probe does **not** collect, store, transmit, or share any data. Spec
 - **No analytics or tracking** of any kind is used
 - **No cookies** are set or read by the extension
 - **No accounts or sign-ups** are required
+- **No page content, URLs, or element data** is ever stored — the only thing saved is your theme choice (see *Data Storage*)
 
 ## How the Extension Works
 
@@ -33,7 +34,9 @@ The extension requests the following permissions, used solely for its core funct
 
 - **activeTab** — to read element information on the current page when you activate Probe Mode
 - **clipboardWrite** — to copy element information and screenshots to your clipboard
-- **Host permissions (`<all_urls>`)** — to allow the content script to run on any webpage you choose to inspect
+- **storage** — to remember your theme choice on this device. This is the only thing the extension stores, and it never leaves your browser. See *Data Storage* below.
+- **scripting** — to inject the inspector into tabs that were already open when the extension was installed or updated. Without it, those tabs need a reload before Probe Mode works.
+- **Content script matches (`<all_urls>`)** — to allow the inspector to run on any webpage you choose to inspect
 
 ## Third-Party Services
 
@@ -43,7 +46,16 @@ No other third-party services, APIs, or external resources are used.
 
 ## Data Storage
 
-Claude Code Probe does not use any storage mechanisms — no localStorage, no IndexedDB, no chrome.storage, and no cookies. The extension maintains no persistent state between browsing sessions.
+Claude Code Probe stores exactly one thing: **your chosen theme**, saved with `chrome.storage.local` under the key `theme`. Its value is a short identifier such as `terracotta-dark` or `dracula`.
+
+- It is stored **locally on this device only**. `chrome.storage.local` does not sync to your Google account or to your other browsers.
+- It is **never transmitted anywhere**. The extension makes no network requests with it.
+- It contains **no information about you, the pages you visit, or anything you inspect** — only which colour scheme you picked.
+- You can remove it by uninstalling the extension, or by clearing the extension's data from `chrome://extensions`.
+
+Nothing else is stored: no localStorage, no IndexedDB, no cookies, and no record of the pages you inspect or the elements you copy.
+
+*Changed in version 1.3.0.* Earlier versions used no storage at all. The theme preference is the only addition.
 
 ## Changes to This Policy
 
