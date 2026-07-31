@@ -546,7 +546,27 @@
 }
 
 /* ===== Probe Mode Cursor ===== */
+/* Flatten every page cursor to the plain arrow while probing — an I-beam or
+   link pointer would suggest the page's own interactions are live when clicks
+   are being intercepted. The probe's controls stay `pointer` via the
+   re-assertions below: everything here is !important, so the ID-prefixed
+   selectors win on specificity. Descendants (button SVGs) need their own
+   match — the universal rule hits them directly, not by inheritance. */
 .ccp-probe-active,
 .ccp-probe-active * {
-  cursor: crosshair !important;
+  cursor: default !important;
+}
+
+#ccp-toolbar .ccp-bar button,
+#ccp-toolbar .ccp-bar button *,
+#ccp-toolbar .ccp-parent-btn,
+#ccp-toolbar .ccp-parent-btn *,
+#ccp-settings-btn,
+#ccp-settings-btn * {
+  cursor: pointer !important;
+}
+
+#ccp-toolbar .ccp-parent-btn.ccp-button-disabled,
+#ccp-toolbar .ccp-parent-btn.ccp-button-disabled * {
+  cursor: not-allowed !important;
 }

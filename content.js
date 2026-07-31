@@ -206,7 +206,7 @@
     return out.trim().replace(/\s+/g, " ");
   }
 
-  // Read cursor without the probe-mode crosshair override.
+  // Read cursor without the probe-mode plain-arrow override.
   // Temporarily strips the override class for a synchronous style read; no paint occurs.
   function getRealCursor(el) {
     const root = document.documentElement;
