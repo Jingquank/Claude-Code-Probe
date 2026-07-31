@@ -14,6 +14,18 @@
   let rafId = null;
   let viewportRafId = null;
   let settingsButtonEl = null;
+  // Redline (held-Option spacing measurements). redlineTarget is deliberately
+  // separate from hoveredElement: while something is selected, hoveredElement
+  // is aliased to the selection, and redline must never disturb that.
+  let redlining = false;
+  let redlineTarget = null;
+  let lastMouseX = -1;
+  let lastMouseY = -1;
+  let redlineEl = null;
+  let redlineHoverEl = null;
+  let redlineLineEls = [];
+  let redlineGuideEls = [];
+  let redlinePillEls = [];
 
   // ===== Geometry =====
   // The one group of design values that stays in JS instead of moving to
@@ -24,7 +36,9 @@
   // deliberate exception to "tokens drive both CSS and JS".
   //
   // margin/gap/pair/minLabelHeight are mirrored as M / GAP / PAIR / MIN_LABEL_H
-  // in test/placement.mjs:136-153. Change them here and change them there.
+  // in test/placement.mjs:136-153; the redline* trio is mirrored as PILL_OFFSET /
+  // GUIDE_OVERSHOOT / PILL_MARGIN in test/redline.mjs. Change them here and
+  // change them there.
   const GEOMETRY = {
     margin: 4,
     gap: 6,
@@ -33,6 +47,9 @@
     narrowToolbar: 470, // the .ccp-compact breakpoint
     radiusFallback: 4, // assumed corner radius when the element is square
     maxSweepDiagonal: 2600, // past this the spun outline degrades to .ccp-plain
+    redlinePillOffset: 8, // pill center sits this far perpendicular to its line
+    redlineGuideOvershoot: 4, // dashed guide runs this far past the measurement line
+    redlinePillMargin: 14, // pill centers are clamped this far inside the viewport
   };
 
   // ===== Theme =====
@@ -88,6 +105,61 @@
   darkQuery.addEventListener("change", () => {
     if (themePref === "system" && probeActive) applyTheme();
   });
+
+  // ===== Redline Preferences =====
+  // Six flat storage keys, one per setting — the "theme" convention. Each
+  // roster lists the legal values with the default (current shipping
+  // behaviour) first; unrecognised stored values fall back to it silently.
+  const REDLINE_PREFS = {
+    redlineUnit: ["px", "rem"],
+    redlinePrecision: ["whole", "tenths"],
+    redlinePillPlacement: ["beside", "online"],
+    redlineGuides: ["on", "off"],
+    redlineQuietOverlay: ["off", "on"],
+    redlineZeroPills: ["on", "off"],
+  };
+  const redlinePrefs = {};
+  for (const key of Object.keys(REDLINE_PREFS)) redlinePrefs[key] = REDLINE_PREFS[key][0];
+
+  function setRedlinePref(key, value) {
+    const roster = REDLINE_PREFS[key];
+    if (roster) redlinePrefs[key] = roster.includes(value) ? value : roster[0];
+  }
+
+  // Same fire-and-forget shape as the theme read above: prefs are consumed at
+  // render time, and no redline can be active this early.
+  chrome.storage?.local.get(Object.keys(REDLINE_PREFS), (stored) => {
+    if (!stored) return;
+    for (const key of Object.keys(REDLINE_PREFS)) {
+      if (key in stored) setRedlinePref(key, stored[key]);
+    }
+  });
+
+  // A live change mid-gesture restyles the measurements in place — the same
+  // no-reload contract the theme keeps.
+  chrome.storage?.onChanged.addListener((changes, area) => {
+    if (area !== "local") return;
+    let touched = false;
+    for (const key of Object.keys(REDLINE_PREFS)) {
+      if (changes[key]) {
+        setRedlinePref(key, changes[key].newValue);
+        touched = true;
+      }
+    }
+    if (touched && redlining) {
+      applyRedlineQuiet();
+      scheduleRedline();
+    }
+  });
+
+  // The quiet-overlay preference paints entirely from CSS; this class is its
+  // only JS surface. Held low (removed) whenever redline itself is off.
+  function applyRedlineQuiet() {
+    document.documentElement.classList.toggle(
+      "ccp-redline-quiet",
+      redlining && redlinePrefs.redlineQuietOverlay === "on"
+    );
+  }
 
   // Clawd's colours arrive from tokens.css via the .ccp-clawd-* classes rather
   // than fill="" attributes: var() is not resolved inside an SVG presentation
@@ -238,6 +310,9 @@
     document.addEventListener("mousemove", onMouseMove, true);
     document.addEventListener("click", onClick, true);
     document.addEventListener("keydown", onKeyDown, true);
+    document.addEventListener("keyup", onKeyUp, true);
+    // Alt+Tab away must not strand redline: no keyup ever arrives for it
+    window.addEventListener("blur", onWindowBlur);
     // Capture, so scrolling any nested container counts too
     document.addEventListener("scroll", onViewportChange, { capture: true, passive: true });
     window.addEventListener("resize", onViewportChange);
@@ -245,12 +320,17 @@
 
   function deactivate() {
     probeActive = false;
+    stopRedline();
     hoveredElement = null;
     selectedElement = null;
+    lastMouseX = -1;
+    lastMouseY = -1;
     document.documentElement.classList.remove("ccp-probe-active");
     document.removeEventListener("mousemove", onMouseMove, true);
     document.removeEventListener("click", onClick, true);
     document.removeEventListener("keydown", onKeyDown, true);
+    document.removeEventListener("keyup", onKeyUp, true);
+    window.removeEventListener("blur", onWindowBlur);
     document.removeEventListener("scroll", onViewportChange, true);
     window.removeEventListener("resize", onViewportChange);
     if (rafId) {
@@ -320,7 +400,10 @@
         r.bottom > gear.top
       );
     };
-    settingsButtonEl.classList.toggle("ccp-yielded", hit(labelEl) || hit(toolbarEl));
+    // During redline the label and toolbar are visibility:hidden but still laid
+    // out, so hit() would report a collision with an invisible box — the gear
+    // stays put instead.
+    settingsButtonEl.classList.toggle("ccp-yielded", !redlining && (hit(labelEl) || hit(toolbarEl)));
   }
 
   // ===== Corner radius =====
@@ -413,6 +496,33 @@
     ants.appendChild(document.createElementNS("http://www.w3.org/2000/svg", "path"));
     overlayContainer.appendChild(ants);
 
+    // Redline layer. The measurement nodes are grandchildren of the container
+    // on purpose: the `> div` rule in content.css would give them the container
+    // children's glide wholesale, while renderRedline() needs to decide per
+    // frame which nodes glide and which snap. The wrapper itself never moves,
+    // so it can be a direct child, and it gates display + stacking as one unit.
+    // Pool sizes cover the worst cases: containment needs 4 lines + 4 pills,
+    // a diagonal needs 2 of each. Pills are appended last so they paint on top.
+    // Hidden means opacity 0, not display:none — a shown node must be able to
+    // fade and glide, and a transition cannot cross a display flip.
+    redlineEl = document.createElement("div");
+    redlineEl.id = "ccp-redline";
+    const pool = (className, count, into) => {
+      for (let i = 0; i < count; i++) {
+        const node = document.createElement("div");
+        node.className = className;
+        node.style.opacity = "0";
+        redlineEl.appendChild(node);
+        into.push(node);
+      }
+      return into;
+    };
+    redlineHoverEl = pool("ccp-redline-hover", 1, [])[0];
+    pool("ccp-redline-line", 4, redlineLineEls);
+    pool("ccp-redline-guide-h", 4, redlineGuideEls);
+    pool("ccp-redline-pill", 4, redlinePillEls);
+    overlayContainer.appendChild(redlineEl);
+
     labelEl = document.createElement("div");
     labelEl.id = "ccp-label";
     labelEl.style.display = "none";
@@ -436,6 +546,12 @@
       labelEl.remove();
       labelEl = null;
     }
+    // The redline nodes went down with the container; drop the pool refs
+    redlineEl = null;
+    redlineHoverEl = null;
+    redlineLineEls = [];
+    redlineGuideEls = [];
+    redlinePillEls = [];
   }
 
   // ===== Overlay Positioning =====
@@ -923,9 +1039,291 @@
     labelEl.style.display = "block";
   }
 
+  // ===== Redline =====
+  // Held-Option spacing measurements between the selected element and the
+  // element under the cursor, Figma-style: solid accent lines across each gap
+  // with a px readout, dashed guides extending an edge when the two boxes
+  // don't align. The label and toolbar hush while the key is down (CSS, via
+  // .ccp-redlining on <html>) so the page around the selection stays readable.
+
+  // Pure, like computeChromeLayout() and for the same reason — test/redline.mjs
+  // mirrors it and sweeps it with no DOM. Rects are {top,left,width,height}
+  // (a DOMRect works); output is a paint-ordered list of primitives in
+  // viewport coordinates that renderRedline() writes into pooled nodes:
+  //   {kind:"line",  x, y, w, h, value}  solid segment; w or h is 0
+  //   {kind:"guide", x, y, w, h}         dashed segment along a hov edge
+  //   {kind:"pill",  x, y, value}        px readout; (x,y) is the pill CENTER
+  // `value` is the raw fractional px distance — the renderer formats it.
+  // `opts` is how user preferences enter without breaking purity:
+  //   pillOffset — perpendicular pill offset (0 = the pill rides its line)
+  //   guides     — emit dashed extension guides on diagonal measurements
+  //   zeroPills  — emit a pill for flush (sub-half-pixel) edges
+  function computeRedline(sel, hov, vw, vh, opts) {
+    const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
+    const s = { l: sel.left, t: sel.top, r: sel.left + sel.width, b: sel.top + sel.height };
+    const h = { l: hov.left, t: hov.top, r: hov.left + hov.width, b: hov.top + hov.height };
+
+    // Per-axis relation between the two intervals: a gap carries the span
+    // between the facing edges plus which hov edge faces it; an overlap
+    // carries the shared region.
+    const relate = (sLo, sHi, hLo, hHi) => {
+      if (hLo >= sHi) return { gap: true, lo: sHi, hi: hLo, hovEdge: hLo };
+      if (sLo >= hHi) return { gap: true, lo: hHi, hi: sLo, hovEdge: hHi };
+      return { gap: false, lo: Math.max(sLo, hLo), hi: Math.min(sHi, hHi) };
+    };
+    const x = relate(s.l, s.r, h.l, h.r);
+    const y = relate(s.t, s.b, h.t, h.b);
+
+    const lines = [];
+    const guides = [];
+    const pills = [];
+
+    // One measurement along `axis` ("x" = a horizontal segment) from lo to hi
+    // at the given cross coordinate. A flush edge (distance rounding to zero —
+    // nothing to draw a line across) keeps its pill unless zeroPills is off.
+    // Values stay fractional; the renderer's formatter decides the readout.
+    // Returns 0 for flush measurements so the guide check can gate on it.
+    const measure = (axis, lo, hi, cross) => {
+      const value = hi - lo;
+      const flush = Math.round(value) === 0;
+      const mid = (lo + hi) / 2;
+      if (!flush) {
+        lines.push(axis === "x"
+          ? { kind: "line", x: lo, y: cross, w: value, h: 0, value }
+          : { kind: "line", x: cross, y: lo, w: 0, h: value, value });
+      }
+      // Pill hangs perpendicular to its line (below / to the right), clamped
+      // into the viewport so a measurement to an offscreen box stays readable.
+      if (!flush || opts.zeroPills) {
+        const m = GEOMETRY.redlinePillMargin;
+        pills.push({
+          kind: "pill",
+          x: clamp(axis === "x" ? mid : cross + opts.pillOffset, m, vw - m),
+          y: clamp(axis === "x" ? cross + opts.pillOffset : mid, m, vh - m),
+          value,
+        });
+      }
+      return flush ? 0 : value;
+    };
+
+    if (x.gap || y.gap) {
+      // Separated (one axis gapped) or diagonal (both). One measurement per
+      // gapped axis, at the selected element's center — clamped into the shared
+      // region when the cross axis overlaps, which lands both endpoints on real
+      // edges. When it doesn't (diagonal), the line floats at sel's center and
+      // a dashed guide extends hov's facing edge out to meet it.
+      if (x.gap) {
+        const cy = y.gap ? (s.t + s.b) / 2 : clamp((s.t + s.b) / 2, y.lo, y.hi);
+        const value = measure("x", x.lo, x.hi, cy);
+        if (y.gap && opts.guides && value > 0) {
+          const corner = cy < h.t ? h.t : h.b;
+          const past = cy + (cy < h.t ? -1 : 1) * GEOMETRY.redlineGuideOvershoot;
+          guides.push({
+            kind: "guide",
+            x: x.hovEdge,
+            y: Math.min(corner, past),
+            w: 0,
+            h: Math.abs(corner - past),
+          });
+        }
+      }
+      if (y.gap) {
+        const cx = x.gap ? (s.l + s.r) / 2 : clamp((s.l + s.r) / 2, x.lo, x.hi);
+        const value = measure("y", y.lo, y.hi, cx);
+        if (x.gap && opts.guides && value > 0) {
+          const corner = cx < h.l ? h.l : h.r;
+          const past = cx + (cx < h.l ? -1 : 1) * GEOMETRY.redlineGuideOvershoot;
+          guides.push({
+            kind: "guide",
+            x: Math.min(corner, past),
+            y: y.hovEdge,
+            w: Math.abs(corner - past),
+            h: 0,
+          });
+        }
+      }
+    } else {
+      // Both axes overlap. Containment and partial overlap take the same rule:
+      // per axis, measure the two same-side edge pairs. For a contained box
+      // that degenerates to exactly the four insets; never any guides, because
+      // the clamped cross coordinate always lies inside both spans.
+      const cy = clamp((s.t + s.b) / 2, y.lo, y.hi);
+      const cx = clamp((s.l + s.r) / 2, x.lo, x.hi);
+      measure("x", Math.min(s.l, h.l), Math.max(s.l, h.l), cy);
+      measure("x", Math.min(s.r, h.r), Math.max(s.r, h.r), cy);
+      measure("y", Math.min(s.t, h.t), Math.max(s.t, h.t), cx);
+      measure("y", Math.min(s.b, h.b), Math.max(s.b, h.b), cx);
+    }
+
+    return [...lines, ...guides, ...pills];
+  }
+
+  function clearRedline() {
+    if (redlineHoverEl) redlineHoverEl.style.opacity = "0";
+    for (const arr of [redlineLineEls, redlineGuideEls, redlinePillEls]) {
+      for (const node of arr) node.style.opacity = "0";
+    }
+  }
+
+  // Formats a solver distance for the pill readout — the one place px leaves
+  // the geometry. remBase is the page's root font-size, read once per frame.
+  // Mirrored in settings/settings.js for the preview rail; change both.
+  function formatRedlineValue(px, unit, precision, remBase) {
+    if (unit === "rem") {
+      return (px / remBase).toFixed(2).replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "") + "rem";
+    }
+    if (precision === "tenths") {
+      return (Math.round(px * 10) / 10).toFixed(1).replace(/\.0$/, "");
+    }
+    return String(Math.round(px));
+  }
+
+  // One frame of redline paint. Nodes glide between hover targets on the same
+  // curve as the selection overlay; three cases snap instead of gliding:
+  //   - options.instant (scroll/resize): measurements must track the page
+  //     rigidly, exactly like updateOverlay's instant mode
+  //   - a node fading back in: it would otherwise fly in from its stale spot
+  //   - a guide changing orientation: -h to -v is a new shape, not a move
+  // Snapped nodes take .ccp-no-transition, every write lands, one flush
+  // commits the jumps, the class lifts, and opacity fades the rest in place.
+  function renderRedline(options) {
+    if (!redlining || !selectedElement || !redlineEl) return;
+    const hov = redlineTarget;
+    // Hovering the selection itself measures nothing; the chrome stays hushed
+    // (the key is still down) but every measurement node goes dark.
+    if (!hov || hov === selectedElement || !hov.isConnected) {
+      clearRedline();
+      return;
+    }
+
+    const instant = !!(options && options.instant);
+    const selRect = selectedElement.getBoundingClientRect();
+    const hovRect = hov.getBoundingClientRect();
+    const vw = document.documentElement.clientWidth;
+    const vh = document.documentElement.clientHeight;
+    const prims = computeRedline(selRect, hovRect, vw, vh, {
+      pillOffset: redlinePrefs.redlinePillPlacement === "online" ? 0 : GEOMETRY.redlinePillOffset,
+      guides: redlinePrefs.redlineGuides === "on",
+      zeroPills: redlinePrefs.redlineZeroPills === "on",
+    });
+    const remBase = redlinePrefs.redlineUnit === "rem"
+      ? parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
+      : 16;
+
+    const used = new Set();
+    const snapped = [];
+    // Rounded so 1px strokes land on device pixels instead of straddling two.
+    // Pills pass w = null: they size to their text, only their center moves.
+    const place = (node, x, y, w, h, reshape) => {
+      used.add(node);
+      if (instant || reshape || node.style.opacity !== "1") {
+        node.classList.add("ccp-no-transition");
+        snapped.push(node);
+      }
+      node.style.left = Math.round(x) + "px";
+      node.style.top = Math.round(y) + "px";
+      if (w !== null) {
+        node.style.width = Math.max(0, Math.round(w)) + "px";
+        node.style.height = Math.max(0, Math.round(h)) + "px";
+      }
+    };
+
+    // The hover box carries the hovered element's own corner radii, exactly as
+    // the selection overlay does (square elements share the same px fallback),
+    // and morphs between them via the border-radius transition.
+    applyRadii(redlineHoverEl, readRadii(hov), 0);
+    place(redlineHoverEl, hovRect.left, hovRect.top, hovRect.width, hovRect.height, false);
+
+    let li = 0;
+    let gi = 0;
+    let pi = 0;
+    for (const p of prims) {
+      if (p.kind === "line" && li < redlineLineEls.length) {
+        // Zero-thickness axis renders as a 1px stroke
+        place(redlineLineEls[li++], p.x, p.y, Math.max(p.w, 1), Math.max(p.h, 1), false);
+      } else if (p.kind === "guide" && gi < redlineGuideEls.length) {
+        const node = redlineGuideEls[gi++];
+        // Horizontal guides dash via border-top, vertical via border-left.
+        // className must land before place() so it can't wipe the snap class.
+        const cls = p.h === 0 ? "ccp-redline-guide-h" : "ccp-redline-guide-v";
+        const reshape = !node.classList.contains(cls);
+        node.className = cls;
+        place(node, p.x, p.y, p.w, p.h, reshape);
+      } else if (p.kind === "pill" && pi < redlinePillEls.length) {
+        const node = redlinePillEls[pi++];
+        node.textContent = formatRedlineValue(
+          p.value, redlinePrefs.redlineUnit, redlinePrefs.redlinePrecision, remBase
+        );
+        place(node, p.x, p.y, null, null, false);
+      }
+    }
+
+    if (snapped.length) {
+      void redlineEl.offsetWidth; // flush the jumps before re-enabling the glide
+      for (const node of snapped) node.classList.remove("ccp-no-transition");
+    }
+    for (const node of used) node.style.opacity = "1";
+    for (const arr of [redlineLineEls, redlineGuideEls, redlinePillEls]) {
+      for (const node of arr) {
+        if (!used.has(node)) node.style.opacity = "0";
+      }
+    }
+  }
+
+  function scheduleRedline() {
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(() => {
+      if (redlining && probeActive) renderRedline();
+    });
+  }
+
+  function startRedline() {
+    if (redlining || !probeActive || !selectedElement) return;
+    redlining = true;
+    // The class must land before the target resolves: it turns the label and
+    // toolbar visibility:hidden, which drops them out of elementFromPoint, so
+    // the page underneath them becomes measurable immediately.
+    document.documentElement.classList.add("ccp-redlining");
+    applyRedlineQuiet();
+    redlineTarget = lastMouseX < 0
+      ? null
+      : getTargetElement({ clientX: lastMouseX, clientY: lastMouseY }, null);
+    updateSettingsButtonVisibility();
+    scheduleRedline();
+  }
+
+  function stopRedline() {
+    if (!redlining) return;
+    redlining = false;
+    redlineTarget = null;
+    document.documentElement.classList.remove("ccp-redlining");
+    applyRedlineQuiet();
+    clearRedline();
+    // Label and toolbar reappear where layoutChrome kept them all along; the
+    // gear re-checks its collision against the now-visible chrome.
+    updateSettingsButtonVisibility();
+  }
+
   // ===== Event Handlers =====
   function onMouseMove(e) {
-    if (selectedElement) return; // Don't update hover while selected
+    lastMouseX = e.clientX;
+    lastMouseY = e.clientY;
+
+    // Hover tracking stays dead while something is selected — except for
+    // redline, which needs to know what the cursor is over. Modifier state is
+    // re-read from every event on purpose: a keyup we never saw (released
+    // during Alt+Tab, or over an iframe) can neither strand nor miss the mode.
+    if (selectedElement) {
+      if (redlining && !e.altKey) stopRedline();
+      else if (!redlining && e.altKey) startRedline();
+      if (!redlining) return;
+
+      const target = getTargetElement(e, redlineTarget);
+      if (target === redlineTarget) return;
+      redlineTarget = target;
+      scheduleRedline();
+      return;
+    }
 
     const target = getTargetElement(e);
     if (target === hoveredElement) return;
@@ -951,6 +1349,9 @@
       const el = selectedElement || hoveredElement;
       if (!probeActive || !el) return;
       updateOverlay(el, { instant: true, keepContent: true });
+      // Measurements are viewport-relative too, so they track in the same
+      // frame — instant, because chasing a scroll with a glide reads as lag
+      if (redlining) renderRedline({ instant: true });
     });
   }
 
@@ -985,9 +1386,24 @@
     }
 
     showToolbar(target);
+
+    // Clicking while measuring re-anchors: deselectElement() above ended the
+    // previous redline, so re-enter from the event's own modifier state. The
+    // new selection is also the element under the cursor, so nothing draws
+    // until the pointer moves onto something else.
+    if (e.altKey) startRedline();
   }
 
   function onKeyDown(e) {
+    // Option/Alt arms redline — only in select mode, and only bare Alt so
+    // browser Alt-combos keep working. No e.repeat re-entry: startRedline()
+    // is a no-op while active, but skipping the call keeps intent obvious.
+    if (e.key === "Alt" && !e.repeat && !e.ctrlKey && !e.metaKey && selectedElement) {
+      e.preventDefault();
+      startRedline();
+      return;
+    }
+
     if (e.key === "Escape") {
       e.preventDefault();
       e.stopImmediatePropagation();
@@ -1002,7 +1418,22 @@
     }
   }
 
-  function getTargetElement(e) {
+  function onKeyUp(e) {
+    if (e.key === "Alt" && redlining) {
+      // A bare-Alt keyup focuses the browser's menu bar on Windows; the key
+      // was consumed as a mode hold, so suppress that.
+      e.preventDefault();
+      stopRedline();
+    }
+  }
+
+  function onWindowBlur() {
+    stopRedline();
+  }
+
+  // `keep` is what a hit on our own chrome resolves to — the hover path keeps
+  // its current element, redline keeps its current target.
+  function getTargetElement(e, keep = hoveredElement) {
     // Use elementFromPoint to ignore our overlay
     const el = document.elementFromPoint(e.clientX, e.clientY);
     if (!el) return null;
@@ -1017,12 +1448,13 @@
       el.closest("#ccp-settings-btn") ||
       el.closest("#ccp-toast")
     ) {
-      return hoveredElement; // Keep current
+      return keep;
     }
     return el;
   }
 
   function deselectElement() {
+    stopRedline(); // every deselection path ends redline — it has no anchor
     selectedElement = null;
     if (overlayContainer) {
       overlayContainer.classList.remove("ccp-selected");

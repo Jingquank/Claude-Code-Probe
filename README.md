@@ -67,12 +67,30 @@ The panel and the toolbar are placed together in one pass, so they stay on scree
 off each other whatever the element's geometry — including elements taller than the
 window, and `<body>` itself.
 
+### Measuring spacing
+
+With an element selected, hold **Option** (Alt on Windows/Linux) and point at any other
+element — Figma-style redlines appear in the theme's accent: a line across each gap with
+the distance in pixels, dashed guides extending an edge when the two boxes don't line
+up, four inset measurements when one contains the other. The hovered element's outline
+carries its real corner radii, and everything glides between targets as you sweep. The
+panel and toolbar step aside while the key is down and return where they were when you
+release it.
+
+Clicking while holding re-selects: the clicked element becomes the new anchor, and
+measuring continues from it — walk a row of siblings without ever releasing the key.
+
 ### Settings
 
 A gear sits in the top-right corner for as long as Probe Mode is on — whether or not
 anything is selected. It opens the settings page in a tab.
 
-One setting so far: **Theme.** Eight of them.
+The page is a spec sheet — dotted-leader rows in collapsible sections, with a preview
+rail that answers whichever section you're in: the probe chrome while you pick a theme,
+a measuring vignette while you tune redlines. Hovering a measuring row spotlights the
+part of the vignette that row controls.
+
+**Appearance** — the theme. Eight of them.
 
 | | |
 |---|---|
@@ -85,8 +103,15 @@ The info panel already colours tag, `#id` and `.class` separately, which is the 
 thing an editor theme defines — so these map onto real palette roles rather than being
 approximations of them.
 
-Your choice is stored on this device with `chrome.storage.local` and never leaves it.
-Changing it repaints tabs that are already open; no reload.
+**Measuring** — six controls over the held-Option redlines, defaults matching what
+ships: readout unit (`px` / `rem`, against the page's root font-size), precision
+(whole pixels / tenths), where the value pill sits (beside its line / riding on it),
+the dashed extension guides (on / off), a quiet overlay that hides the box-model
+tints while measuring (off by default), and whether flush edges get a `0` marker.
+
+Everything is stored on this device with `chrome.storage.local` and never leaves it.
+Changes repaint tabs that are already open — including a measurement you're holding
+at that moment; no reload.
 
 The gear hides itself when the info panel or the toolbar lands on top of it — three of
 the six placement strategies dock the panel to the top edge, which is where the gear
@@ -147,12 +172,14 @@ view. `test/` holds the rig that proves it:
 |---|---|
 | `test/placement.mjs` | the executable spec — placement algorithms and a 23-case geometry matrix |
 | `test/sim.mjs` | headless runner, comparing algorithms across viewports |
+| `test/redline.mjs` | the redline solver's spec — named cases plus a 10,000-config sweep |
 | `test/harness.html` | browser harness: simulate, or sweep the real extension and reconcile |
 | `test/PLACEMENT-PLAN.md` | why the placement works the way it does |
 
 ```sh
 node test/sim.mjs                        # the matrix, across six viewports
 node test/sim.mjs 1440x900 --detail      # one viewport, with per-case geometry
+node test/redline.mjs                    # spacing-measurement geometry
 
 python3 -m http.server 8765              # then open /test/harness.html
 ```

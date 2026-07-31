@@ -25,66 +25,149 @@
 
   <div class="sp-body">
 
-    <!-- Settings column. Scrolls; the preview rail does not. -->
+    <!-- Settings column. Scrolls; the preview rail does not. Every section is a
+         native <details>, which is the collapse mechanism: free keyboard
+         support, free semantics, no JS. Open by default — collapsing is for
+         getting a long page out of the way, not a state worth persisting. -->
     <div class="sp-scroll">
 
-      <section class="sp-section">
-        <h2 class="sp-legend" id="appearance-legend">Appearance</h2>
-        <p class="sp-sub">
-          Theme for the probe's own interface — the selection outline, the info
-          panel and the toolbar. Nothing on the page you are inspecting changes.
-          <strong>System</strong> follows your operating system's light and dark
-          setting, and switches with it.
-        </p>
-        <div class="sp-pills" role="radiogroup" aria-labelledby="appearance-legend" id="theme-pills"></div>
-        <p class="sp-saved" id="saved-note" role="status" aria-live="polite"></p>
-      </section>
+      <details class="sp-section" open data-focus="theme">
+        <summary class="sp-summary">
+          <i class="sp-caret" aria-hidden="true"></i>
+          <h2 class="sp-legend" id="appearance-legend">Appearance</h2>
+        </summary>
+        <div class="sp-section-body">
+          <p class="sp-sub">
+            Theme for the probe's own interface — the selection outline, the info
+            panel and the toolbar. Nothing on the page you are inspecting changes.
+            <strong>System</strong> follows your operating system's light and dark
+            setting, and switches with it.
+          </p>
+          <div class="sp-pills" role="radiogroup" aria-labelledby="appearance-legend" id="theme-pills"></div>
+        </div>
+      </details>
+
+      <hr class="sp-hr">
+
+      <!-- The measuring sheet. Dense dotted-leader rows in the probe's own
+           register: label, leader, control. Two-value choices are segmented
+           pairs; booleans are real switches. Hovering a row spotlights the part
+           of the vignette in the rail that the row controls (data-hi). -->
+      <details class="sp-section" open data-focus="measure">
+        <summary class="sp-summary">
+          <i class="sp-caret" aria-hidden="true"></i>
+          <h2 class="sp-legend" id="measuring-legend">Measuring</h2>
+        </summary>
+        <div class="sp-section-body">
+          <p class="sp-sub">
+            With an element selected, hold <strong>Option</strong> (Alt on
+            Windows and Linux) and point anywhere to measure the spacing between
+            them. These control how the measurements read and draw; changes apply
+            to open pages immediately — even mid-measurement.
+          </p>
+
+          <div class="sp-sheet" id="measure-sheet">
+            <div class="sp-spec" data-hi="unit">
+              <span class="sp-spec-label" id="lbl-unit">Unit</span>
+              <i class="sp-spec-leader" aria-hidden="true"></i>
+              <span class="sp-seg" role="radiogroup" aria-labelledby="lbl-unit">
+                <button type="button" role="radio" data-set="redlineUnit" data-val="px">px</button>
+                <button type="button" role="radio" data-set="redlineUnit" data-val="rem">rem</button>
+              </span>
+            </div>
+            <div class="sp-spec" data-hi="precision">
+              <span class="sp-spec-label" id="lbl-precision">Precision</span>
+              <i class="sp-spec-leader" aria-hidden="true"></i>
+              <span class="sp-seg" role="radiogroup" aria-labelledby="lbl-precision">
+                <button type="button" role="radio" data-set="redlinePrecision" data-val="whole">whole</button>
+                <button type="button" role="radio" data-set="redlinePrecision" data-val="tenths">0.1</button>
+              </span>
+            </div>
+            <div class="sp-spec" data-hi="placement">
+              <span class="sp-spec-label" id="lbl-placement">Value pill</span>
+              <i class="sp-spec-leader" aria-hidden="true"></i>
+              <span class="sp-seg" role="radiogroup" aria-labelledby="lbl-placement">
+                <button type="button" role="radio" data-set="redlinePillPlacement" data-val="beside">beside</button>
+                <button type="button" role="radio" data-set="redlinePillPlacement" data-val="online">on line</button>
+              </span>
+            </div>
+            <div class="sp-spec" data-hi="guides">
+              <span class="sp-spec-label" id="lbl-guides">Extension guides</span>
+              <i class="sp-spec-leader" aria-hidden="true"></i>
+              <button type="button" class="sp-switch" role="switch" data-sw="redlineGuides" aria-labelledby="lbl-guides"></button>
+            </div>
+            <div class="sp-spec" data-hi="quiet">
+              <span class="sp-spec-label" id="lbl-quiet">Quiet overlay while measuring</span>
+              <i class="sp-spec-leader" aria-hidden="true"></i>
+              <button type="button" class="sp-switch" role="switch" data-sw="redlineQuietOverlay" aria-labelledby="lbl-quiet"></button>
+            </div>
+            <div class="sp-spec" data-hi="zeros">
+              <span class="sp-spec-label" id="lbl-zeros">Mark flush edges with 0</span>
+              <i class="sp-spec-leader" aria-hidden="true"></i>
+              <button type="button" class="sp-switch" role="switch" data-sw="redlineZeroPills" aria-labelledby="lbl-zeros"></button>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <p class="sp-saved" id="saved-note" role="status" aria-live="polite"></p>
 
       <hr class="sp-hr">
 
       <!--
         Not yet available. These are real behaviours the extension already has,
         shown here so the shape of the page is honest about where it is going —
-        but they are not wired to anything, so they are disabled, labelled, and
-        removed from the tab order.
+        but they are not wired to anything, so their rows are disabled, labelled,
+        and removed from the tab order. The summary stays live: a section you
+        cannot use yet is still a section you can fold away.
       -->
-      <section class="sp-section sp-future" aria-labelledby="behaviour-legend">
-        <h2 class="sp-legend" id="behaviour-legend">
-          Behaviour <span class="sp-tag">not in this release</span>
-        </h2>
-        <div class="sp-row" aria-disabled="true" title="Not configurable yet">
-          <span class="sp-row-label">Copy screenshots to the clipboard</span>
-          <span class="sp-toggle sp-on" aria-hidden="true"></span>
+      <details class="sp-section sp-future" open>
+        <summary class="sp-summary">
+          <i class="sp-caret" aria-hidden="true"></i>
+          <h2 class="sp-legend" id="behaviour-legend">
+            Behaviour <span class="sp-tag">not in this release</span>
+          </h2>
+        </summary>
+        <div class="sp-section-body">
+          <div class="sp-row" aria-disabled="true" title="Not configurable yet">
+            <span class="sp-row-label">Copy screenshots to the clipboard</span>
+            <span class="sp-toggle sp-on" aria-hidden="true"></span>
+          </div>
+          <div class="sp-row" aria-disabled="true" title="Not configurable yet">
+            <span class="sp-row-label">Include a source pointer in Copy Code</span>
+            <span class="sp-toggle sp-on" aria-hidden="true"></span>
+          </div>
+          <div class="sp-row" aria-disabled="true" title="Not configurable yet">
+            <span class="sp-row-label">Collapse the toolbar on narrow pages</span>
+            <span class="sp-toggle sp-on" aria-hidden="true"></span>
+          </div>
         </div>
-        <div class="sp-row" aria-disabled="true" title="Not configurable yet">
-          <span class="sp-row-label">Include a source pointer in Copy Code</span>
-          <span class="sp-toggle sp-on" aria-hidden="true"></span>
-        </div>
-        <div class="sp-row" aria-disabled="true" title="Not configurable yet">
-          <span class="sp-row-label">Collapse the toolbar on narrow pages</span>
-          <span class="sp-toggle sp-on" aria-hidden="true"></span>
-        </div>
-      </section>
+      </details>
 
       <hr class="sp-hr">
 
-      <section class="sp-section sp-future" aria-labelledby="motion-legend">
-        <h2 class="sp-legend" id="motion-legend">
-          Motion <span class="sp-tag">not in this release</span>
-        </h2>
-        <div class="sp-row" aria-disabled="true" title="Not configurable yet">
-          <span class="sp-row-label">Marching-ants hover outline</span>
-          <span class="sp-toggle sp-on" aria-hidden="true"></span>
+      <details class="sp-section sp-future" open>
+        <summary class="sp-summary">
+          <i class="sp-caret" aria-hidden="true"></i>
+          <h2 class="sp-legend" id="motion-legend">
+            Motion <span class="sp-tag">not in this release</span>
+          </h2>
+        </summary>
+        <div class="sp-section-body">
+          <div class="sp-row" aria-disabled="true" title="Not configurable yet">
+            <span class="sp-row-label">Marching-ants hover outline</span>
+            <span class="sp-toggle sp-on" aria-hidden="true"></span>
+          </div>
+          <div class="sp-row" aria-disabled="true" title="Not configurable yet">
+            <span class="sp-row-label">Clawd</span>
+            <span class="sp-toggle sp-on" aria-hidden="true"></span>
+          </div>
+          <p class="sp-sub">
+            All of the probe's animation already stops when your system asks for
+            reduced motion.
+          </p>
         </div>
-        <div class="sp-row" aria-disabled="true" title="Not configurable yet">
-          <span class="sp-row-label">Clawd</span>
-          <span class="sp-toggle sp-on" aria-hidden="true"></span>
-        </div>
-        <p class="sp-sub">
-          All of the probe's animation already stops when your system asks for
-          reduced motion.
-        </p>
-      </section>
+      </details>
 
       <!--
         These point at the repository rather than at ../PRIVACY.md and
@@ -93,7 +176,7 @@
       -->
       <footer class="sp-footer">
         <p>
-          Your theme is stored on this device and never leaves it.
+          Your settings are stored on this device and never leave it.
           <a href="https://github.com/Jingquank/Claude-Code-Probe/blob/main/PRIVACY.md"
              target="_blank" rel="noreferrer">Privacy</a> ·
           <a href="https://github.com/Jingquank/Claude-Code-Probe/blob/main/DESIGN.md"
@@ -104,15 +187,25 @@
     </div>
 
     <!--
-      Preview rail. 300px, which is below the toolbar's 470px compact breakpoint,
-      so what renders here is the narrow-viewport state: icon-only buttons. It is
-      a real state, just not the common one — hence the label.
+      Preview rail. Context-sensitive: it answers whichever section you are in —
+      the chrome mock while you pick a theme, the measuring vignette while you
+      tune redlines (settings.js swaps data-mode as the pointer or focus moves).
+      300px, which is below the toolbar's 470px compact breakpoint, so the
+      chrome renders in its narrow icon-only state. It is a real state, just
+      not the common one — hence the tag.
     -->
-    <aside class="sp-rail">
-      <h2 class="sp-legend">Preview <span class="sp-tag">narrow</span></h2>
-      <p class="sp-sub">
+    <aside class="sp-rail" id="preview-rail" data-mode="theme">
+      <h2 class="sp-legend">Preview
+        <span class="sp-tag" data-pv="theme">narrow</span>
+        <span class="sp-tag" data-pv="measure">measuring</span>
+      </h2>
+      <p class="sp-sub" data-pv="theme">
         At this width the toolbar collapses to icons, the same as it does on a
         narrow page. Button labels are hidden in this state.
+      </p>
+      <p class="sp-sub" data-pv="measure">
+        A held-Option measurement: gaps, dashed extension guides, a flush edge.
+        The readouts follow the settings on the left.
       </p>
 
       <div class="sp-preview">
@@ -191,6 +284,30 @@
             </button>
           </div>
 
+        </div>
+
+        <!--
+          The measuring vignette: a composite catalogue, not a simulation — one
+          diagonal pair (two gap lines, two dashed guides, two pills), one flush
+          neighbour (the zero pill), tint on the selection (the quiet toggle).
+          Hand-placed nodes: computeRedline lives inside the content script's
+          IIFE and cannot be imported, so the geometry here is drawn to the same
+          rules by hand. Every line spans the gap it claims to measure; the pill
+          values are formatted by the same function the extension uses
+          (settings.js mirrors formatRedlineValue — change both).
+        -->
+        <div class="sp-vig" id="measure-vig" aria-hidden="true"
+             data-placement="beside" data-guides="on" data-quiet="off" data-zeros="on">
+          <div class="sv-el sv-sel"><span class="sv-tag">selected</span></div>
+          <div class="sv-el sv-flush"></div>
+          <div class="sv-el sv-hov"><span class="sv-tag">hover</span></div>
+          <i class="sv-line sv-line-v"></i>
+          <i class="sv-line sv-line-h"></i>
+          <i class="sv-guide sv-guide-h"></i>
+          <i class="sv-guide sv-guide-v"></i>
+          <b class="sv-pill sv-pill-a" id="vig-pill-a">44</b>
+          <b class="sv-pill sv-pill-b" id="vig-pill-b">35</b>
+          <b class="sv-pill sv-pill-z" id="vig-pill-z">0</b>
         </div>
       </div>
     </aside>

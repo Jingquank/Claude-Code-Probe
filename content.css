@@ -127,6 +127,119 @@
   }
 }
 
+/* ===== Redline =====
+   Held-Option spacing measurements. The nodes glide between hover targets on
+   the overlay's own curve; renderRedline() lifts them out of the glide with
+   .ccp-no-transition when tracking scroll, when a node fades back in, and
+   when a guide changes orientation. Nothing here self-animates — the dashed
+   guides deliberately don't march — so, like the overlay glide itself, this
+   section adds nothing to the reduced-motion block above (which quiets
+   animations, not positional transitions).
+
+   The wrapper is a direct child of #ccp-overlay-container and never moves;
+   the measurement nodes are its children, which keeps them out of reach of
+   the blanket `> div` glide at the top of this file — their transitions are
+   declared here, where the per-frame snap logic can reason about them. */
+#ccp-redline {
+  position: fixed;
+  inset: 0;
+  display: none;
+}
+
+.ccp-redlining #ccp-redline {
+  display: block;
+}
+
+/* border-radius is in the list for the hover box's corner morph; it is inert
+   on the square nodes. Pills size to their text — width/height never tween. */
+#ccp-redline .ccp-redline-hover,
+#ccp-redline .ccp-redline-line,
+#ccp-redline .ccp-redline-guide-h,
+#ccp-redline .ccp-redline-guide-v,
+#ccp-redline .ccp-redline-pill {
+  transition: top var(--ccp-duration) var(--ccp-ease),
+              left var(--ccp-duration) var(--ccp-ease),
+              width var(--ccp-duration) var(--ccp-ease),
+              height var(--ccp-duration) var(--ccp-ease),
+              border-radius var(--ccp-duration) var(--ccp-ease),
+              opacity var(--ccp-duration) ease;
+}
+
+#ccp-redline .ccp-redline-hover {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px solid var(--ccp-accent);
+}
+
+#ccp-redline .ccp-redline-line {
+  position: absolute;
+  background: var(--ccp-accent);
+}
+
+#ccp-redline .ccp-redline-guide-h {
+  position: absolute;
+  height: 0;
+  border-top: 1px dashed rgb(from var(--ccp-accent) r g b / 0.6);
+}
+
+#ccp-redline .ccp-redline-guide-v {
+  position: absolute;
+  width: 0;
+  border-left: 1px dashed rgb(from var(--ccp-accent) r g b / 0.6);
+}
+
+#ccp-redline .ccp-redline-pill {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  background: var(--ccp-accent);
+  color: var(--ccp-on-accent);
+  font: var(--ccp-weight-medium) var(--ccp-text-sm)/1 var(--ccp-font);
+  letter-spacing: var(--ccp-tracking-num);
+  font-variant-numeric: tabular-nums;
+  padding: var(--ccp-gap-tight) var(--ccp-xs);
+  border-radius: var(--ccp-radius-sm);
+  white-space: nowrap;
+}
+
+/* Quiet overlay — an opt-in preference (redlineQuietOverlay). While measuring,
+   the box-model tints, bloom, and sweep accents stand down so nothing painted
+   sits under the measurement lines; the marching-ants outline stays, because
+   you must still see what you're measuring from. Opacity, so the container's
+   own transition fades them out and back. */
+.ccp-redline-quiet.ccp-redlining #ccp-margin-box,
+.ccp-redline-quiet.ccp-redlining #ccp-padding-box,
+.ccp-redline-quiet.ccp-redlining #ccp-content-box,
+.ccp-redline-quiet.ccp-redlining #ccp-bloom,
+.ccp-redline-quiet.ccp-redlining .ccp-spin {
+  opacity: 0;
+}
+
+/* The hush: visibility, not display or opacity. display would fight
+   layoutChrome's measurement pass (it forces display:block to read offset
+   sizes); opacity would leave the toolbar hit-testable and the label in
+   elementFromPoint's way. visibility keeps both laid out — so they reappear
+   exactly where layoutChrome kept them — while the page underneath becomes
+   a measurable redline target. Same precedent as #ccp-settings-btn.ccp-yielded
+   below, for the same reason. */
+.ccp-redlining #ccp-label,
+.ccp-redlining #ccp-toolbar {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* visibility normally inherits, but every node inside the toolbar declares
+   `all: initial` (see the Action Toolbar section), which resets visibility to
+   `visible` and severs the inheritance — hiding the rail alone leaves its
+   buttons showing. So the hide has to reach each descendant itself, and with
+   !important: those `all` declarations sit on higher-specificity selectors.
+   pointer-events gets the same treatment, or the invisible buttons would still
+   swallow the clicks that redline's re-anchoring depends on. The label needs
+   none of this — its children never reset, so they inherit the hide. */
+.ccp-redlining #ccp-toolbar * {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
 /* ===== Element Label ===== */
 #ccp-label {
   position: fixed;

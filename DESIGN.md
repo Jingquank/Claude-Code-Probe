@@ -123,21 +123,30 @@ where a JS-toggled class beat a media query because the JS needed to know.
 ### 5. Geometry stays in JS — the one deliberate exception
 
 `GEOMETRY` in `content.js` keeps `margin`, `gap`, `pair`, `minLabelHeight`,
-`narrowToolbar`, `radiusFallback` and `maxSweepDiagonal` as JavaScript numbers.
+`narrowToolbar`, `radiusFallback`, `maxSweepDiagonal`, `redlinePillOffset`,
+`redlineGuideOvershoot` and `redlinePillMargin` as JavaScript numbers.
 
 Not an oversight. `computeChromeLayout()` is a **pure function**, mirrored in
 `test/placement.mjs` and validated over 8280 configurations with no DOM present.
 A pure function cannot call `getComputedStyle`, so a CSS custom property is
 unreachable from the place these values are actually consumed. Moving them would
-buy tidiness and cost the spec.
+buy tidiness and cost the spec. `computeRedline()` follows the same arrangement:
+pure, mirrored in `test/redline.mjs`, swept over ten thousand element pairs.
 
 The rule, stated once: **values the layout algorithm reasons about live in
 `GEOMETRY`; values that only paint live in `tokens.css`.** `--ccp-ring: 2px` is a
 token because it draws a stroke; `GEOMETRY.gap: 6` is not because the solver does
-arithmetic on it.
+arithmetic on it. The redline's 1px stroke is CSS; its pill offset is `GEOMETRY`,
+because the solver adds and clamps it.
 
-`test/placement.mjs` mirrors four of them. Change one, change both — the
-harness's live sweep is what catches the drift.
+`test/placement.mjs` mirrors four of them, `test/redline.mjs` the three
+`redline*` keys. Change one, change both — the harness's live sweep and the
+redline sweep are what catch the drift.
+
+User preferences reach the solver the same way the constants do: as arguments.
+`computeRedline()` takes an `opts` parameter (pill offset, guides, zero pills)
+built by the caller from `redlinePrefs` — the solver itself never reads storage,
+a token, or a global, so the sweep can parameterize it freely.
 
 ### 6. Three things are never themed, on purpose
 
@@ -161,7 +170,13 @@ asked their OS for stillness. The marquee was missing too. Both are now in the
 query.
 
 Anything animated must be listed there. There is no automated check for this one
-— it is the weakest link in this document.
+— it is the weakest link in this document. The redline layer stays off the list
+by design: its dashed guides deliberately don't march. It does *glide* — the
+hover box, lines and pills tween between hover targets on the same
+`--ccp-duration`/`--ccp-ease` curve as the selection overlay — but that is a
+positional transition, the same category as the overlay glide, which this block
+has never disabled. Redline snaps out of its glide while tracking scroll, so
+the tween never reads as lag.
 
 ### 8. Contrast is checked, and one shortfall is recorded rather than hidden
 
@@ -214,6 +229,31 @@ Light themes need their **shadows re-tuned, not inverted**. The dark themes'
 `rgba(20, 20, 19, 0.6)` reads as a smudge on a light surface, which is why
 `--ccp-shadow-card` and `--ccp-shadow-bar` are themed values rather than derived
 from the surface.
+
+---
+
+## Adding a setting
+
+The measuring preferences set the pattern; a new setting is four sites, all flat:
+
+1. One `chrome.storage.local` key per setting — the `theme` convention. Add its
+   roster (legal values, default first) to `REDLINE_PREFS` in `content.js` — or a
+   sibling map for a new group — and to its mirror in `settings/settings.js`.
+2. Consume it where it acts. Values the redline solver reasons about enter
+   `computeRedline()` through the `opts` parameter, which is what keeps the
+   function pure and the `test/redline.mjs` sweep honest (§5). Paint-only values
+   should be a class toggled on `<html>` and a rule in `content.css`, like the
+   quiet overlay.
+3. A row in the settings sheet: label, leader, control — segmented pair for
+   named values, switch for booleans — plus a `data-hi` hook if the vignette can
+   show the effect.
+4. The `storage.onChanged` listeners on both sides keep open tabs and second
+   settings windows in step; a redline setting must also repaint a measurement
+   the user is holding at that moment (`scheduleRedline()` on change).
+
+The settings page never learns the extension's logic: the vignette is hand-drawn
+geometry and the only shared code is `formatRedlineValue`, mirrored with a
+change-both comment, same as the placement spec.
 
 ---
 
