@@ -13,8 +13,10 @@
   --sp-ground: var(--ccp-surface);
   --sp-raised: color-mix(in srgb, var(--ccp-surface) 94%, var(--ccp-text));
   --sp-hairline: color-mix(in srgb, var(--ccp-surface) 84%, var(--ccp-text));
-  --sp-rail-width: 300px;
   --sp-pad: 22px;
+  /* Sections glide open and closed (::details-content height below); this is
+     what lets `height: auto` interpolate. */
+  interpolate-size: allow-keywords;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -29,11 +31,15 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* 12-column sheet at 1200px: the controls span 5 columns (500px), the
+   preview the remaining 7 (700px). Seven columns of preview is what lets
+   the toolbar render at full width — it clears the 470px compact breakpoint
+   with room to spare for the rail's padding. */
 .sp {
   display: flex;
   flex-direction: column;
   min-height: 100%;
-  max-width: 1100px;
+  max-width: 1200px;
   margin: 0 auto;
   /* The rail collapses under the settings column on a narrow window. A container
      query rather than a media query because the wrapper is max-width capped, so
@@ -67,11 +73,14 @@ body {
   color: var(--ccp-text-muted);
 }
 
-/* ===== Two columns ===== */
+/* ===== Two columns =====
+   5 : 7 of the 12-col sheet — controls 500px, preview 700px at full width,
+   flush against each other with the rail's border as the seam. The preview
+   takes every column the controls don't need. */
 .sp-body {
   flex: 1;
   display: grid;
-  grid-template-columns: 1fr var(--sp-rail-width);
+  grid-template-columns: 5fr 7fr;
   align-items: start;
   min-height: 0;
 }
@@ -84,27 +93,55 @@ body {
   min-width: 0;
 }
 
-/* Sticky, so the preview stays put while the settings list scrolls past it. */
+/* One-time entrance: the two columns settle in two beats, rail 60ms behind.
+   @starting-style only applies at first render — neither element ever
+   display-toggles afterwards, so this can never replay. */
+.sp-scroll,
 .sp-rail {
+  transition: opacity var(--ccp-duration-slow) var(--ccp-ease),
+              translate var(--ccp-duration-slow) var(--ccp-ease);
+}
+
+.sp-rail { transition-delay: 60ms; }
+
+@starting-style {
+  .sp-scroll,
+  .sp-rail {
+    opacity: 0;
+    translate: 0 4px;
+  }
+}
+
+/* Two elements, two jobs: the rail stretches to the full column height so
+   its raised ground runs the whole screen; the inner wrapper is the sticky
+   part, pinning the preview content to the viewport top while the settings
+   scroll past. (One element can't do both — a full-height panel has nowhere
+   to stick to.) */
+.sp-rail {
+  align-self: stretch;
+  background: var(--sp-raised);
+  border-left: 1px solid var(--sp-hairline);
+}
+
+.sp-rail-in {
   position: sticky;
   top: 0;
   display: flex;
   flex-direction: column;
   gap: var(--ccp-gap-section);
   padding: var(--sp-pad);
-  background: var(--sp-raised);
-  border-left: 1px solid var(--sp-hairline);
-  min-height: 100%;
 }
 
-@container (max-width: 720px) {
+/* Below this, the preview column would fall under ~474px and clip the
+   full-width toolbar — collapse to one column instead (where the full-width
+   rail fits it again). */
+@container (max-width: 1020px) {
   .sp-body { grid-template-columns: 1fr; }
   .sp-rail {
-    position: static;
     border-left: 0;
     border-top: 1px solid var(--sp-hairline);
-    min-height: 0;
   }
+  .sp-rail-in { position: static; }
 }
 
 /* ===== Section furniture =====
@@ -154,6 +191,21 @@ details:not([open]) > .sp-summary .sp-caret {
   flex-direction: column;
   gap: var(--ccp-gap-section);
   padding-top: var(--ccp-gap-section);
+}
+
+/* The collapse glides: height interpolates to auto (interpolate-size on :root)
+   while content-visibility handles the discrete end. Pairs with the caret's
+   rotation. Older Chrome ignores ::details-content and snaps, which is the
+   previous behaviour. */
+.sp-section::details-content {
+  height: 0;
+  overflow: clip;
+  transition: height var(--ccp-duration-slow) var(--ccp-ease),
+              content-visibility var(--ccp-duration-slow) allow-discrete;
+}
+
+.sp-section[open]::details-content {
+  height: auto;
 }
 
 .sp-legend {
@@ -214,8 +266,10 @@ details:not([open]) > .sp-summary .sp-caret {
   letter-spacing: var(--ccp-tracking-wide);
   cursor: pointer;
   transition: background var(--ccp-duration), border-color var(--ccp-duration),
-              color var(--ccp-duration);
+              color var(--ccp-duration), transform var(--ccp-duration-fast) ease;
 }
+
+.sp-pill:active { transform: scale(0.97); }
 
 .sp-pill:hover {
   border-color: rgb(from var(--ccp-accent) r g b / 0.6);
@@ -259,17 +313,45 @@ details:not([open]) > .sp-summary .sp-caret {
 .sp-sw-split > span > i:nth-child(1) { background: var(--ccp-surface); }
 .sp-sw-split > span > i:nth-child(2) { background: var(--ccp-accent); }
 
+/* The note fades in with a 2px rise and fades back out; settings.js toggles
+   .sp-saved-in and clears the text only after the fade has finished. */
 .sp-saved {
   margin: 0;
   min-height: 1.4em;
   font-size: var(--ccp-text-sm);
   color: var(--ccp-syntax-class);
+  opacity: 0;
+  translate: 0 2px;
+  transition: opacity var(--ccp-duration) var(--ccp-ease),
+              translate var(--ccp-duration) var(--ccp-ease);
+}
+
+.sp-saved.sp-saved-in {
+  opacity: 1;
+  translate: 0 0;
 }
 
 /* ===== The measuring sheet =====
    Dotted-leader property rows, the same register as the probe's readout:
-   label, leader, control. The leader is a flexible rule between them. */
-.sp-sheet { display: flex; flex-direction: column; }
+   label, leader, control. The leader is a flexible rule between them.
+   Rows sit tight inside their chunk; chunks breathe apart, each under a
+   category label one register quieter than the section legend. */
+.sp-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ccp-md);
+}
+
+.sp-sheet-group { display: flex; flex-direction: column; }
+
+.sp-sheet-cat {
+  margin: 0 0 var(--ccp-gap-tight);
+  font-size: var(--ccp-text-sm);
+  font-weight: var(--ccp-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: var(--ccp-tracking-wide);
+  color: var(--ccp-text-faint);
+}
 
 .sp-spec {
   display: flex;
@@ -309,8 +391,11 @@ details:not([open]) > .sp-summary .sp-caret {
   letter-spacing: var(--ccp-tracking-wide);
   padding: var(--ccp-gap-base) var(--ccp-md);
   cursor: pointer;
-  transition: background var(--ccp-duration), color var(--ccp-duration);
+  transition: background var(--ccp-duration), color var(--ccp-duration),
+              transform var(--ccp-duration-fast) ease;
 }
+
+.sp-seg button:active { transform: scale(0.97); }
 
 .sp-seg button + button { border-left: 1px solid var(--ccp-sep); }
 
@@ -338,8 +423,10 @@ details:not([open]) > .sp-summary .sp-caret {
   border-radius: 9px;
   background: var(--ccp-sep);
   cursor: pointer;
-  transition: background var(--ccp-duration);
+  transition: background var(--ccp-duration), transform var(--ccp-duration-fast) ease;
 }
+
+.sp-switch:active { transform: scale(0.96); }
 
 .sp-switch::after {
   content: "";
@@ -360,6 +447,36 @@ details:not([open]) > .sp-summary .sp-caret {
 
 .sp-switch[aria-checked="true"] { background: var(--ccp-accent); }
 .sp-switch[aria-checked="true"]::after { left: 15px; background: var(--ccp-on-accent); }
+
+/* Quiet text action, spec-sheet register. Disabled means "already there". */
+.sp-reset {
+  align-self: flex-start;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: var(--ccp-weight-medium) var(--ccp-text-sm)/var(--ccp-leading-tight) var(--ccp-font);
+  text-transform: uppercase;
+  letter-spacing: var(--ccp-tracking-wide);
+  color: var(--ccp-text-muted);
+  cursor: pointer;
+  transition: color var(--ccp-duration), transform var(--ccp-duration-fast) ease;
+}
+
+.sp-reset:active:not(:disabled) { transform: scale(0.97); }
+
+.sp-reset:hover:not(:disabled) { color: var(--ccp-accent); }
+
+.sp-reset:focus-visible {
+  outline: 2px solid var(--ccp-accent);
+  outline-offset: 2px;
+  border-radius: var(--ccp-radius-xs);
+}
+
+.sp-reset:disabled {
+  opacity: var(--ccp-opacity-disabled);
+  cursor: default;
+}
 
 /* ===== Not-yet-available rows =====
    The body is disabled, not the section — the summary stays live so an unusable
@@ -426,11 +543,28 @@ details:not([open]) > .sp-summary .sp-caret {
   background: var(--sp-ground);
   border: 1px solid var(--sp-hairline);
   padding: var(--ccp-md);
-  /* A longer readout than the sample would overflow 300px rather than wrap,
-     because #ccp-label is white-space: nowrap. Clip it here so the rail's own
-     layout can't be pushed around. */
+  /* A longer readout than the sample would overflow the rail rather than
+     wrap, because #ccp-label is white-space: nowrap. Clip it here so the
+     rail's own layout can't be pushed around. */
   overflow: hidden;
+  /* Mock and vignette share the first cell: during the mode crossfade both
+     are momentarily display:block, and overlapping them keeps the box at
+     max(heights) instead of stacking them for a frame. Caption sits below. */
+  display: grid;
 }
+
+.sp-preview > .ccp-mock,
+.sp-preview > .sp-vig {
+  grid-area: 1 / 1;
+}
+
+.sp-preview > .sv-caption { grid-area: 2 / 1; }
+
+.sp-pv-slot { display: grid; }
+.sp-pv-slot > * { grid-area: 1 / 1; }
+
+.sp-tag-slot { display: inline-grid; }
+.sp-tag-slot > * { grid-area: 1 / 1; justify-self: start; }
 
 .ccp-mock {
   position: relative;
@@ -472,11 +606,32 @@ details:not([open]) > .sp-summary .sp-caret {
 /* ===== Context swap =====
    The rail shows one preview at a time: the chrome mock while the pointer or
    focus is in Appearance, the measuring vignette while it is in the sheet.
-   settings.js writes data-mode; everything else is CSS. */
+   settings.js writes data-mode; everything else is CSS.
+
+   The swap crossfades — opacity only, at the fast duration, because it is
+   pointer-driven and fires on every section crossing: anything slower or
+   with travel would read as the rail chasing the mouse.
+
+   Both sides stay in layout permanently, overlapped in their shared grid
+   cells, and hide via visibility — never display. Removing the hidden side
+   from layout made the preview box snap to a new height at the end of every
+   fade, which read as a glitch. With both laid out, every box is the same
+   height in both modes and nothing moves. (visibility's transition rule
+   keeps the fading side visible until the fade completes.) */
+.ccp-mock,
+.sp-vig,
+.sp-rail [data-pv] {
+  transition: opacity var(--ccp-duration-fast) ease,
+              visibility var(--ccp-duration-fast);
+}
+
 .sp-rail[data-mode="theme"] .sp-vig,
-.sp-rail[data-mode="theme"] [data-pv="measure"] { display: none; }
+.sp-rail[data-mode="theme"] [data-pv="measure"],
 .sp-rail[data-mode="measure"] .ccp-mock,
-.sp-rail[data-mode="measure"] [data-pv="theme"] { display: none; }
+.sp-rail[data-mode="measure"] [data-pv="theme"] {
+  opacity: 0;
+  visibility: hidden;
+}
 
 /* ===== The measuring vignette =====
    Static, hand-placed geometry (see the note in index.html): a diagonal pair
@@ -488,6 +643,10 @@ details:not([open]) > .sp-summary .sp-caret {
   width: 256px;
   height: 186px;
   margin: 0 auto;
+  /* zoom, not transform: it scales layout too, so the preview box grows with
+     the drawing instead of clipping it. The coordinates stay hand-auditable
+     at 1x. */
+  zoom: 1.3;
 }
 
 .sv-el { position: absolute; }
@@ -510,7 +669,8 @@ details:not([open]) > .sp-summary .sp-caret {
   border: 1.5px dashed var(--ccp-accent);
   border-radius: var(--ccp-radius-sm);
   background: rgb(from var(--ccp-accent) r g b / 0.1);
-  transition: background var(--ccp-duration);
+  transition: background var(--ccp-duration),
+              box-shadow var(--ccp-duration-fast) ease;
 }
 
 .sp-vig[data-quiet="on"] .sv-sel { background: transparent; }
@@ -537,7 +697,11 @@ details:not([open]) > .sp-summary .sp-caret {
 .sv-line-v { left: 69px; top: 68px; width: 1px; height: 44px; }
 .sv-line-h { left: 124px; top: 42px; width: 34px; height: 1px; }
 
-.sv-guide { position: absolute; transition: opacity var(--ccp-duration); }
+.sv-guide {
+  position: absolute;
+  transition: opacity var(--ccp-duration),
+              border-color var(--ccp-duration-fast) ease;
+}
 .sp-vig[data-guides="off"] .sv-guide { opacity: 0; }
 .sv-guide-h {
   left: 65px;
@@ -566,7 +730,7 @@ details:not([open]) > .sp-summary .sp-caret {
   border-radius: var(--ccp-radius-sm);
   white-space: nowrap;
   transition: left var(--ccp-duration), top var(--ccp-duration),
-              opacity var(--ccp-duration);
+              opacity var(--ccp-duration), box-shadow var(--ccp-duration-fast) ease;
 }
 
 .sv-pill-a { left: 69px; top: 90px; }
@@ -576,19 +740,32 @@ details:not([open]) > .sp-summary .sp-caret {
 .sv-pill-z { left: 124px; top: 34px; }
 .sp-vig[data-zeros="off"] .sv-pill-z { opacity: 0; }
 
-/* Hovering a sheet row spotlights what it controls (settings.js sets data-hi). */
+/* Hovering or focusing a sheet row spotlights what it controls (settings.js
+   sets data-hi). A box-shadow ring, not an outline — box-shadow interpolates,
+   so the spotlight fades in instead of popping. */
 .sp-vig[data-hi="unit"] .sv-pill,
 .sp-vig[data-hi="precision"] .sv-pill,
 .sp-vig[data-hi="placement"] .sv-pill-a,
 .sp-vig[data-hi="placement"] .sv-pill-b,
 .sp-vig[data-hi="zeros"] .sv-pill-z,
 .sp-vig[data-hi="quiet"] .sv-sel {
-  outline: 2px solid rgb(from var(--ccp-accent) r g b / 0.45);
-  outline-offset: 2px;
+  box-shadow: 0 0 0 2px rgb(from var(--ccp-accent) r g b / 0.45);
 }
 
 .sp-vig[data-hi="guides"] .sv-guide-h { border-top-color: var(--ccp-accent); }
 .sp-vig[data-hi="guides"] .sv-guide-v { border-left-color: var(--ccp-accent); }
+
+/* Current readout at a glance, in the controls' own words. */
+.sv-caption {
+  margin: var(--ccp-md) 0 0;
+  padding-top: var(--ccp-sm);
+  border-top: 1px solid var(--sp-hairline);
+  font-size: var(--ccp-text-sm);
+  letter-spacing: var(--ccp-tracking-num);
+  font-variant-numeric: tabular-nums;
+  color: var(--ccp-text-muted);
+  text-align: center;
+}
 
 /* The element under inspection. Not part of the extension's chrome — it stands
    in for the page, so it borrows the accent for its outline the same way the
@@ -611,12 +788,22 @@ details:not([open]) > .sp-summary .sp-caret {
 
 .sp-element-body { font-size: var(--ccp-text-base); color: var(--ccp-text-muted); }
 
+/* The page's complete motion inventory dies here, zeroed rather than
+   softened — same contract as content.css's block. */
 @media (prefers-reduced-motion: reduce) {
   .sp-pill,
   .sp-seg button,
   .sp-switch,
   .sp-switch::after,
   .sp-caret,
+  .sp-reset,
+  .sp-saved,
+  .sp-scroll,
+  .sp-rail,
+  .sp-section::details-content,
+  .ccp-mock,
+  .sp-vig,
+  .sp-rail [data-pv],
   .sv-sel,
   .sv-guide,
   .sv-pill { transition: none; }

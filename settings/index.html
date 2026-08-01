@@ -44,6 +44,7 @@
             setting, and switches with it.
           </p>
           <div class="sp-pills" role="radiogroup" aria-labelledby="appearance-legend" id="theme-pills"></div>
+          <p class="sp-saved" id="saved-appearance" role="status" aria-live="polite"></p>
         </div>
       </details>
 
@@ -66,51 +67,60 @@
             to open pages immediately — even mid-measurement.
           </p>
 
+          <!-- Two chunks at the sheet's natural seam: what the numbers say,
+               then what gets drawn. Category labels are a register quieter
+               than the section legend — a spec sheet's own sub-headings. -->
           <div class="sp-sheet" id="measure-sheet">
-            <div class="sp-spec" data-hi="unit">
-              <span class="sp-spec-label" id="lbl-unit">Unit</span>
-              <i class="sp-spec-leader" aria-hidden="true"></i>
-              <span class="sp-seg" role="radiogroup" aria-labelledby="lbl-unit">
-                <button type="button" role="radio" data-set="redlineUnit" data-val="px">px</button>
-                <button type="button" role="radio" data-set="redlineUnit" data-val="rem">rem</button>
-              </span>
+            <div class="sp-sheet-group">
+              <p class="sp-sheet-cat" aria-hidden="true">Readout</p>
+              <div class="sp-spec" data-hi="unit">
+                <span class="sp-spec-label" id="lbl-unit">Unit</span>
+                <i class="sp-spec-leader" aria-hidden="true"></i>
+                <span class="sp-seg" role="radiogroup" aria-labelledby="lbl-unit">
+                  <button type="button" role="radio" data-set="redlineUnit" data-val="px">px</button>
+                  <button type="button" role="radio" data-set="redlineUnit" data-val="rem">rem</button>
+                </span>
+              </div>
+              <div class="sp-spec" data-hi="precision">
+                <span class="sp-spec-label" id="lbl-precision">Precision</span>
+                <i class="sp-spec-leader" aria-hidden="true"></i>
+                <span class="sp-seg" role="radiogroup" aria-labelledby="lbl-precision">
+                  <button type="button" role="radio" data-set="redlinePrecision" data-val="whole">whole</button>
+                  <button type="button" role="radio" data-set="redlinePrecision" data-val="tenths">tenths</button>
+                </span>
+              </div>
             </div>
-            <div class="sp-spec" data-hi="precision">
-              <span class="sp-spec-label" id="lbl-precision">Precision</span>
-              <i class="sp-spec-leader" aria-hidden="true"></i>
-              <span class="sp-seg" role="radiogroup" aria-labelledby="lbl-precision">
-                <button type="button" role="radio" data-set="redlinePrecision" data-val="whole">whole</button>
-                <button type="button" role="radio" data-set="redlinePrecision" data-val="tenths">0.1</button>
-              </span>
-            </div>
-            <div class="sp-spec" data-hi="placement">
-              <span class="sp-spec-label" id="lbl-placement">Value pill</span>
-              <i class="sp-spec-leader" aria-hidden="true"></i>
-              <span class="sp-seg" role="radiogroup" aria-labelledby="lbl-placement">
-                <button type="button" role="radio" data-set="redlinePillPlacement" data-val="beside">beside</button>
-                <button type="button" role="radio" data-set="redlinePillPlacement" data-val="online">on line</button>
-              </span>
-            </div>
-            <div class="sp-spec" data-hi="guides">
-              <span class="sp-spec-label" id="lbl-guides">Extension guides</span>
-              <i class="sp-spec-leader" aria-hidden="true"></i>
-              <button type="button" class="sp-switch" role="switch" data-sw="redlineGuides" aria-labelledby="lbl-guides"></button>
-            </div>
-            <div class="sp-spec" data-hi="quiet">
-              <span class="sp-spec-label" id="lbl-quiet">Quiet overlay while measuring</span>
-              <i class="sp-spec-leader" aria-hidden="true"></i>
-              <button type="button" class="sp-switch" role="switch" data-sw="redlineQuietOverlay" aria-labelledby="lbl-quiet"></button>
-            </div>
-            <div class="sp-spec" data-hi="zeros">
-              <span class="sp-spec-label" id="lbl-zeros">Mark flush edges with 0</span>
-              <i class="sp-spec-leader" aria-hidden="true"></i>
-              <button type="button" class="sp-switch" role="switch" data-sw="redlineZeroPills" aria-labelledby="lbl-zeros"></button>
+            <div class="sp-sheet-group">
+              <p class="sp-sheet-cat" aria-hidden="true">Drawing</p>
+              <div class="sp-spec" data-hi="placement">
+                <span class="sp-spec-label" id="lbl-placement">Value pill</span>
+                <i class="sp-spec-leader" aria-hidden="true"></i>
+                <span class="sp-seg" role="radiogroup" aria-labelledby="lbl-placement">
+                  <button type="button" role="radio" data-set="redlinePillPlacement" data-val="beside">beside</button>
+                  <button type="button" role="radio" data-set="redlinePillPlacement" data-val="online">on the line</button>
+                </span>
+              </div>
+              <div class="sp-spec" data-hi="guides">
+                <span class="sp-spec-label" id="lbl-guides">Extension guides</span>
+                <i class="sp-spec-leader" aria-hidden="true"></i>
+                <button type="button" class="sp-switch" role="switch" data-sw="redlineGuides" aria-labelledby="lbl-guides"></button>
+              </div>
+              <div class="sp-spec" data-hi="quiet">
+                <span class="sp-spec-label" id="lbl-quiet">Quiet overlay while measuring</span>
+                <i class="sp-spec-leader" aria-hidden="true"></i>
+                <button type="button" class="sp-switch" role="switch" data-sw="redlineQuietOverlay" aria-labelledby="lbl-quiet"></button>
+              </div>
+              <div class="sp-spec" data-hi="zeros">
+                <span class="sp-spec-label" id="lbl-zeros">Mark flush edges with 0</span>
+                <i class="sp-spec-leader" aria-hidden="true"></i>
+                <button type="button" class="sp-switch" role="switch" data-sw="redlineZeroPills" aria-labelledby="lbl-zeros"></button>
+              </div>
             </div>
           </div>
+          <button type="button" class="sp-reset" id="measure-reset">Reset to defaults</button>
+          <p class="sp-saved" id="saved-measuring" role="status" aria-live="polite"></p>
         </div>
       </details>
-
-      <p class="sp-saved" id="saved-note" role="status" aria-live="polite"></p>
 
       <hr class="sp-hr">
 
@@ -190,23 +200,34 @@
       Preview rail. Context-sensitive: it answers whichever section you are in —
       the chrome mock while you pick a theme, the measuring vignette while you
       tune redlines (settings.js swaps data-mode as the pointer or focus moves).
-      300px, which is below the toolbar's 470px compact breakpoint, so the
-      chrome renders in its narrow icon-only state. It is a real state, just
-      not the common one — hence the tag.
+      Six grid columns wide, which clears the toolbar's 470px compact
+      breakpoint — the chrome previews at full width, labels and all.
     -->
     <aside class="sp-rail" id="preview-rail" data-mode="theme">
+      <!-- The rail stretches so its raised ground runs the full column; this
+           inner wrapper is what sticks, keeping the content pinned to the top
+           of the viewport while the settings scroll. -->
+      <div class="sp-rail-in">
+      <!-- The tag names the section the rail is currently answering. Both
+           tags share one inline cell so the legend's width never shifts. -->
       <h2 class="sp-legend">Preview
-        <span class="sp-tag" data-pv="theme">narrow</span>
-        <span class="sp-tag" data-pv="measure">measuring</span>
+        <span class="sp-tag-slot">
+          <span class="sp-tag" data-pv="theme">appearance</span>
+          <span class="sp-tag" data-pv="measure">measuring</span>
+        </span>
       </h2>
-      <p class="sp-sub" data-pv="theme">
-        At this width the toolbar collapses to icons, the same as it does on a
-        narrow page. Button labels are hidden in this state.
-      </p>
-      <p class="sp-sub" data-pv="measure">
-        A held-Option measurement: gaps, dashed extension guides, a flush edge.
-        The readouts follow the settings on the left.
-      </p>
+      <!-- Both subs share one grid cell so the crossfade swaps them in place
+           instead of stacking them for a frame. -->
+      <div class="sp-pv-slot">
+        <p class="sp-sub" data-pv="theme">
+          The probe's chrome exactly as it renders on a page — the info panel,
+          the toolbar, and the gear — in the theme you pick.
+        </p>
+        <p class="sp-sub" data-pv="measure">
+          A held-Option measurement: gaps, dashed extension guides, a flush edge.
+          The readouts follow the settings on the left.
+        </p>
+      </div>
 
       <div class="sp-preview">
         <div class="ccp-mock">
@@ -225,7 +246,7 @@
           <!--
             The info panel, with the same markup updateLabel() builds. Kept short
             on purpose: #ccp-label is white-space: nowrap, so a longer readout
-            would overflow 300px rather than wrap.
+            would overflow the rail rather than wrap.
           -->
           <div id="ccp-label">
             <!--
@@ -269,8 +290,8 @@
             </div>
           </div>
 
-          <!-- The toolbar, in its .ccp-compact state -->
-          <div id="ccp-toolbar" class="ccp-compact">
+          <!-- The toolbar, full width — the rail is wide enough now -->
+          <div id="ccp-toolbar">
             <div class="ccp-bar">
               <button type="button" tabindex="-1" title="Copy Code">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg><span>Copy Code</span>
@@ -309,6 +330,9 @@
           <b class="sv-pill sv-pill-b" id="vig-pill-b">35</b>
           <b class="sv-pill sv-pill-z" id="vig-pill-z">0</b>
         </div>
+
+        <p class="sv-caption" id="vig-caption" data-pv="measure">px · whole · beside</p>
+      </div>
       </div>
     </aside>
 

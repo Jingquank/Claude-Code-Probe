@@ -105,9 +105,10 @@ approximations of them.
 
 **Measuring** — six controls over the held-Option redlines, defaults matching what
 ships: readout unit (`px` / `rem`, against the page's root font-size), precision
-(whole pixels / tenths), where the value pill sits (beside its line / riding on it),
-the dashed extension guides (on / off), a quiet overlay that hides the box-model
-tints while measuring (off by default), and whether flush edges get a `0` marker.
+(whole / tenths), where the value pill sits (beside its line / on the line), the
+dashed extension guides (on / off), a quiet overlay that hides the box-model
+tints while measuring (off by default), and whether flush edges are marked with
+a `0`.
 
 Everything is stored on this device with `chrome.storage.local` and never leaves it.
 Changes repaint tabs that are already open — including a measurement you're holding

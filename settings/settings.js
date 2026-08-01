@@ -35,19 +35,6 @@ const REDLINE_PREFS = {
   redlineZeroPills: ["on", "off"],
 };
 
-// Display names for the saved announce, matching the sheet's row labels.
-const PREF_NAMES = {
-  redlineUnit: "Unit",
-  redlinePrecision: "Precision",
-  redlinePillPlacement: "Value pill",
-  redlineGuides: "Extension guides",
-  redlineQuietOverlay: "Quiet overlay",
-  redlineZeroPills: "Flush-edge zeros",
-};
-const VALUE_NAMES = {
-  whole: "whole px", tenths: "0.1 px", online: "on the line", beside: "beside the line",
-};
-
 const prefs = {};
 for (const key of Object.keys(REDLINE_PREFS)) prefs[key] = REDLINE_PREFS[key][0];
 
@@ -87,14 +74,16 @@ const store = {
 };
 
 const pillHost = document.getElementById("theme-pills");
-const savedNote = document.getElementById("saved-note");
+const savedAppearance = document.getElementById("saved-appearance");
+const savedMeasuring = document.getElementById("saved-measuring");
+const resetEl = document.getElementById("measure-reset");
 const sheetEl = document.getElementById("measure-sheet");
 const railEl = document.getElementById("preview-rail");
 const vigEl = document.getElementById("measure-vig");
 const darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
 let current = DEFAULT_THEME;
-let savedTimer = null;
+const savedTimers = new Map();
 
 // Same resolution the content script does, so the preview matches what the page
 // will actually render.
@@ -140,11 +129,18 @@ function paintTheme() {
 // One pass syncs every measuring control and the vignette to `prefs`.
 function paintPrefs() {
   for (const btn of sheetEl.querySelectorAll("[data-set]")) {
-    btn.setAttribute("aria-checked", String(prefs[btn.dataset.set] === btn.dataset.val));
+    const on = prefs[btn.dataset.set] === btn.dataset.val;
+    btn.setAttribute("aria-checked", String(on));
+    // Roving tabindex, same as the theme pills: the checked option is the
+    // group's one tab stop, arrows move within it.
+    btn.tabIndex = on ? 0 : -1;
   }
   for (const sw of sheetEl.querySelectorAll("[data-sw]")) {
     sw.setAttribute("aria-checked", String(prefs[sw.dataset.sw] === "on"));
   }
+  // Nothing to reset when everything already sits at its default.
+  resetEl.disabled = Object.keys(REDLINE_PREFS)
+    .every((key) => prefs[key] === REDLINE_PREFS[key][0]);
   vigEl.dataset.placement = prefs.redlinePillPlacement;
   vigEl.dataset.guides = prefs.redlineGuides;
   vigEl.dataset.quiet = prefs.redlineQuietOverlay;
@@ -154,14 +150,31 @@ function paintPrefs() {
   document.getElementById("vig-pill-a").textContent = fmt(VIG_A);
   document.getElementById("vig-pill-b").textContent = fmt(VIG_B);
   document.getElementById("vig-pill-z").textContent = fmt(0);
+  // The caption quotes the checked controls, so it can never disagree with them.
+  document.getElementById("vig-caption").textContent =
+    ["redlineUnit", "redlinePrecision", "redlinePillPlacement"]
+      .map((key) => sheetEl.querySelector(`[data-set="${key}"][aria-checked="true"]`)?.textContent)
+      .filter(Boolean)
+      .join(" · ");
 }
 
-function announce(text) {
-  savedNote.textContent = `Saved — ${text}`;
-  if (savedTimer) clearTimeout(savedTimer);
-  savedTimer = setTimeout(() => {
-    savedNote.textContent = "";
-  }, 2400);
+// Feedback lands in the section where the change happened, and it does not
+// claim more than is true: without the extension's storage (this page opened
+// straight from disk, say) nothing persists, and the line says so.
+function announce(noteEl, text) {
+  noteEl.textContent = store.available
+    ? `Saved — ${text}`
+    : "Preview only — changes aren't saved here.";
+  noteEl.classList.add("sp-saved-in");
+  clearTimeout(savedTimers.get(noteEl));
+  savedTimers.set(noteEl, setTimeout(() => {
+    noteEl.classList.remove("sp-saved-in");
+    // The text outlives the class by one fade (--ccp-duration), so the note
+    // doesn't blank out mid-transition.
+    savedTimers.set(noteEl, setTimeout(() => {
+      noteEl.textContent = "";
+    }, 150));
+  }, 2400));
 }
 
 function selectTheme(id) {
@@ -169,7 +182,16 @@ function selectTheme(id) {
   current = id;
   paintTheme();
   store.set({ [THEME_KEY]: id });
-  announce(THEMES.find((t) => t.id === id).name);
+  announce(savedAppearance, THEMES.find((t) => t.id === id).name);
+}
+
+// The announce quotes the row's own label and the control's own text, so what
+// is read back is exactly what was clicked — the vocabulary cannot drift.
+function announceText(key, value) {
+  const control = sheetEl.querySelector(`[data-set="${key}"][data-val="${value}"], [data-sw="${key}"]`);
+  const label = control?.closest(".sp-spec")?.querySelector(".sp-spec-label")?.textContent || key;
+  const valueText = control?.dataset.set ? control.textContent : value;
+  return `${label} · ${valueText}`;
 }
 
 function setPref(key, value) {
@@ -178,7 +200,7 @@ function setPref(key, value) {
   prefs[key] = value;
   paintPrefs();
   store.set({ [key]: value });
-  announce(`${PREF_NAMES[key]} · ${VALUE_NAMES[value] || value}`);
+  announce(savedMeasuring, announceText(key, value));
 }
 
 renderPills();
@@ -211,6 +233,17 @@ sheetEl.addEventListener("click", (e) => {
   }
 });
 
+resetEl.addEventListener("click", () => {
+  const payload = {};
+  for (const key of Object.keys(REDLINE_PREFS)) {
+    prefs[key] = REDLINE_PREFS[key][0];
+    payload[key] = prefs[key];
+  }
+  paintPrefs();
+  store.set(payload);
+  announce(savedMeasuring, "defaults restored");
+});
+
 // Arrows flip a two-value segment to its other option — the radiogroup
 // pattern collapsed to a pair.
 sheetEl.addEventListener("keydown", (e) => {
@@ -226,24 +259,31 @@ sheetEl.addEventListener("keydown", (e) => {
 });
 
 // The rail answers whichever section the pointer or focus is in: the chrome
-// mock for Appearance, the measuring vignette for the sheet.
+// mock for Appearance, the measuring vignette for the sheet. The guard keeps
+// re-entering the same section from restarting the crossfade.
 for (const zone of document.querySelectorAll("[data-focus]")) {
   const mode = zone.dataset.focus;
-  zone.addEventListener("pointerenter", () => {
-    railEl.dataset.mode = mode;
-  });
-  zone.addEventListener("focusin", () => {
-    railEl.dataset.mode = mode;
-  });
+  const setMode = () => {
+    if (railEl.dataset.mode !== mode) railEl.dataset.mode = mode;
+  };
+  zone.addEventListener("pointerenter", setMode);
+  zone.addEventListener("focusin", setMode);
 }
 
-// Hovering a spec row spotlights the part of the vignette it controls.
+// Hovering or focusing into a spec row spotlights the part of the vignette it
+// controls — keyboard users get the same lesson pointer users do.
 for (const row of document.querySelectorAll(".sp-spec")) {
-  row.addEventListener("pointerenter", () => {
+  const spotlight = () => {
     vigEl.dataset.hi = row.dataset.hi;
-  });
-  row.addEventListener("pointerleave", () => {
+  };
+  const unspot = () => {
     delete vigEl.dataset.hi;
+  };
+  row.addEventListener("pointerenter", spotlight);
+  row.addEventListener("pointerleave", unspot);
+  row.addEventListener("focusin", spotlight);
+  row.addEventListener("focusout", (e) => {
+    if (!row.contains(e.relatedTarget)) unspot();
   });
 }
 
