@@ -411,8 +411,8 @@ details:not([open]) > .sp-summary .sp-caret {
   color: var(--ccp-on-accent);
 }
 
-/* The real switch — same metrics as the decorative .sp-toggle below, but a
-   button with role="switch", a knob transition, and a focus ring. */
+/* The real switch: a button with role="switch", a knob transition, and a
+   focus ring. */
 .sp-switch {
   position: relative;
   flex: none;
@@ -478,46 +478,6 @@ details:not([open]) > .sp-summary .sp-caret {
   cursor: default;
 }
 
-/* ===== Not-yet-available rows =====
-   The body is disabled, not the section — the summary stays live so an unusable
-   section can still be folded away. */
-.sp-future .sp-section-body {
-  opacity: var(--ccp-opacity-disabled);
-  pointer-events: none;
-}
-
-.sp-row {
-  display: flex;
-  align-items: center;
-  gap: var(--ccp-md);
-  padding: var(--ccp-gap-base) 0;
-}
-
-.sp-row-label { flex: 1; font-size: var(--ccp-text-base); color: var(--ccp-text); }
-
-.sp-toggle {
-  position: relative;
-  flex: none;
-  width: 30px;
-  height: 17px;
-  border-radius: 9px;
-  background: var(--ccp-sep);
-}
-
-.sp-toggle::after {
-  content: "";
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 13px;
-  height: 13px;
-  border-radius: 50%;
-  background: var(--ccp-text-muted);
-}
-
-.sp-toggle.sp-on { background: var(--ccp-accent); }
-.sp-toggle.sp-on::after { left: 15px; background: var(--ccp-on-accent); }
-
 /* ===== Footer ===== */
 .sp-footer {
   margin-top: auto;
@@ -540,7 +500,15 @@ details:not([open]) > .sp-summary .sp-caret {
 .sp-preview {
   position: relative;
   border-radius: var(--ccp-radius-md);
-  background: var(--sp-ground);
+  /* Blueprint paper, shared by both previews: a faint accent grid over the
+     ground, so the anatomy sheet and the measuring drawing sit on the same
+     sheet. */
+  background:
+    repeating-linear-gradient(0deg,
+      rgb(from var(--ccp-accent) r g b / 0.05) 0 1px, transparent 1px 24px),
+    repeating-linear-gradient(90deg,
+      rgb(from var(--ccp-accent) r g b / 0.05) 0 1px, transparent 1px 24px),
+    var(--sp-ground);
   border: 1px solid var(--sp-hairline);
   padding: var(--ccp-md);
   /* A longer readout than the sample would overflow the rail rather than
@@ -558,22 +526,98 @@ details:not([open]) > .sp-summary .sp-caret {
   grid-area: 1 / 1;
 }
 
-.sp-preview > .sv-caption { grid-area: 2 / 1; }
-
 .sp-pv-slot { display: grid; }
 .sp-pv-slot > * { grid-area: 1 / 1; }
 
 .sp-tag-slot { display: inline-grid; }
 .sp-tag-slot > * { grid-area: 1 / 1; justify-self: start; }
 
+/* ===== Anatomy sheet (the Appearance mock) =====
+   Chrome pinned as specimens under quiet captions: hover and selection side
+   by side with the gear, then the info panel and toolbar full-width. */
 .ccp-mock {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: var(--ccp-lg) var(--ccp-md);
+  align-items: start;
+  padding: var(--ccp-sm);
+}
+
+.an-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ccp-sm);
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.an-span { grid-column: 1 / -1; }
+
+/* Headroom for Clawd, who stands above the label's top edge. */
+.an-label #ccp-label { margin-top: 26px; }
+
+.an-cap {
+  margin: 0;
+  font-size: var(--ccp-text-sm);
+  font-weight: var(--ccp-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: var(--ccp-tracking-wide);
+  color: var(--ccp-text-faint);
+  border-bottom: 1px dotted var(--ccp-sep);
+  padding-bottom: 2px;
+}
+
+/* The hover specimen: the marching-ants silhouette, held still. */
+.an-hover {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ccp-gap-pair);
+  padding: var(--ccp-md) var(--ccp-btn-x);
+  border: 1.5px dashed var(--ccp-accent);
+  border-radius: var(--ccp-radius-md);
+}
+
+/* The selection specimen carries the real sweep: the same conic gradient and
+   10s rotation as #ccp-sweep-spin in content.css, scaled to the ring width. */
+.an-beam {
+  position: relative;
+  padding: var(--ccp-ring);
+  border-radius: calc(var(--ccp-radius-md) + var(--ccp-ring));
+  overflow: hidden;
+  background: rgb(from var(--ccp-accent) r g b / 0.45);
+}
+
+.an-beam::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 220%;
+  aspect-ratio: 1;
+  background: conic-gradient(
+    transparent 0deg,
+    var(--ccp-accent) 90deg,
+    var(--ccp-accent-light) 180deg,
+    var(--ccp-accent) 270deg,
+    transparent 360deg
+  );
+  animation: sp-sweep 10s linear infinite;
+}
+
+@keyframes sp-sweep {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to   { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+.an-sel {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: var(--ccp-md);
-  /* Headroom for the gear in the corner and for Clawd, who stands above the
-     label's top edge. */
-  padding-top: 38px;
+  gap: var(--ccp-gap-pair);
+  padding: var(--ccp-md) var(--ccp-btn-x);
+  border-radius: var(--ccp-radius-md);
+  background: color-mix(in srgb, var(--ccp-surface) 93%, var(--ccp-accent));
 }
 
 .ccp-mock #ccp-label,
@@ -589,10 +633,9 @@ details:not([open]) > .sp-summary .sp-caret {
   max-width: 100%;
 }
 
+/* The gear is a specimen here, not a corner fixture. */
 .ccp-mock #ccp-settings-btn {
-  position: absolute;
-  top: 0;
-  right: 0;
+  position: static;
   cursor: default;
 }
 
@@ -640,13 +683,10 @@ details:not([open]) > .sp-summary .sp-caret {
    derives from the accent, exactly like the live redline layer. */
 .sp-vig {
   position: relative;
-  width: 256px;
-  height: 186px;
+  width: 560px;
+  height: 340px;
+  max-width: 100%;
   margin: 0 auto;
-  /* zoom, not transform: it scales layout too, so the preview box grows with
-     the drawing instead of clipping it. The coordinates stay hand-auditable
-     at 1x. */
-  zoom: 1.3;
 }
 
 .sv-el { position: absolute; }
@@ -662,10 +702,10 @@ details:not([open]) > .sp-summary .sp-caret {
 }
 
 .sv-sel {
-  left: 14px;
-  top: 16px;
-  width: 110px;
-  height: 52px;
+  left: 70px;
+  top: 46px;
+  width: 240px;
+  height: 110px;
   border: 1.5px dashed var(--ccp-accent);
   border-radius: var(--ccp-radius-sm);
   background: rgb(from var(--ccp-accent) r g b / 0.1);
@@ -676,26 +716,26 @@ details:not([open]) > .sp-summary .sp-caret {
 .sp-vig[data-quiet="on"] .sv-sel { background: transparent; }
 
 .sv-flush {
-  left: 124px;
-  top: 16px;
-  width: 48px;
-  height: 36px;
+  left: 310px;
+  top: 46px;
+  width: 96px;
+  height: 70px;
   border: 1px solid rgb(from var(--ccp-text-faint) r g b / 0.55);
   border-radius: var(--ccp-radius-sm);
 }
 
 .sv-hov {
-  left: 158px;
-  top: 112px;
-  width: 78px;
-  height: 48px;
+  left: 396px;
+  top: 226px;
+  width: 140px;
+  height: 76px;
   border: 1px solid var(--ccp-accent);
   border-radius: var(--ccp-radius-lg);
 }
 
 .sv-line { position: absolute; background: var(--ccp-accent); }
-.sv-line-v { left: 69px; top: 68px; width: 1px; height: 44px; }
-.sv-line-h { left: 124px; top: 42px; width: 34px; height: 1px; }
+.sv-line-v { left: 190px; top: 156px; width: 1px; height: 70px; }
+.sv-line-h { left: 310px; top: 101px; width: 86px; height: 1px; }
 
 .sv-guide {
   position: absolute;
@@ -704,18 +744,49 @@ details:not([open]) > .sp-summary .sp-caret {
 }
 .sp-vig[data-guides="off"] .sv-guide { opacity: 0; }
 .sv-guide-h {
-  left: 65px;
-  top: 112px;
-  width: 93px;
+  left: 186px;
+  top: 226px;
+  width: 210px;
   height: 0;
   border-top: 1px dashed rgb(from var(--ccp-accent) r g b / 0.6);
 }
 .sv-guide-v {
-  left: 158px;
-  top: 38px;
+  left: 396px;
+  top: 97px;
   width: 0;
-  height: 74px;
+  height: 129px;
   border-left: 1px dashed rgb(from var(--ccp-accent) r g b / 0.6);
+}
+
+/* Blueprint furniture: coordinate notes and the title block. The title
+   block's second line is the live settings caption. */
+.sv-note {
+  position: absolute;
+  font-size: var(--ccp-text-sm);
+  letter-spacing: var(--ccp-tracking-num);
+  font-variant-numeric: tabular-nums;
+  text-transform: uppercase;
+  color: var(--ccp-text-faint);
+}
+
+.sv-title {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  display: grid;
+  gap: 2px;
+  padding: var(--ccp-gap-base) var(--ccp-md);
+  background: var(--ccp-surface);
+  border: 1px solid var(--ccp-sep);
+  border-radius: var(--ccp-radius-xs);
+  font-size: var(--ccp-text-sm);
+  text-transform: uppercase;
+}
+
+.sv-title b {
+  font-weight: var(--ccp-weight-bold);
+  letter-spacing: 0.12em;
+  color: var(--ccp-text-dim);
 }
 
 .sv-pill {
@@ -733,11 +804,11 @@ details:not([open]) > .sp-summary .sp-caret {
               opacity var(--ccp-duration), box-shadow var(--ccp-duration-fast) ease;
 }
 
-.sv-pill-a { left: 69px; top: 90px; }
-.sp-vig[data-placement="beside"] .sv-pill-a { left: 84px; }
-.sv-pill-b { left: 141px; top: 42px; }
-.sp-vig[data-placement="beside"] .sv-pill-b { top: 55px; }
-.sv-pill-z { left: 124px; top: 34px; }
+.sv-pill-a { left: 190px; top: 191px; }
+.sp-vig[data-placement="beside"] .sv-pill-a { left: 208px; }
+.sv-pill-b { left: 353px; top: 101px; }
+.sp-vig[data-placement="beside"] .sv-pill-b { top: 116px; }
+.sv-pill-z { left: 310px; top: 81px; }
 .sp-vig[data-zeros="off"] .sv-pill-z { opacity: 0; }
 
 /* Hovering or focusing a sheet row spotlights what it controls (settings.js
@@ -755,31 +826,19 @@ details:not([open]) > .sp-summary .sp-caret {
 .sp-vig[data-hi="guides"] .sv-guide-h { border-top-color: var(--ccp-accent); }
 .sp-vig[data-hi="guides"] .sv-guide-v { border-left-color: var(--ccp-accent); }
 
-/* Current readout at a glance, in the controls' own words. */
+/* Current readout at a glance, in the controls' own words — the title
+   block's second line. */
 .sv-caption {
-  margin: var(--ccp-md) 0 0;
-  padding-top: var(--ccp-sm);
-  border-top: 1px solid var(--sp-hairline);
+  margin: 0;
   font-size: var(--ccp-text-sm);
   letter-spacing: var(--ccp-tracking-num);
   font-variant-numeric: tabular-nums;
   color: var(--ccp-text-muted);
-  text-align: center;
+  text-transform: none;
 }
 
-/* The element under inspection. Not part of the extension's chrome — it stands
-   in for the page, so it borrows the accent for its outline the same way the
-   real selection ring does. */
-.sp-element {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ccp-gap-pair);
-  padding: var(--ccp-md) var(--ccp-btn-x);
-  border: var(--ccp-ring) solid var(--ccp-accent);
-  border-radius: var(--ccp-radius-md);
-  background: rgb(from var(--ccp-accent) r g b / 0.07);
-}
-
+/* Specimen copy. Not part of the extension's chrome — it stands in for the
+   page content inside the hover and selection specimens. */
 .sp-element-title {
   font-size: var(--ccp-text-lg);
   font-weight: var(--ccp-weight-bold);
@@ -807,4 +866,7 @@ details:not([open]) > .sp-summary .sp-caret {
   .sv-sel,
   .sv-guide,
   .sv-pill { transition: none; }
+
+  /* The selection specimen's sweep is the page's one animation. */
+  .an-beam::before { animation: none; }
 }

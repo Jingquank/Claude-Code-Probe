@@ -38,11 +38,12 @@ const REDLINE_PREFS = {
 const prefs = {};
 for (const key of Object.keys(REDLINE_PREFS)) prefs[key] = REDLINE_PREFS[key][0];
 
-// The vignette's two sample gaps. Fractional on purpose, so flipping precision
-// or unit visibly changes the readout; the drawn lines round to the same px the
-// extension's renderer would.
-const VIG_A = 44.4;
-const VIG_B = 34.6;
+// The vignette's two sample gaps — the blueprint's vertical and horizontal
+// measurements. Fractional on purpose, so flipping precision or unit visibly
+// changes the readout; the drawn lines round to the same px the extension's
+// renderer would.
+const VIG_A = 70.4;
+const VIG_B = 86.6;
 
 // Mirrored from content.js formatRedlineValue — change both. remBase here is
 // 16: the vignette previews the common case, not this page's own font-size.

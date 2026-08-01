@@ -171,9 +171,9 @@ query.
 
 Anything animated must be listed there. There is no automated check for this one
 — it is the weakest link in this document. The settings page keeps its own
-inventory under the same contract: every transition it declares dies in the
-`prefers-reduced-motion` block at the end of `settings/settings.css`, zeroed
-rather than softened. The redline layer stays off the list
+inventory under the same contract: every transition and animation it declares
+dies in the `prefers-reduced-motion` block at the end of
+`settings/settings.css`, zeroed rather than softened. The redline layer stays off the list
 by design: its dashed guides deliberately don't march. It does *glide* — the
 hover box, lines and pills tween between hover targets on the same
 `--ccp-duration`/`--ccp-ease` curve as the selection overlay — but that is a

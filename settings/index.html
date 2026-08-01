@@ -122,63 +122,6 @@
         </div>
       </details>
 
-      <hr class="sp-hr">
-
-      <!--
-        Not yet available. These are real behaviours the extension already has,
-        shown here so the shape of the page is honest about where it is going —
-        but they are not wired to anything, so their rows are disabled, labelled,
-        and removed from the tab order. The summary stays live: a section you
-        cannot use yet is still a section you can fold away.
-      -->
-      <details class="sp-section sp-future" open>
-        <summary class="sp-summary">
-          <i class="sp-caret" aria-hidden="true"></i>
-          <h2 class="sp-legend" id="behaviour-legend">
-            Behaviour <span class="sp-tag">not in this release</span>
-          </h2>
-        </summary>
-        <div class="sp-section-body">
-          <div class="sp-row" aria-disabled="true" title="Not configurable yet">
-            <span class="sp-row-label">Copy screenshots to the clipboard</span>
-            <span class="sp-toggle sp-on" aria-hidden="true"></span>
-          </div>
-          <div class="sp-row" aria-disabled="true" title="Not configurable yet">
-            <span class="sp-row-label">Include a source pointer in Copy Code</span>
-            <span class="sp-toggle sp-on" aria-hidden="true"></span>
-          </div>
-          <div class="sp-row" aria-disabled="true" title="Not configurable yet">
-            <span class="sp-row-label">Collapse the toolbar on narrow pages</span>
-            <span class="sp-toggle sp-on" aria-hidden="true"></span>
-          </div>
-        </div>
-      </details>
-
-      <hr class="sp-hr">
-
-      <details class="sp-section sp-future" open>
-        <summary class="sp-summary">
-          <i class="sp-caret" aria-hidden="true"></i>
-          <h2 class="sp-legend" id="motion-legend">
-            Motion <span class="sp-tag">not in this release</span>
-          </h2>
-        </summary>
-        <div class="sp-section-body">
-          <div class="sp-row" aria-disabled="true" title="Not configurable yet">
-            <span class="sp-row-label">Marching-ants hover outline</span>
-            <span class="sp-toggle sp-on" aria-hidden="true"></span>
-          </div>
-          <div class="sp-row" aria-disabled="true" title="Not configurable yet">
-            <span class="sp-row-label">Clawd</span>
-            <span class="sp-toggle sp-on" aria-hidden="true"></span>
-          </div>
-          <p class="sp-sub">
-            All of the probe's animation already stops when your system asks for
-            reduced motion.
-          </p>
-        </div>
-      </details>
-
       <!--
         These point at the repository rather than at ../PRIVACY.md and
         ../DESIGN.md: build.sh ships no markdown, so relative links would 404 in
@@ -220,27 +163,49 @@
            instead of stacking them for a frame. -->
       <div class="sp-pv-slot">
         <p class="sp-sub" data-pv="theme">
-          The probe's chrome exactly as it renders on a page — the info panel,
-          the toolbar, and the gear — in the theme you pick.
+          Every surface the theme paints, piece by piece — the hover outline,
+          the selection with its sweep, the info panel, the toolbar, the gear.
         </p>
         <p class="sp-sub" data-pv="measure">
-          A held-Option measurement: gaps, dashed extension guides, a flush edge.
-          The readouts follow the settings on the left.
+          A held-Option measurement, drawn to scale: gaps, dashed extension
+          guides, a flush edge. The readouts follow the settings on the left.
         </p>
       </div>
 
       <div class="sp-preview">
+        <!--
+          The Appearance mock is an anatomy sheet: each piece of chrome pinned
+          under a quiet caption on the shared blueprint grid. The label,
+          toolbar, and gear keep their real ids so they render through the
+          real content.css rules; the hover and selection specimens are
+          settings.css's own, the selection carrying the same conic sweep
+          content.css spins around a live selection.
+        -->
         <div class="ccp-mock">
 
-          <!-- The gear, in the corner it actually occupies -->
-          <button type="button" id="ccp-settings-btn" tabindex="-1" aria-hidden="true">
+          <div class="an-item">
+            <p class="an-cap" aria-hidden="true">Hover</p>
+            <div class="an-hover">
+              <span class="sp-element-title">Free Plan</span>
+              <span class="sp-element-body">For trying it out.</span>
+            </div>
+          </div>
+
+          <div class="an-item">
+            <p class="an-cap" aria-hidden="true">Selection</p>
+            <div class="an-beam" aria-hidden="true">
+              <div class="an-sel">
+                <span class="sp-element-title">Pro Plan</span>
+                <span class="sp-element-body">For teams that need more.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="an-item">
+            <p class="an-cap" aria-hidden="true">Gear</p>
+            <button type="button" id="ccp-settings-btn" tabindex="-1" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           </button>
-
-          <!-- A stand-in for the element being inspected -->
-          <div class="sp-element">
-            <span class="sp-element-title">Pro Plan</span>
-            <span class="sp-element-body">For teams that need more.</span>
           </div>
 
           <!--
@@ -248,6 +213,8 @@
             on purpose: #ccp-label is white-space: nowrap, so a longer readout
             would overflow the rail rather than wrap.
           -->
+          <div class="an-item an-span an-label">
+          <p class="an-cap" aria-hidden="true">Info panel</p>
           <div id="ccp-label">
             <!--
               Clawd, so --ccp-clawd-body and --ccp-clawd-leg get previewed too.
@@ -289,8 +256,11 @@
               </div>
             </div>
           </div>
+          </div>
 
           <!-- The toolbar, full width — the rail is wide enough now -->
+          <div class="an-item an-span">
+          <p class="an-cap" aria-hidden="true">Toolbar</p>
           <div id="ccp-toolbar">
             <div class="ccp-bar">
               <button type="button" tabindex="-1" title="Copy Code">
@@ -304,34 +274,41 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3"/><path d="M12 20v-8"/><polyline points="9 15 12 12 15 15"/></svg><span>Select Parent</span>
             </button>
           </div>
+          </div>
 
         </div>
 
         <!--
-          The measuring vignette: a composite catalogue, not a simulation — one
-          diagonal pair (two gap lines, two dashed guides, two pills), one flush
-          neighbour (the zero pill), tint on the selection (the quiet toggle).
-          Hand-placed nodes: computeRedline lives inside the content script's
-          IIFE and cannot be imported, so the geometry here is drawn to the same
-          rules by hand. Every line spans the gap it claims to measure; the pill
-          values are formatted by the same function the extension uses
-          (settings.js mirrors formatRedlineValue — change both).
+          The measuring vignette, drawn as the blueprint the name comes from:
+          the shared grid ground, coordinate notes, a title block whose second
+          line is the live settings summary. Still a composite catalogue, not a
+          simulation — one diagonal pair (two gap lines, two dashed guides, two
+          pills), one flush neighbour (the zero pill), tint on the selection
+          (the quiet toggle). Hand-placed nodes: computeRedline lives inside
+          the content script's IIFE and cannot be imported, so the geometry is
+          drawn to the same rules by hand. Every line spans the gap it claims
+          to measure; the pill values are formatted by the same function the
+          extension uses (settings.js mirrors formatRedlineValue — change both).
         -->
         <div class="sp-vig" id="measure-vig" aria-hidden="true"
              data-placement="beside" data-guides="on" data-quiet="off" data-zeros="on">
+          <span class="sv-note" style="left: 70px; top: 28px;">x 70 · y 46</span>
           <div class="sv-el sv-sel"><span class="sv-tag">selected</span></div>
           <div class="sv-el sv-flush"></div>
           <div class="sv-el sv-hov"><span class="sv-tag">hover</span></div>
+          <span class="sv-note" style="left: 396px; top: 310px;">w 140 · h 76</span>
           <i class="sv-line sv-line-v"></i>
           <i class="sv-line sv-line-h"></i>
           <i class="sv-guide sv-guide-h"></i>
           <i class="sv-guide sv-guide-v"></i>
-          <b class="sv-pill sv-pill-a" id="vig-pill-a">44</b>
-          <b class="sv-pill sv-pill-b" id="vig-pill-b">35</b>
+          <b class="sv-pill sv-pill-a" id="vig-pill-a">70</b>
+          <b class="sv-pill sv-pill-b" id="vig-pill-b">87</b>
           <b class="sv-pill sv-pill-z" id="vig-pill-z">0</b>
+          <div class="sv-title">
+            <b>Redline</b>
+            <p class="sv-caption" id="vig-caption">px · whole · beside</p>
+          </div>
         </div>
-
-        <p class="sv-caption" id="vig-caption" data-pv="measure">px · whole · beside</p>
       </div>
       </div>
     </aside>
