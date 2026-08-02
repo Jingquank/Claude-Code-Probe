@@ -26,6 +26,12 @@
   let redlineLineEls = [];
   let redlineGuideEls = [];
   let redlinePillEls = [];
+  // Tether (Edit Mode's association chrome — see the Tether section).
+  let tetherEl = null;
+  let tetherTickEls = [];
+  let tetherSegEls = [];
+  let tetherLoud = false;
+  let tetherLoudTimer = 0;
   // Edit Mode (live-tuning the selection). A sub-mode of selection, like
   // redline — `editing` is only ever true while selectedElement is set.
   let editing = false;
@@ -54,8 +60,9 @@
   //
   // margin/gap/pair/minLabelHeight are mirrored as M / GAP / PAIR / MIN_LABEL_H
   // in test/placement.mjs:136-153; the redline* trio is mirrored as PILL_OFFSET /
-  // GUIDE_OVERSHOOT / PILL_MARGIN in test/redline.mjs. Change them here and
-  // change them there.
+  // GUIDE_OVERSHOOT / PILL_MARGIN in test/redline.mjs; the tether* keys are
+  // mirrored as GAP / TICK / TICK_LOUD / THICK / STUB in test/tether.mjs.
+  // Change them here and change them there.
   const GEOMETRY = {
     margin: 4,
     gap: 6,
@@ -67,6 +74,14 @@
     redlinePillOffset: 8, // pill center sits this far perpendicular to its line
     redlineGuideOvershoot: 4, // dashed guide runs this far past the measurement line
     redlinePillMargin: 14, // pill centers are clamped this far inside the viewport
+    // The tether works in the ring of space outside the element and never
+    // inside it; tetherGap is that clearance, and it is the constraint the
+    // whole design exists to honour.
+    tetherGap: 8, // ticks sit this far outside the element's box
+    tetherTick: 16, // resting tick length
+    tetherTickLoud: 26, // tick length while a control is hot
+    tetherThick: 2, // tick thickness, and the run's stroke weight
+    tetherStub: 10, // the run leaves the panel at least this far before turning
   };
 
   // ===== Theme =====
@@ -590,6 +605,25 @@
     pool("ccp-redline-pill", 4, redlinePillEls);
     overlayContainer.appendChild(redlineEl);
 
+    // Tether layer, built on the same terms as the redline layer above and for
+    // the same reason: a wrapper that never moves, holding nodes whose glide
+    // renderTether() decides per frame. Four ticks (one per edge) and two run
+    // segments (a single-turn L, or one segment when the two ends line up).
+    tetherEl = document.createElement("div");
+    tetherEl.id = "ccp-tether";
+    const tetherPool = (className, count, into) => {
+      for (let i = 0; i < count; i++) {
+        const node = document.createElement("div");
+        node.className = className;
+        node.style.opacity = "0";
+        tetherEl.appendChild(node);
+        into.push(node);
+      }
+    };
+    tetherPool("ccp-tether-seg", 2, tetherSegEls);
+    tetherPool("ccp-tether-tick", 4, tetherTickEls);
+    overlayContainer.appendChild(tetherEl);
+
     labelEl = document.createElement("div");
     labelEl.id = "ccp-label";
     labelEl.style.display = "none";
@@ -613,12 +647,15 @@
       labelEl.remove();
       labelEl = null;
     }
-    // The redline nodes went down with the container; drop the pool refs
+    // The redline and tether nodes went down with the container; drop the refs
     redlineEl = null;
     redlineHoverEl = null;
     redlineLineEls = [];
     redlineGuideEls = [];
     redlinePillEls = [];
+    tetherEl = null;
+    tetherTickEls = [];
+    tetherSegEls = [];
   }
 
   // ===== Overlay Positioning =====
@@ -1371,6 +1408,244 @@
     updateSettingsButtonVisibility();
   }
 
+  // ===== Tether =====
+  // Edit Mode's association chrome: what says "this panel edits that element"
+  // once the selection ring has been taken away.
+  //
+  // The ring had to go. It is drawn 2px outside the element, and the panel
+  // writes border-width, border-color, border-radius and box-shadow — so the
+  // one piece of chrome guaranteed to be on screen sat exactly on top of the
+  // four things being judged. You cannot read a 2px stroke through an accent
+  // stroke. "Which element" is already settled by the time the panel is open;
+  // "what does it look like now" is the open question, and the ring was
+  // answering the wrong one.
+  //
+  // What replaces it works only in the ring of space OUTSIDE the element:
+  //
+  //   · four ticks, one at each edge's midpoint, sitting tetherGap out. The
+  //     midpoint is the point on an edge furthest from any corner, which is
+  //     where radius work needs the room. Four points imply the rectangle
+  //     without tracing it, so the extent survives without a box.
+  //   · one dashed run from the panel to the tick on the facing edge, turning
+  //     once. Dashed because that is Redline's guide vocabulary and this is the
+  //     same kind of statement; solid ticks against a dashed run also say which
+  //     end is the subject and which is the reference.
+  //
+  // Chosen from twelve alternatives in test/edit-association-prototypes.html —
+  // a synthesis of 02 (elbow tether) and 07 (edge ticks), which turn out to be
+  // one idea: the run's terminal IS a tick.
+  //
+  // computeTether is pure, like computeChromeLayout and computeRedline, and is
+  // transcribed into test/tether.mjs. Viewport coordinates in, paint rects out,
+  // no DOM.
+
+  // Which edge of `r` faces (tx, ty), and the outward normal of that edge.
+  // Weighted by the rect's aspect so a wide rect prefers its long edges, then
+  // slid along the edge toward the target: pinning to the midpoint makes a tall
+  // panel reach out from far below a short element, which reads as two
+  // unrelated things joined by a detour.
+  function tetherSide(r, tx, ty, inset) {
+    const cx = r.x + r.w / 2;
+    const cy = r.y + r.h / 2;
+    const slide = (lo, len, v) => {
+      const i = Math.min(inset, Math.max(0, len / 2 - 1));
+      return Math.max(lo + i, Math.min(lo + len - i, v));
+    };
+    if (Math.abs(tx - cx) * r.h >= Math.abs(ty - cy) * r.w) {
+      const y = slide(r.y, r.h, ty);
+      return tx >= cx
+        ? { x: r.x + r.w, y, nx: 1, ny: 0 }
+        : { x: r.x, y, nx: -1, ny: 0 };
+    }
+    const x = slide(r.x, r.w, tx);
+    return ty >= cy
+      ? { x, y: r.y + r.h, nx: 0, ny: 1 }
+      : { x, y: r.y, nx: 0, ny: -1 };
+  }
+
+  // Does the axis-aligned segment a→b touch `box`? Segments are strokes, not
+  // areas, so this is a plain interval overlap on both axes.
+  function tetherSegHits(a, b, box) {
+    const x0 = Math.min(a.x, b.x);
+    const x1 = Math.max(a.x, b.x);
+    const y0 = Math.min(a.y, b.y);
+    const y1 = Math.max(a.y, b.y);
+    return x1 > box.x && x0 < box.x + box.w && y1 > box.y && y0 < box.y + box.h;
+  }
+
+  // An L from a to b turning at `corner`, as up to two axis-aligned rects.
+  // Collinear runs collapse to one segment rather than emitting a zero-length
+  // stub that would render as a stray dot.
+  function tetherLeg(a, b, corner) {
+    const segs = [];
+    const push = (p, q) => {
+      const w = Math.abs(q.x - p.x);
+      const h = Math.abs(q.y - p.y);
+      if (w < 0.5 && h < 0.5) return;
+      segs.push({ x: Math.min(p.x, q.x), y: Math.min(p.y, q.y), w, h });
+    };
+    push(a, corner);
+    push(corner, b);
+    return segs;
+  }
+
+  // rect: the element. panel: the edit panel. Both viewport-relative.
+  function computeTether(rect, panel, vw, vh, opts) {
+    const o = opts || {};
+    const gap = o.gap !== undefined ? o.gap : GEOMETRY.tetherGap;
+    const len = o.tick !== undefined ? o.tick : GEOMETRY.tetherTick;
+    const th = o.thick !== undefined ? o.thick : GEOMETRY.tetherThick;
+
+    // The box nothing may enter: the element plus its clearance.
+    const box = {
+      x: rect.left - gap,
+      y: rect.top - gap,
+      w: rect.width + gap * 2,
+      h: rect.height + gap * 2,
+    };
+    const bcx = box.x + box.w / 2;
+    const bcy = box.y + box.h / 2;
+
+    // Ticks are centred on each edge midpoint, lying ALONG the edge. A tick
+    // that stuck out perpendicular would reach back toward the element as the
+    // element grew; lying flat, it can only ever be tangent to the clearance.
+    const half = len / 2;
+    const ht = th / 2;
+    const ticks = [
+      { x: bcx - half, y: box.y - ht, w: len, h: th },
+      { x: bcx - half, y: box.y + box.h - ht, w: len, h: th },
+      { x: box.x - ht, y: bcy - half, w: th, h: len },
+      { x: box.x + box.w - ht, y: bcy - half, w: th, h: len },
+    ];
+
+    const result = { box, ticks, segs: [] };
+    if (!panel) return result;
+
+    // A run bridges distance. When the panel overlaps the element's clearance
+    // there is no distance to bridge, and any run would have to start inside
+    // the overlap and cross what it is pointing at. The ticks say it instead.
+    // This is common rather than exotic: placeEditPanel() anchors the panel to
+    // the element, so a tall panel beside a short element starts out on top of
+    // it, and only a drag separates them.
+    if (panel.x < box.x + box.w && panel.x + panel.w > box.x &&
+        panel.y < box.y + box.h && panel.y + panel.h > box.y) return result;
+
+    const a = tetherSide(panel, bcx, bcy, GEOMETRY.tetherStub);
+    // The far end is the midpoint of whichever edge faces the panel — no
+    // sliding here, because that midpoint is a tick, and the run has to land on
+    // the tick rather than near it.
+    const s = tetherSide(box, a.x, a.y, Infinity);
+    const b = { x: s.x, y: s.y };
+
+    // Turn at the TICK's outward coordinate, not the panel's. Both legs then
+    // lie on the far side of the tick from the element, so neither can enter
+    // the box — the property test/tether.mjs sweeps. The mirror L (turning at
+    // the panel's coordinate) is the fallback for the configurations where the
+    // first would clip, and if both clip the ticks stand alone.
+    const first = s.nx !== 0 ? { x: b.x, y: a.y } : { x: a.x, y: b.y };
+    const other = s.nx !== 0 ? { x: a.x, y: b.y } : { x: b.x, y: a.y };
+    for (const corner of [first, other]) {
+      if (tetherSegHits(a, corner, box) || tetherSegHits(corner, b, box)) continue;
+      result.segs = tetherLeg(a, b, corner);
+      break;
+    }
+    return result;
+  }
+
+  // Paint it. The pooling, the per-node snap-vs-glide decision, the `used` Set
+  // and the single reflow flush are renderRedline()'s, for the same reasons.
+  function renderTether(options) {
+    if (!editing || !selectedElement || !tetherEl) return;
+    if (!selectedElement.isConnected) {
+      clearTether();
+      return;
+    }
+
+    const instant = !!(options && options.instant);
+    const rect = selectedElement.getBoundingClientRect();
+    const panel = editPanelEl && editPanelPos
+      ? { x: editPanelPos.left, y: editPanelPos.top, w: editPanelEl.offsetWidth, h: editPanelEl.offsetHeight }
+      : null;
+
+    const layout = computeTether(
+      rect, panel,
+      document.documentElement.clientWidth,
+      document.documentElement.clientHeight,
+      { tick: tetherLoud ? GEOMETRY.tetherTickLoud : GEOMETRY.tetherTick }
+    );
+
+    const used = new Set();
+    const snapped = [];
+    const place = (node, r) => {
+      used.add(node);
+      if (instant || node.style.opacity !== "1") {
+        node.classList.add("ccp-no-transition");
+        snapped.push(node);
+      }
+      node.style.left = Math.round(r.x) + "px";
+      node.style.top = Math.round(r.y) + "px";
+      node.style.width = Math.max(0, Math.round(r.w)) + "px";
+      node.style.height = Math.max(0, Math.round(r.h)) + "px";
+    };
+
+    layout.ticks.forEach((t, i) => {
+      if (i < tetherTickEls.length) place(tetherTickEls[i], t);
+    });
+    layout.segs.forEach((s, i) => {
+      if (i >= tetherSegEls.length) return;
+      const node = tetherSegEls[i];
+      // Horizontal runs dash via border-top, vertical via border-left, exactly
+      // as the redline guides do. The class has to land before place() so it
+      // cannot wipe the snap class.
+      const cls = s.h === 0 ? "ccp-tether-seg ccp-tether-seg-h" : "ccp-tether-seg ccp-tether-seg-v";
+      if (node.className !== cls) {
+        node.className = cls;
+        node.classList.add("ccp-no-transition");
+        if (!snapped.includes(node)) snapped.push(node);
+      }
+      place(node, s);
+    });
+
+    if (snapped.length) {
+      void tetherEl.offsetWidth; // flush the jumps before re-enabling the glide
+      for (const node of snapped) node.classList.remove("ccp-no-transition");
+    }
+    for (const node of used) node.style.opacity = "1";
+    for (const arr of [tetherTickEls, tetherSegEls]) {
+      for (const node of arr) {
+        if (!used.has(node)) node.style.opacity = "0";
+      }
+    }
+  }
+
+  function clearTether() {
+    for (const arr of [tetherTickEls, tetherSegEls]) {
+      for (const node of arr) node.style.opacity = "0";
+    }
+  }
+
+  // Quiet by default, amplified while a control is live: a row under the
+  // pointer, an open gesture, or the beat just after a value lands. The ticks
+  // lengthen and the run brightens; nothing moves closer to the element.
+  function setTetherLoud(on) {
+    if (tetherLoud === on) return;
+    tetherLoud = on;
+    document.documentElement.classList.toggle("ccp-tether-loud", on);
+    renderTether();
+  }
+
+  // A committed value goes loud for a beat and settles, so a change you made
+  // without touching the panel (a token step, an undo) still announces itself.
+  function bumpTether() {
+    clearTimeout(tetherLoudTimer);
+    setTetherLoud(true);
+    tetherLoudTimer = setTimeout(() => {
+      if (!editGesture && !(editPanelEl && editPanelEl.querySelector(".ccp-edit-row:hover"))) {
+        setTetherLoud(false);
+      }
+    }, 700);
+  }
+
   // ===== Edit Tokens =====
   // Reverse-lookup: given an element and a property, which design token is the
   // value sitting on — a utility class (text-lg, p-4) or a custom property
@@ -1886,6 +2161,9 @@
     document.addEventListener("contextmenu", onEditPointerGuard, true);
 
     showEditPanel();
+    // The panel has to be measured and placed before the run has somewhere to
+    // start from, so the tether is drawn after showEditPanel(), not with it.
+    renderTether({ instant: true });
     updateSettingsButtonVisibility();
   }
 
@@ -1902,6 +2180,9 @@
     document.removeEventListener("contextmenu", onEditPointerGuard, true);
 
     removeEditPanel();
+    clearTimeout(tetherLoudTimer);
+    setTetherLoud(false);
+    clearTether();
     tokenIndex = null;
     editTokenFamilies = null;
 
@@ -2254,6 +2535,20 @@
 
     const body = document.createElement("div");
     body.className = "ccp-edit-body";
+
+    // Delegated rather than per-row: the rows are rebuilt whenever the panel
+    // re-renders, and listeners hung on them would have to be rebuilt with
+    // them. pointerover/pointerout bubble, so the body can watch for all of
+    // them. A row under the pointer is the earliest honest signal that the
+    // user is about to change something, so it is what wakes the tether.
+    body.addEventListener("pointerover", (e) => {
+      if (e.target.closest(".ccp-edit-row")) setTetherLoud(true);
+    });
+    body.addEventListener("pointerout", (e) => {
+      const row = e.target.closest(".ccp-edit-row");
+      if (!row || row.contains(e.relatedTarget)) return;
+      if (!editGesture) setTetherLoud(false);
+    });
 
     editPanelEl.appendChild(head);
     editPanelEl.appendChild(body);
@@ -3168,6 +3463,9 @@
       editPanelPos = { top, left };
       editPanelEl.style.top = top + "px";
       editPanelEl.style.left = left + "px";
+      // The panel deliberately has no positional transition, so the run must
+      // not glide either or it would trail behind the drag.
+      renderTether({ instant: true });
     };
     const up = () => {
       head.removeEventListener("pointermove", move);
@@ -3333,6 +3631,13 @@
     const prevCls = current ? current.cls || null : null;
     if (prevCls !== (next.cls || null)) swapUtilityClass(el, prevCls, next.cls || null);
     applyDeclaration(el, prop, next.inline, next.priority);
+    // The live-rect hook. There is no ResizeObserver anywhere in this
+    // extension — tracking is scroll, resize and a throttled mousemove — so
+    // padding or width scrubbed here would resize the element with nothing to
+    // tell the tether about it, and the ticks would sit at a stale rect
+    // precisely while the user is watching them. This is the one place that
+    // knows for certain the geometry just changed.
+    if (editing && el === selectedElement) renderTether({ instant: true });
   }
 
   // Read the element's current state for a property as an EditValue. This is
@@ -3426,6 +3731,8 @@
       from: current,
       hadEntry: Boolean(entry),
     };
+    clearTimeout(tetherLoudTimer);
+    setTetherLoud(true);
   }
 
   // Write a value as part of the open gesture. No history until it commits.
@@ -3445,6 +3752,9 @@
     const g = editGesture;
     editGesture = null;
     if (!g) return;
+    // The gesture is over; the tether settles a beat later rather than snapping
+    // quiet under the pointer that was just scrubbing it.
+    if (editing) bumpTether();
     // Whatever ended the gesture — a pointerup, Escape, a deselect — the page's
     // own transitions come back before anything else happens.
     releaseTransitions(g.el);
@@ -3685,7 +3995,11 @@
       if (redlining) renderRedline({ instant: true });
       // The panel is viewport-anchored, not element-anchored: a resize can
       // strand it off-screen, so pull it back without moving it otherwise.
-      if (editing) placeEditPanel();
+      // The tether joins the two, so it redraws after the panel has settled.
+      if (editing) {
+        placeEditPanel();
+        renderTether({ instant: true });
+      }
     });
   }
 

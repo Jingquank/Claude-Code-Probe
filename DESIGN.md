@@ -124,14 +124,18 @@ where a JS-toggled class beat a media query because the JS needed to know.
 
 `GEOMETRY` in `content.js` keeps `margin`, `gap`, `pair`, `minLabelHeight`,
 `narrowToolbar`, `radiusFallback`, `maxSweepDiagonal`, `redlinePillOffset`,
-`redlineGuideOvershoot` and `redlinePillMargin` as JavaScript numbers.
+`redlineGuideOvershoot`, `redlinePillMargin`, `tetherGap`, `tetherTick`,
+`tetherTickLoud`, `tetherThick` and `tetherStub` as JavaScript numbers.
 
 Not an oversight. `computeChromeLayout()` is a **pure function**, mirrored in
 `test/placement.mjs` and validated over 8280 configurations with no DOM present.
 A pure function cannot call `getComputedStyle`, so a CSS custom property is
 unreachable from the place these values are actually consumed. Moving them would
 buy tidiness and cost the spec. `computeRedline()` follows the same arrangement:
-pure, mirrored in `test/redline.mjs`, swept over ten thousand element pairs.
+pure, mirrored in `test/redline.mjs`, swept over ten thousand element pairs. So
+does `computeTether()`, mirrored in `test/tether.mjs` — and there the sweep is
+not just a regression net but the safety argument itself, since `tetherGap` is
+the clearance that keeps Edit Mode's chrome off the border it is editing.
 
 The rule, stated once: **values the layout algorithm reasons about live in
 `GEOMETRY`; values that only paint live in `tokens.css`.** `--ccp-ring: 2px` is a
@@ -140,8 +144,9 @@ arithmetic on it. The redline's 1px stroke is CSS; its pill offset is `GEOMETRY`
 because the solver adds and clamps it.
 
 `test/placement.mjs` mirrors four of them, `test/redline.mjs` the three
-`redline*` keys. Change one, change both — the harness's live sweep and the
-redline sweep are what catch the drift.
+`redline*` keys, `test/tether.mjs` the five `tether*` keys. Change one, change
+both — the harness's live sweep, the redline sweep and the tether sweep are what
+catch the drift.
 
 User preferences reach the solver the same way the constants do: as arguments.
 `computeRedline()` takes an `opts` parameter (pill offset, guides, zero pills)
