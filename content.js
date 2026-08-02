@@ -1304,6 +1304,87 @@
     updateSettingsButtonVisibility();
   }
 
+  // ===== Edit Color =====
+  // Pure conversions for the edit panel's colour picker. HSV is the picker's
+  // native space — a saturation square is linear in S and V, which HSL's is
+  // not — and rgb/hex is the page's. All four functions are transcribed into
+  // test/edit-color.mjs; change them there and change them here.
+
+  // 0–255 channels → { h: 0–360, s: 0–1, v: 0–1 }
+  function rgbToHsv(r, g, b) {
+    const rn = r / 255, gn = g / 255, bn = b / 255;
+    const max = Math.max(rn, gn, bn), min = Math.min(rn, gn, bn);
+    const d = max - min;
+    let h = 0;
+    if (d !== 0) {
+      if (max === rn) h = 60 * (((gn - bn) / d) % 6);
+      else if (max === gn) h = 60 * ((bn - rn) / d + 2);
+      else h = 60 * ((rn - gn) / d + 4);
+      if (h < 0) h += 360;
+    }
+    return { h, s: max === 0 ? 0 : d / max, v: max };
+  }
+
+  // { h, s, v } → { r, g, b } 0–255 integers
+  function hsvToRgb(h, s, v) {
+    const c = v * s;
+    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+    const m = v - c;
+    const [r, g, b] =
+      h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] :
+      h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+    return {
+      r: Math.round((r + m) * 255),
+      g: Math.round((g + m) * 255),
+      b: Math.round((b + m) * 255),
+    };
+  }
+
+  // #rgb(a) / #rrggbb(aa) / rgb() / rgba() → { r, g, b, a } or null. Covers
+  // everything getComputedStyle emits for colours plus what a hex field takes;
+  // anything else (keywords, color(), oklch()) is a null and the caller keeps
+  // its previous value.
+  function parseCssColor(str) {
+    if (typeof str !== "string") return null;
+    const s = str.trim().toLowerCase();
+
+    let m = s.match(/^#([0-9a-f]{3,8})$/);
+    if (m) {
+      const hex = m[1];
+      if (hex.length === 3 || hex.length === 4) {
+        const [r, g, b, a] = hex.split("").map((c) => parseInt(c + c, 16));
+        return { r, g, b, a: hex.length === 4 ? a / 255 : 1 };
+      }
+      if (hex.length === 6 || hex.length === 8) {
+        return {
+          r: parseInt(hex.slice(0, 2), 16),
+          g: parseInt(hex.slice(2, 4), 16),
+          b: parseInt(hex.slice(4, 6), 16),
+          a: hex.length === 8 ? parseInt(hex.slice(6, 8), 16) / 255 : 1,
+        };
+      }
+      return null;
+    }
+
+    m = s.match(/^rgba?\(\s*([\d.]+)\s*[, ]\s*([\d.]+)\s*[, ]\s*([\d.]+)\s*(?:[,/]\s*([\d.]+%?)\s*)?\)$/);
+    if (m) {
+      const clampByte = (n) => Math.min(255, Math.max(0, Math.round(parseFloat(n))));
+      const a = m[4] === undefined ? 1
+        : m[4].endsWith("%") ? parseFloat(m[4]) / 100
+        : parseFloat(m[4]);
+      return { r: clampByte(m[1]), g: clampByte(m[2]), b: clampByte(m[3]), a: Math.min(1, Math.max(0, a)) };
+    }
+
+    return null;
+  }
+
+  // { r, g, b, a? } → #rrggbb, or #rrggbbaa when alpha is meaningfully < 1
+  function formatHex(c) {
+    const h = (n) => Math.round(n).toString(16).padStart(2, "0");
+    const base = "#" + h(c.r) + h(c.g) + h(c.b);
+    return c.a === undefined || c.a >= 1 ? base : base + h(c.a * 255);
+  }
+
   // ===== Event Handlers =====
   function onMouseMove(e) {
     lastMouseX = e.clientX;
