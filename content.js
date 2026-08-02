@@ -26,6 +26,19 @@
   let redlineLineEls = [];
   let redlineGuideEls = [];
   let redlinePillEls = [];
+  // Edit Mode (live-tuning the selection). A sub-mode of selection, like
+  // redline — `editing` is only ever true while selectedElement is set.
+  let editing = false;
+  let editPanelEl = null;
+  let editGesture = null;
+  let tokenIndex = null;
+  // Strong element references, deliberately: the undo stack has to hold them
+  // anyway, edits outlive deselection, and a page reload is what clears the
+  // world. Every path that touches a record re-checks el.isConnected, since a
+  // framework can replace a node out from under us.
+  const editRegistry = new Map();
+  const undoStack = [];
+  const redoStack = [];
 
   // ===== Geometry =====
   // The one group of design values that stays in JS instead of moving to
@@ -1747,6 +1760,347 @@
     const h = (n) => Math.round(n).toString(16).padStart(2, "0");
     const base = "#" + h(c.r) + h(c.g) + h(c.b);
     return c.a === undefined || c.a >= 1 ? base : base + h(c.a * 255);
+  }
+
+  // ===== Edit Apply =====
+  // THE ONLY SECTION IN THIS FILE THAT WRITES TO AN ELEMENT OF THE HOST PAGE.
+  //
+  // Everything else the extension does is additive — it appends its own chrome
+  // and reads the page. Edit Mode is the first feature that reaches in and
+  // changes it, so every such write is funnelled through here and nowhere else.
+  // test/edit-audit.mjs enforces that by parsing this file's section banners:
+  // setProperty, removeProperty, and setAttribute/removeAttribute of "style" or
+  // "class" may appear between this banner and the next one, and may not appear
+  // anywhere else. If you need to restyle a page element from another section,
+  // call one of these functions rather than reaching past them.
+  //
+  // What is recorded per element, at first touch and never again: the exact
+  // style attribute string and the exact class attribute string. Restoring
+  // means putting those two back verbatim — a page that shipped
+  // style="color:red" gets that attribute back, not a normalised rewrite of it.
+
+  function ensureEditRecord(el) {
+    let record = editRegistry.get(el);
+    if (!record) {
+      record = {
+        el,
+        originalStyleAttr: el.getAttribute("style"),
+        originalClassAttr: el.getAttribute("class"),
+        props: new Map(),
+      };
+      editRegistry.set(el, record);
+    }
+    return record;
+  }
+
+  function classListOf(el) {
+    return (el.getAttribute("class") || "").split(/\s+/).filter(Boolean);
+  }
+
+  function writeClassList(el, classes) {
+    if (classes.length === 0 && el.getAttribute("class") === null) return;
+    el.setAttribute("class", classes.join(" "));
+  }
+
+  // Utility-class steps replace one class with another in place, so the source
+  // edit Claude Code has to make is a one-word swap and the element keeps its
+  // position in whatever order the framework wrote.
+  function swapUtilityClass(el, from, to) {
+    const classes = classListOf(el);
+    const i = from ? classes.indexOf(from) : -1;
+    if (i === -1) {
+      if (to && !classes.includes(to)) {
+        classes.push(to);
+        writeClassList(el, classes);
+      }
+      return;
+    }
+    if (!to) classes.splice(i, 1);
+    else if (classes.includes(to)) classes.splice(i, 1);
+    else classes[i] = to;
+    writeClassList(el, classes);
+  }
+
+  function applyDeclaration(el, prop, value, priority) {
+    if (value === null || value === undefined || value === "") {
+      el.style.removeProperty(prop);
+    } else {
+      el.style.setProperty(prop, value, priority === "important" ? "important" : "");
+    }
+  }
+
+  // Put an element back exactly as it was found, attribute strings and all.
+  function restoreElement(record) {
+    const el = record.el;
+    if (record.originalStyleAttr === null) el.removeAttribute("style");
+    else el.setAttribute("style", record.originalStyleAttr);
+    if (record.originalClassAttr === null) el.removeAttribute("class");
+    else el.setAttribute("class", record.originalClassAttr);
+  }
+
+  // The single write path. `next` is an EditValue:
+  //   { css, inline, priority, cls, token }
+  // css     — the value as it should read in a delta ("18px", "#d97757")
+  // inline  — what to write to the style attribute, or null to remove it
+  // cls     — the utility class realising this value, or null
+  // token   — { kind: "class" | "var", name } when the value sits on a token
+  function applyEditValue(el, prop, next) {
+    const record = ensureEditRecord(el);
+    const entry = record.props.get(prop);
+    const prevCls = entry && entry.after ? entry.after.cls : null;
+    if (prevCls !== (next.cls || null)) swapUtilityClass(el, prevCls, next.cls || null);
+    applyDeclaration(el, prop, next.inline, next.priority);
+  }
+
+  // Read the element's current state for a property as an EditValue. This is
+  // what `before` is captured from, once, at first touch.
+  function readEditValue(el, prop) {
+    const computed = getComputedStyle(el).getPropertyValue(prop).trim();
+    const token = detectPropertyToken(el, prop, computed, tokenIndex);
+    return {
+      css: computed,
+      inline: el.style.getPropertyValue(prop) || null,
+      priority: el.style.getPropertyPriority(prop) || "",
+      cls: token && token.kind === "class" ? token.name : null,
+      token,
+    };
+  }
+
+  // A page rule marked !important outranks a plain inline declaration, so the
+  // edit would silently do nothing. Ask the cascade first rather than writing
+  // and hoping: if the winning declaration is important and is not ours, match
+  // it. Checked once per property per element, at first touch.
+  function neededPriority(el, prop) {
+    const winner = findWinningDeclaration(el, prop, tokenIndex);
+    return winner && winner.important && !winner.fromInline ? "important" : "";
+  }
+
+  function pruneRecord(el) {
+    const record = editRegistry.get(el);
+    if (!record) return;
+    if (record.props.size === 0) {
+      restoreElement(record);
+      editRegistry.delete(el);
+    }
+  }
+
+  // ===== Edit History =====
+  // One chronological stack across every element touched this session, because
+  // a mistake is undone when it is noticed, not when its element happens to be
+  // selected again. Undo landing on some other element flashes that element's
+  // box so the change is never invisible.
+  //
+  // Continuous gestures — a scrub, a held arrow key, a drag in the colour
+  // picker — repaint many times and must land as one entry. beginEditGesture
+  // captures `before` at the start, commitEditGesture pushes once at the end.
+
+  function isEditedProp(el, prop) {
+    const record = editRegistry.get(el);
+    return Boolean(record && record.props.has(prop));
+  }
+
+  function editedPropCount(el) {
+    const record = editRegistry.get(el);
+    return record ? record.props.size : 0;
+  }
+
+  function beginEditGesture(el, prop) {
+    if (editGesture && editGesture.el === el && editGesture.prop === prop) return;
+    commitEditGesture();
+    const record = ensureEditRecord(el);
+    const entry = record.props.get(prop);
+    editGesture = {
+      el,
+      prop,
+      before: entry ? entry.before : readEditValue(el, prop),
+      hadEntry: Boolean(entry),
+    };
+  }
+
+  // Write a value as part of the open gesture. No history until it commits.
+  function setEditValue(el, prop, next) {
+    beginEditGesture(el, prop);
+    const record = ensureEditRecord(el);
+    const entry = record.props.get(prop);
+    const before = entry ? entry.before : editGesture.before;
+    record.props.set(prop, { before, after: next });
+    applyEditValue(el, prop, next);
+  }
+
+  function commitEditGesture() {
+    const g = editGesture;
+    editGesture = null;
+    if (!g) return;
+    const record = editRegistry.get(g.el);
+    const entry = record && record.props.get(g.prop);
+    if (!entry) return;
+    if (sameEditValue(entry.before, entry.after)) {
+      // Scrubbed away and back again: not an edit, and not history.
+      record.props.delete(g.prop);
+      applyEditValue(g.el, g.prop, entry.before);
+      pruneRecord(g.el);
+      return;
+    }
+    if (g.hadEntry && sameEditValue(g.before, entry.after)) return;
+    pushUndo({ kind: "single", el: g.el, prop: g.prop, before: entry.before, after: entry.after });
+  }
+
+  function sameEditValue(a, b) {
+    if (!a || !b) return a === b;
+    return a.css === b.css && (a.cls || null) === (b.cls || null) &&
+      (a.inline || null) === (b.inline || null) && (a.priority || "") === (b.priority || "");
+  }
+
+  function pushUndo(entry) {
+    undoStack.push(entry);
+    // A new edit forks the timeline; anything undone past this point is gone.
+    redoStack.length = 0;
+  }
+
+  // Revert one property to what it was at first touch — itself an undoable
+  // step, so the timeline stays strictly chronological.
+  function resetEditProp(el, prop) {
+    const record = editRegistry.get(el);
+    const entry = record && record.props.get(prop);
+    if (!entry) return;
+    commitEditGesture();
+    record.props.delete(prop);
+    applyEditValue(el, prop, entry.before);
+    pushUndo({ kind: "single", el, prop, before: entry.after, after: entry.before, isReset: true });
+    pruneRecord(el);
+  }
+
+  // Every element, every property, back to how it was found — one entry.
+  function resetAllEdits() {
+    commitEditGesture();
+    if (editRegistry.size === 0) return;
+    const items = [];
+    for (const record of editRegistry.values()) {
+      items.push({
+        el: record.el,
+        styleAttr: record.originalStyleAttr,
+        classAttr: record.originalClassAttr,
+        props: new Map(record.props),
+      });
+      restoreElement(record);
+    }
+    editRegistry.clear();
+    pushUndo({ kind: "batch", items });
+  }
+
+  function applyUndoEntry(entry, direction) {
+    if (entry.kind === "batch") {
+      if (direction === "undo") {
+        // Put every element's edits back.
+        for (const item of entry.items) {
+          const record = ensureEditRecord(item.el);
+          record.originalStyleAttr = item.styleAttr;
+          record.originalClassAttr = item.classAttr;
+          record.props = new Map(item.props);
+          for (const [prop, e] of record.props) applyEditValue(item.el, prop, e.after);
+        }
+      } else {
+        for (const item of entry.items) {
+          const record = editRegistry.get(item.el);
+          if (record) restoreElement(record);
+          editRegistry.delete(item.el);
+        }
+      }
+      return entry.items.length ? entry.items[0].el : null;
+    }
+
+    const value = direction === "undo" ? entry.before : entry.after;
+    const other = direction === "undo" ? entry.after : entry.before;
+    const record = ensureEditRecord(entry.el);
+    const original = record.props.get(entry.prop);
+    const baseline = original ? original.before : other;
+    applyEditValue(entry.el, entry.prop, value);
+    if (sameEditValue(value, baseline) && !record.props.has(entry.prop)) {
+      // Back at the untouched state: the property is no longer an edit.
+      record.props.delete(entry.prop);
+    } else if (sameEditValue(value, baseline)) {
+      record.props.delete(entry.prop);
+    } else {
+      record.props.set(entry.prop, { before: baseline, after: value });
+    }
+    pruneRecord(entry.el);
+    return entry.el;
+  }
+
+  function performUndo() {
+    commitEditGesture();
+    const entry = undoStack.pop();
+    if (!entry) return null;
+    const el = applyUndoEntry(entry, "undo");
+    redoStack.push(entry);
+    return el;
+  }
+
+  function performRedo() {
+    commitEditGesture();
+    const entry = redoStack.pop();
+    if (!entry) return null;
+    const el = applyUndoEntry(entry, "redo");
+    undoStack.push(entry);
+    return el;
+  }
+
+  // ===== Edit Deltas =====
+  // What the panel copies: the same pointer header Copy Code emits, plus what
+  // changed. The before-value earns its place — in a utility-class or token
+  // codebase the old value is how you find the declaration to edit, and
+  // "14px → 18px" is a far weaker instruction than "text-base → text-lg".
+
+  // Properties read out in a fixed order, so the same set of edits always
+  // produces the same block no matter what order they were made in.
+  const EDIT_PROP_ORDER = [
+    "font-size", "font-weight", "line-height", "letter-spacing", "text-align", "color",
+    "padding", "margin", "gap",
+    "width", "height",
+    "background-color", "opacity",
+    "border-width", "border-color", "border-radius",
+    "box-shadow",
+  ];
+
+  function editPropRank(prop) {
+    const i = EDIT_PROP_ORDER.indexOf(prop);
+    return i === -1 ? EDIT_PROP_ORDER.length : i;
+  }
+
+  // A token name is what the source contains, so it leads; the pixel value
+  // follows in parentheses because it is what the eye was actually judging.
+  function formatEditSide(value) {
+    if (!value) return "";
+    if (value.token && value.token.name) return `${value.token.name} (${value.css})`;
+    return value.css;
+  }
+
+  // [{ prop, before, after }] → the "# edits:" lines. Pure — mirrored in
+  // test/edit-deltas.mjs.
+  function buildEditLines(entries) {
+    const sorted = (entries || [])
+      .filter((e) => e && e.prop)
+      .slice()
+      .sort((a, b) => editPropRank(a.prop) - editPropRank(b.prop) || a.prop.localeCompare(b.prop));
+    if (sorted.length === 0) return [];
+    return [
+      "# edits: apply these style changes to this element in the source",
+      ...sorted.map((e) => `#   ${e.prop}: ${formatEditSide(e.before)} → ${formatEditSide(e.after)}`),
+    ];
+  }
+
+  function editEntriesFor(el) {
+    const record = editRegistry.get(el);
+    if (!record) return [];
+    return Array.from(record.props, ([prop, e]) => ({ prop, before: e.before, after: e.after }));
+  }
+
+  function buildEditsBlock(el) {
+    const { header, located } = buildPointerHeader(el);
+    const lines = buildEditLines(editEntriesFor(el));
+    const html = located ? buildRootTag(el) : buildSkeletonHTML(el);
+    const body = lines.length ? header + "\n" + lines.join("\n") : header;
+    return "```\n" + body + "\n" + html + "\n```";
   }
 
   // ===== Event Handlers =====
