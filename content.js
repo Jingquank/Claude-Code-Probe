@@ -3203,12 +3203,27 @@
   }
 
   // Put an element back exactly as it was found, attribute strings and all.
+  //
+  // The double removal is not redundant. Once an inline declaration block has
+  // been written through CSSOM, Chrome's first removeAttribute empties the
+  // block but leaves the attribute node in place, so the element keeps a
+  // visible style="" — residue on the user's page from a tool that promised to
+  // leave none. A second removal takes the node with it. Verified directly in
+  // the browser; do not tidy this away.
   function restoreElement(record) {
     const el = record.el;
-    if (record.originalStyleAttr === null) el.removeAttribute("style");
-    else el.setAttribute("style", record.originalStyleAttr);
-    if (record.originalClassAttr === null) el.removeAttribute("class");
-    else el.setAttribute("class", record.originalClassAttr);
+    if (record.originalStyleAttr === null) {
+      el.removeAttribute("style");
+      if (el.hasAttribute("style")) el.removeAttribute("style");
+    } else {
+      el.setAttribute("style", record.originalStyleAttr);
+    }
+    if (record.originalClassAttr === null) {
+      el.removeAttribute("class");
+      if (el.hasAttribute("class")) el.removeAttribute("class");
+    } else {
+      el.setAttribute("class", record.originalClassAttr);
+    }
   }
 
   // The single write path. `next` is an EditValue:
@@ -3282,15 +3297,23 @@
     return record ? record.props.size : 0;
   }
 
+  // Two different "before"s, and conflating them is what makes an undo stack
+  // wrong. `origin` is the value at first touch and belongs to the delta —
+  // the block should report where the property started, however many times it
+  // was nudged since. `from` is the value this particular gesture is leaving,
+  // and belongs to the undo entry, because one Cmd+Z should give back one
+  // change rather than the whole session's worth.
   function beginEditGesture(el, prop) {
     if (editGesture && editGesture.el === el && editGesture.prop === prop) return;
     commitEditGesture();
     const record = ensureEditRecord(el);
     const entry = record.props.get(prop);
+    const current = entry ? entry.after : readEditValue(el, prop);
     editGesture = {
       el,
       prop,
-      before: entry ? entry.before : readEditValue(el, prop),
+      origin: entry ? entry.before : current,
+      from: current,
       hadEntry: Boolean(entry),
     };
   }
@@ -3300,7 +3323,7 @@
     beginEditGesture(el, prop);
     const record = ensureEditRecord(el);
     const entry = record.props.get(prop);
-    const before = entry ? entry.before : editGesture.before;
+    const before = entry ? entry.before : editGesture.origin;
     // On the first touch the element still wears whatever it started with, so
     // that is what a class swap has to replace.
     const prev = entry ? entry.after : before;
@@ -3322,8 +3345,9 @@
       pruneRecord(g.el);
       return;
     }
-    if (g.hadEntry && sameEditValue(g.before, entry.after)) return;
-    pushUndo({ kind: "single", el: g.el, prop: g.prop, before: entry.before, after: entry.after });
+    // Nothing moved during this gesture — a scrub that ended where it started.
+    if (sameEditValue(g.from, entry.after)) return;
+    pushUndo({ kind: "single", el: g.el, prop: g.prop, before: g.from, after: entry.after });
   }
 
   // Two values are the same edit when they render the same, from the same
