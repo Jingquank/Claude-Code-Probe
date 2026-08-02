@@ -129,8 +129,13 @@
 
   /* An !important declaration, so the apply path's priority escalation has
      something real to fight. Without matching it, an inline padding write
-     would silently do nothing. */
-  .stubborn { padding: 20px !important; }
+     would silently do nothing.
+
+     Two classes on purpose: a single-class rule that declares a length is the
+     exact shape the token collector indexes as a utility class, which would
+     make this fixture test two things at once. This one is only about
+     !important. */
+  .card.stubborn { padding: 20px !important; }
 
   .note {
     margin-top: 28px;
@@ -254,6 +259,58 @@
   }, true);
 
   window.__ccpHarness = { setState, isActive: () => active };
+
+  // ===== Read-only probe, for test/cdp.mjs =====
+  // content.js is an IIFE, so an automated test cannot reach inside it to ask
+  // "how many rules did the collector actually read?" — and that number is
+  // exactly what would have caught the dead token layer. Rather than putting a
+  // debug hook in the shipping content script, the harness re-derives the same
+  // measurements from the page itself, using the same rules content.js uses.
+  //
+  // This is a measurement of the *page*, not of the extension's internals, so
+  // it cannot drift into agreeing with a broken collector: it counts what is
+  // genuinely there, and the assertion is that content.js found it too.
+  window.__ccpProbe = {
+    // The harness rewrites stylesheet hrefs on load to defeat caching, which
+    // makes the browser re-fetch them. Until those land, document.styleSheets
+    // is briefly empty and any token measurement is meaningless. cdp.mjs waits
+    // on this rather than on a guessed delay.
+    stylesheetsReady() {
+      const links = [...document.querySelectorAll('link[rel="stylesheet"]')];
+      const loaded = links.filter((l) => {
+        try { return [...document.styleSheets].some((s) => s.href === l.href && s.cssRules); }
+        catch { return true; } // readable-or-not is not what we are waiting for
+      });
+      return loaded.length === links.length && this.tokenIndexSize().rules > 0;
+    },
+
+    // What a correct collector should find on this page: rules it can read,
+    // and custom properties that are not ours.
+    tokenIndexSize() {
+      let rules = 0;
+      const varNames = new Set();
+      const walk = (list) => {
+        for (const rule of list) {
+          if (rule.selectorText && rule.style) {
+            rules++;
+            for (let i = 0; i < rule.style.length; i++) {
+              const prop = rule.style[i];
+              if (prop.startsWith("--") && !prop.startsWith("--ccp-")) varNames.add(prop);
+            }
+          }
+          if (rule.cssRules && rule.cssRules.length) walk(rule.cssRules);
+        }
+      };
+      for (const sheet of document.styleSheets) {
+        // Same exclusion content.js makes: our own stylesheets are not the
+        // page's, and on a real page they arrive as content scripts.
+        if (/\/(tokens|content)\.css(\?|$)/.test(sheet.href || "")) continue;
+        try { if (sheet.cssRules) walk(sheet.cssRules); } catch { /* cross-origin */ }
+      }
+      return { rules, varNames: varNames.size };
+    },
+  };
+
   hud();
 })();
 </script>

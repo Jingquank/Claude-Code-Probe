@@ -1694,10 +1694,14 @@
   // The declaration that actually paints this property on this element:
   // highest importance, then specificity, then source order — with inline
   // style above all of it. Its text is the only place a var() can be seen.
-  function findWinningDeclaration(el, prop, index) {
+  // `opts.ignoreInline` answers a different question: not "what is painting this
+  // property now" but "what would paint it if we were not here". Escalation has
+  // to ask the second one — see neededPriority.
+  function findWinningDeclaration(el, prop, index, opts) {
     if (!el || !index || index.disabled) return null;
+    const ignoreInline = Boolean(opts && opts.ignoreInline);
 
-    const inlineValue = el.style && el.style.getPropertyValue(prop);
+    const inlineValue = !ignoreInline && el.style && el.style.getPropertyValue(prop);
     const inlineImportant = el.style && el.style.getPropertyPriority(prop) === "important";
     if (inlineValue && inlineImportant) {
       return { value: inlineValue, important: true, fromInline: true, selectorText: null };
@@ -3353,9 +3357,18 @@
   // edit would silently do nothing. Ask the cascade first rather than writing
   // and hoping: if the winning declaration is important and is not ours, match
   // it. Checked once per property per element, at first touch.
+  // The question is about the page, not about us: "does a page rule outrank a
+  // plain inline declaration?" Asking it of the live cascade makes the answer
+  // depend on what we already wrote — the second write to a property finds our
+  // own !important sitting there, concludes no escalation is needed, and takes
+  // it back off. That is not hypothetical: committing a typed value fires once
+  // on Enter and again on the blur that follows, so every typed edit to an
+  // !important-covered property was escalated and then immediately downgraded.
+  // Ignoring inline entirely makes the answer stable however many times it is
+  // asked.
   function neededPriority(el, prop) {
-    const winner = findWinningDeclaration(el, prop, tokenIndex);
-    return winner && winner.important && !winner.fromInline ? "important" : "";
+    const winner = findWinningDeclaration(el, prop, tokenIndex, { ignoreInline: true });
+    return winner && winner.important ? "important" : "";
   }
 
   // A page that animates the property being scrubbed makes the element chase
