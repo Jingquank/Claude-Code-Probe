@@ -1304,6 +1304,370 @@
     updateSettingsButtonVisibility();
   }
 
+  // ===== Edit Tokens =====
+  // Reverse-lookup: given an element and a property, which design token is the
+  // value sitting on — a utility class (text-lg, p-4) or a custom property
+  // (var(--title-sm))? Knowing that turns a scrub into a step along the page's
+  // own scale, and lets the delta block name the token instead of a pixel
+  // count, which is what the source actually contains.
+  //
+  // The rule throughout: only claim a token when its resolved value equals the
+  // computed value. A wrong claim would send Claude Code editing a token that
+  // isn't there, so no-match reports raw px and the panel falls back to a plain
+  // scrub. The pure half is transcribed into test/edit-tokens.mjs — change it
+  // there and change it here.
+
+  // Scale steps a family name can end in. Numeric tails (500, 1.5) are handled
+  // separately; these are the word-shaped ones, ordered longest-first so "2xl"
+  // is not read as the number 2.
+  const SCALE_WORDS = [
+    "3xs", "2xs", "xs", "sm", "md", "base", "lg", "xl", "2xl", "3xl", "4xl",
+    "5xl", "6xl", "7xl", "8xl", "9xl",
+    "none", "full", "tight", "snug", "normal", "relaxed", "loose",
+    "thin", "light", "regular", "medium", "semibold", "bold", "extrabold", "black",
+  ];
+
+  // "16px" → 16. rem/em resolve against the roots the caller measured. Anything
+  // whose value depends on layout (%, calc, nested var, auto) is null: it cannot
+  // be compared against a computed pixel value, so it never becomes a token.
+  function parseCssLength(value, remBase, emBase) {
+    if (typeof value !== "string") return null;
+    const s = value.trim().toLowerCase();
+    if (s === "0") return 0;
+    const m = s.match(/^(-?[\d.]+)(px|rem|em)$/);
+    if (!m) return null;
+    const n = parseFloat(m[1]);
+    if (!isFinite(n)) return null;
+    if (m[2] === "px") return n;
+    if (m[2] === "rem") return typeof remBase === "number" ? n * remBase : null;
+    return typeof emBase === "number" ? n * emBase : null;
+  }
+
+  // [id, class, type] counts, per CSS Selectors 4 §17. Needed because the
+  // element's value comes from whichever rule wins, and only that rule's text
+  // can tell us whether a var() is involved.
+  function computeSpecificity(selector) {
+    if (typeof selector !== "string") return [0, 0, 0];
+
+    // Functional pseudo-classes first: their arguments count, but by their own
+    // rules — :where() contributes nothing, :is()/:not()/:has() contribute
+    // their most specific argument.
+    let s = selector;
+    let carried = [0, 0, 0];
+    const fn = /:(where|is|not|has|matches|any)\(/gi;
+    let guard = 0;
+    for (;;) {
+      fn.lastIndex = 0;
+      const m = fn.exec(s);
+      if (!m || guard++ > 32) break;
+      // Walk to the matching close paren so nested functions survive.
+      let depth = 1, i = m.index + m[0].length;
+      for (; i < s.length && depth > 0; i++) {
+        if (s[i] === "(") depth++;
+        else if (s[i] === ")") depth--;
+      }
+      const inner = s.slice(m.index + m[0].length, i - 1);
+      if (m[1].toLowerCase() !== "where") {
+        for (const branch of inner.split(",")) {
+          const b = computeSpecificity(branch);
+          if (b[0] > carried[0] ||
+              (b[0] === carried[0] && b[1] > carried[1]) ||
+              (b[0] === carried[0] && b[1] === carried[1] && b[2] > carried[2])) {
+            carried = b;
+          }
+        }
+      }
+      s = s.slice(0, m.index) + " " + s.slice(i);
+    }
+
+    // Attribute values can contain anything, including "#" and "."; blank them
+    // before counting, keeping the brackets so the selector still counts as one.
+    s = s.replace(/\[[^\]]*\]/g, "[]");
+    // Pseudo-elements count as type selectors and must not be seen as classes.
+    const pseudoElements = (s.match(/::[\w-]+/g) || []).length;
+    s = s.replace(/::[\w-]+/g, " ");
+
+    const ids = (s.match(/#[\w-]+/g) || []).length;
+    const classes = (s.match(/\.[\w-]+/g) || []).length;
+    const attrs = (s.match(/\[\]/g) || []).length;
+    const pseudoClasses = (s.match(/:[\w-]+/g) || []).length;
+    // Type selectors: a bare name at the start or after a combinator/space.
+    const types = (s.match(/(^|[\s>+~(,])([a-z][\w-]*)/gi) || []).length;
+
+    return [
+      ids + carried[0],
+      classes + attrs + pseudoClasses + carried[1],
+      types + pseudoElements + carried[2],
+    ];
+  }
+
+  function compareSpecificity(a, b) {
+    for (let i = 0; i < 3; i++) if (a[i] !== b[i]) return a[i] - b[i];
+    return 0;
+  }
+
+  // "text-lg" → { prefix: "text", step: "lg" }, "--space-4" → { prefix:
+  // "--space", step: "4" }, "brand" → null. The step is the last dash-separated
+  // segment when it looks like a scale position; everything before it names the
+  // family. Tailwind's fractional steps (p-1.5) and numeric ramps (blue-500)
+  // both land in the numeric branch.
+  function splitTokenName(name) {
+    if (typeof name !== "string") return null;
+    const cut = name.lastIndexOf("-");
+    // A leading "--" is the custom-property sigil, not a separator.
+    if (cut <= 0 || (name.startsWith("--") && cut < 3)) return null;
+    const step = name.slice(cut + 1);
+    const prefix = name.slice(0, cut);
+    if (!step) return null;
+    const numeric = /^\d+(\.\d+)?$/.test(step);
+    if (!numeric && !SCALE_WORDS.includes(step.toLowerCase())) return null;
+    return { prefix, step };
+  }
+
+  // [{ name, resolved }] → [{ prefix, members: [{ name, step, resolved }] }]
+  // sorted by resolved value. Families of one are dropped: a scale you cannot
+  // step along is not a scale, and offering a stepper for it would be a lie.
+  function groupTokenFamilies(entries) {
+    const byPrefix = new Map();
+    for (const e of entries || []) {
+      if (!e || typeof e.resolved !== "number" || !isFinite(e.resolved)) continue;
+      const split = splitTokenName(e.name);
+      if (!split) continue;
+      if (!byPrefix.has(split.prefix)) byPrefix.set(split.prefix, []);
+      byPrefix.get(split.prefix).push({ name: e.name, step: split.step, resolved: e.resolved });
+    }
+
+    const families = [];
+    for (const [prefix, members] of byPrefix) {
+      // Same name twice (two sheets, same token) keeps the first resolution.
+      const seen = new Set();
+      const unique = members.filter((m) => (seen.has(m.name) ? false : seen.add(m.name)));
+      if (unique.length < 2) continue;
+      unique.sort((a, b) => a.resolved - b.resolved || a.name.localeCompare(b.name));
+      families.push({ prefix, members: unique });
+    }
+    families.sort((a, b) => a.prefix.localeCompare(b.prefix));
+    return families;
+  }
+
+  // Which member sits exactly on this value? Sub-pixel tolerance only — a
+  // half-pixel is rounding, a whole pixel is a different token.
+  function matchToken(members, resolved, tolerance) {
+    if (!members || typeof resolved !== "number") return null;
+    const tol = typeof tolerance === "number" ? tolerance : 0.5;
+    let best = null, bestD = Infinity;
+    for (const m of members) {
+      const d = Math.abs(m.resolved - resolved);
+      if (d <= tol && d < bestD) { best = m; bestD = d; }
+    }
+    return best;
+  }
+
+  // One rung up or down, clamped at the ends. Off-scale values step to the
+  // neighbour in the direction of travel, so a stepper always does something
+  // predictable even when the current value is between rungs.
+  function stepToken(members, resolved, dir) {
+    if (!members || members.length === 0) return null;
+    const exact = matchToken(members, resolved);
+    if (exact) {
+      const i = members.indexOf(exact);
+      const next = Math.min(members.length - 1, Math.max(0, i + (dir > 0 ? 1 : -1)));
+      return members[next];
+    }
+    if (dir > 0) return members.find((m) => m.resolved > resolved) || members[members.length - 1];
+    for (let i = members.length - 1; i >= 0; i--) {
+      if (members[i].resolved < resolved) return members[i];
+    }
+    return members[0];
+  }
+
+  // --- DOM-bound half ---
+  // Everything below reads the page. It runs once per Edit Mode entry and the
+  // result is cached in tokenIndex, so a heavy stylesheet is paid for once.
+
+  // Single-class rules are what a utility framework is made of. Anything more
+  // specific belongs to the page's own design and stepping it would edit
+  // unrelated elements.
+  const SINGLE_CLASS_RE = /^\.((?:[\w-]|\\.)+)$/;
+
+  // Property -> the shorthand that also sets it. A padding utility declares
+  // `padding`, so looking only at `padding-top` would find nothing.
+  const SHORTHAND_OF = {
+    "padding-top": "padding", "padding-right": "padding",
+    "padding-bottom": "padding", "padding-left": "padding",
+    "margin-top": "margin", "margin-right": "margin",
+    "margin-bottom": "margin", "margin-left": "margin",
+    "border-top-left-radius": "border-radius", "border-top-right-radius": "border-radius",
+    "border-bottom-right-radius": "border-radius", "border-bottom-left-radius": "border-radius",
+    "border-top-width": "border-width", "border-right-width": "border-width",
+    "border-bottom-width": "border-width", "border-left-width": "border-width",
+    "row-gap": "gap", "column-gap": "gap",
+  };
+
+  // Walking every rule of a large site is the one genuinely expensive thing
+  // Edit Mode does. Past this many rules the token layer switches itself off
+  // rather than stalling the panel — raw scrubbing still works, so the cost of
+  // giving up is small and the cost of jank is not.
+  const TOKEN_RULE_BUDGET = 50000;
+
+  function collectTokenSources() {
+    const index = {
+      disabled: false,
+      classRules: new Map(), // property -> [{ className, value, order }]
+      varNames: new Set(),
+      rules: [],             // { selectorText, style, order } for the winner walk
+    };
+
+    let order = 0;
+    const walk = (rules) => {
+      for (const rule of rules) {
+        if (order > TOKEN_RULE_BUDGET) { index.disabled = true; return; }
+
+        // Grouping rules: only descend into conditions that currently apply,
+        // so a token is never claimed from a media query that isn't in effect.
+        if (rule.cssRules) {
+          if (rule.media && rule.conditionText) {
+            let matches = true;
+            try { matches = window.matchMedia(rule.conditionText).matches; } catch { matches = false; }
+            if (!matches) continue;
+          }
+          if (rule.supportsText !== undefined) {
+            try { if (!CSS.supports(rule.conditionText)) continue; } catch { continue; }
+          }
+          walk(rule.cssRules);
+          continue;
+        }
+
+        const sel = rule.selectorText;
+        if (!sel || !rule.style) continue;
+        order++;
+        index.rules.push({ selectorText: sel, style: rule.style, order });
+
+        for (let i = 0; i < rule.style.length; i++) {
+          const prop = rule.style[i];
+          if (prop.startsWith("--")) index.varNames.add(prop);
+        }
+
+        const m = sel.match(SINGLE_CLASS_RE);
+        if (!m) continue;
+        // The captured text is CSS-escaped ("p-1\.5"); the DOM class is not.
+        const className = m[1].replace(/\\(.)/g, "$1");
+        for (let i = 0; i < rule.style.length; i++) {
+          const prop = rule.style[i];
+          if (prop.startsWith("--")) continue;
+          if (!index.classRules.has(prop)) index.classRules.set(prop, []);
+          index.classRules.get(prop).push({
+            className,
+            value: rule.style.getPropertyValue(prop),
+            order,
+          });
+        }
+      }
+    };
+
+    for (const sheet of Array.from(document.styleSheets)) {
+      let rules = null;
+      // Cross-origin sheets without CORS throw on access. There is nothing to
+      // be done about it and nothing to report: the token layer just sees less.
+      try { rules = sheet.cssRules; } catch { continue; }
+      if (rules) walk(rules);
+      if (index.disabled) break;
+    }
+    // Constructed sheets (CSS-in-JS runtimes) live outside document.styleSheets.
+    for (const sheet of Array.from(document.adoptedStyleSheets || [])) {
+      try { if (sheet.cssRules) walk(sheet.cssRules); } catch { /* same as above */ }
+      if (index.disabled) break;
+    }
+
+    if (index.disabled) {
+      index.classRules.clear();
+      index.varNames.clear();
+      index.rules.length = 0;
+    }
+    return index;
+  }
+
+  // The declaration that actually paints this property on this element:
+  // highest importance, then specificity, then source order — with inline
+  // style above all of it. Its text is the only place a var() can be seen.
+  function findWinningDeclaration(el, prop, index) {
+    if (!el || !index || index.disabled) return null;
+
+    const inlineValue = el.style && el.style.getPropertyValue(prop);
+    const inlineImportant = el.style && el.style.getPropertyPriority(prop) === "important";
+    if (inlineValue && inlineImportant) {
+      return { value: inlineValue, important: true, fromInline: true, selectorText: null };
+    }
+
+    let best = null;
+    for (const rule of index.rules) {
+      let matches = false;
+      try { matches = el.matches(rule.selectorText); } catch { continue; }
+      if (!matches) continue;
+      const value = rule.style.getPropertyValue(prop);
+      if (!value) continue;
+      const important = rule.style.getPropertyPriority(prop) === "important";
+      const spec = computeSpecificity(rule.selectorText);
+      const cand = { value, important, spec, order: rule.order, selectorText: rule.selectorText };
+      if (!best) { best = cand; continue; }
+      if (cand.important !== best.important) { if (cand.important) best = cand; continue; }
+      const bySpec = compareSpecificity(cand.spec, best.spec);
+      if (bySpec > 0 || (bySpec === 0 && cand.order >= best.order)) best = cand;
+    }
+
+    if (inlineValue && (!best || !best.important)) {
+      return { value: inlineValue, important: false, fromInline: true, selectorText: null };
+    }
+    return best ? { ...best, fromInline: false } : null;
+  }
+
+  // Which token — if any — is this element's computed value sitting on?
+  // Utility class first (it is what the source contains), then a var() in the
+  // winning declaration. Both are verified against the computed value before
+  // being claimed.
+  function detectPropertyToken(el, prop, computedValue, index) {
+    if (!el || !index || index.disabled) return null;
+    const target = parseCssLength(computedValue, tokenRemBase(), tokenEmBase(el));
+    if (target === null) return null;
+
+    const props = [prop];
+    if (SHORTHAND_OF[prop]) props.push(SHORTHAND_OF[prop]);
+
+    for (const p of props) {
+      for (const cls of Array.from(el.classList)) {
+        const candidates = index.classRules.get(p);
+        if (!candidates) continue;
+        const hit = candidates.find((c) => c.className === cls);
+        if (!hit) continue;
+        const resolved = parseCssLength(hit.value, tokenRemBase(), tokenEmBase(el));
+        if (resolved !== null && Math.abs(resolved - target) <= 0.5) {
+          return { kind: "class", name: cls, resolved };
+        }
+      }
+    }
+
+    const winner = findWinningDeclaration(el, prop, index);
+    const varMatch = winner && winner.value.match(/var\(\s*(--[\w-]+)/);
+    if (varMatch) {
+      const resolved = parseCssLength(
+        getComputedStyle(el).getPropertyValue(varMatch[1]), tokenRemBase(), tokenEmBase(el));
+      if (resolved !== null && Math.abs(resolved - target) <= 0.5) {
+        return { kind: "var", name: varMatch[1], resolved };
+      }
+    }
+    return null;
+  }
+
+  function tokenRemBase() {
+    const v = parseFloat(getComputedStyle(document.documentElement).fontSize);
+    return isFinite(v) ? v : 16;
+  }
+
+  function tokenEmBase(el) {
+    const v = parseFloat(getComputedStyle(el).fontSize);
+    return isFinite(v) ? v : tokenRemBase();
+  }
+
   // ===== Edit Color =====
   // Pure conversions for the edit panel's colour picker. HSV is the picker's
   // native space — a saturation square is linear in S and V, which HSL's is

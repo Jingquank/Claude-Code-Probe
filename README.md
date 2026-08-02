@@ -174,6 +174,7 @@ view. `test/` holds the rig that proves it:
 | `test/placement.mjs` | the executable spec — placement algorithms and a 23-case geometry matrix |
 | `test/sim.mjs` | headless runner, comparing algorithms across viewports |
 | `test/redline.mjs` | the redline solver's spec — named cases plus a 10,000-config sweep |
+| `test/edit-tokens.mjs` | Edit Mode's token resolver — specificity, scale families, stepping |
 | `test/edit-color.mjs` | Edit Mode's colour conversions — round trips bounded by 8-bit quantisation |
 | `test/harness.html` | browser harness: simulate, or sweep the real extension and reconcile |
 | `test/PLACEMENT-PLAN.md` | why the placement works the way it does |
@@ -182,6 +183,7 @@ view. `test/` holds the rig that proves it:
 node test/sim.mjs                        # the matrix, across six viewports
 node test/sim.mjs 1440x900 --detail      # one viewport, with per-case geometry
 node test/redline.mjs                    # spacing-measurement geometry
+node test/edit-tokens.mjs                # design-token reverse lookup
 node test/edit-color.mjs                 # picker colour maths
 
 python3 -m http.server 8765              # then open /test/harness.html
