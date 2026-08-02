@@ -25,9 +25,25 @@ const EDIT_PROP_ORDER = [
   "box-shadow",
 ];
 
+// Mirrored from the Edit Tokens section of content.js — change both.
+const SHORTHAND_OF = {
+  "padding-top": "padding", "padding-right": "padding",
+  "padding-bottom": "padding", "padding-left": "padding",
+  "margin-top": "margin", "margin-right": "margin",
+  "margin-bottom": "margin", "margin-left": "margin",
+  "border-top-left-radius": "border-radius", "border-top-right-radius": "border-radius",
+  "border-bottom-right-radius": "border-radius", "border-bottom-left-radius": "border-radius",
+  "border-top-width": "border-width", "border-right-width": "border-width",
+  "border-bottom-width": "border-width", "border-left-width": "border-width",
+  "row-gap": "gap", "column-gap": "gap",
+};
+
 export function editPropRank(prop) {
   const i = EDIT_PROP_ORDER.indexOf(prop);
-  return i === -1 ? EDIT_PROP_ORDER.length : i;
+  if (i !== -1) return i;
+  const shorthand = SHORTHAND_OF[prop];
+  const j = shorthand ? EDIT_PROP_ORDER.indexOf(shorthand) : -1;
+  return j === -1 ? EDIT_PROP_ORDER.length : j;
 }
 
 export function formatEditSide(value) {
@@ -136,6 +152,38 @@ check("order · the block is stable under permutation", (fail) => {
     if (buildEditLines(rotated).join("\n") !== reference) fail(`rotation ${r} differs`);
   }
   if (buildEditLines(entries.slice().reverse()).join("\n") !== reference) fail("reversal differs");
+});
+
+// Opening a linked control into its four sides must not scatter them through
+// the block: each side sorts where its shorthand does.
+check("order · side longhands sort with their shorthand", (fail) => {
+  const entries = [
+    { prop: "box-shadow", before: raw("none"), after: raw("0 2px 8px") },
+    { prop: "padding-top", before: raw("16px"), after: raw("40px") },
+    { prop: "font-size", before: raw("14px"), after: raw("18px") },
+    { prop: "border-top-left-radius", before: raw("0px"), after: raw("8px") },
+    { prop: "margin-left", before: raw("0px"), after: raw("12px") },
+  ];
+  const props = buildEditLines(entries).slice(1).map((l) => l.slice(4).split(":")[0]);
+  const want = ["font-size", "padding-top", "margin-left", "border-top-left-radius", "box-shadow"];
+  if (!eq(props, want)) fail(`${JSON.stringify(props)}`);
+});
+
+// Four sides of the same shorthand tie on rank, so they fall back to
+// alphabetical — stable, if not in visual order, and never interleaved with
+// another property's sides.
+check("order · sides of one shorthand stay together", (fail) => {
+  const sides = ["padding-top", "padding-right", "padding-bottom", "padding-left"];
+  const entries = [
+    { prop: "margin-top", before: raw("0px"), after: raw("4px") },
+    ...sides.map((prop) => ({ prop, before: raw("0px"), after: raw("8px") })),
+  ];
+  const props = buildEditLines(entries).slice(1).map((l) => l.slice(4).split(":")[0]);
+  const paddingRun = props.filter((p) => p.startsWith("padding-"));
+  const firstPad = props.findIndex((p) => p.startsWith("padding-"));
+  const contiguous = props.slice(firstPad, firstPad + 4).every((p) => p.startsWith("padding-"));
+  if (paddingRun.length !== 4 || !contiguous) fail(`sides split up: ${JSON.stringify(props)}`);
+  if (props[props.length - 1] !== "margin-top") fail(`margin should follow padding: ${JSON.stringify(props)}`);
 });
 
 // A property the panel does not know about must still be reported — it sorts

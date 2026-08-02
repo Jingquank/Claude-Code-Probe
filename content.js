@@ -31,6 +31,7 @@
   let editing = false;
   let editPanelEl = null;
   let editPanelPos = null;
+  let editPopoverEl = null;
   let editGesture = null;
   let tokenIndex = null;
   // Strong element references, deliberately: the undo stack has to hold them
@@ -1545,49 +1546,39 @@
       for (const rule of rules) {
         if (order > TOKEN_RULE_BUDGET) { index.disabled = true; return; }
 
-        // Grouping rules: only descend into conditions that currently apply,
-        // so a token is never claimed from a media query that isn't in effect.
-        if (rule.cssRules) {
-          if (rule.media && rule.conditionText) {
-            let matches = true;
-            try { matches = window.matchMedia(rule.conditionText).matches; } catch { matches = false; }
-            if (!matches) continue;
-          }
-          if (rule.supportsText !== undefined) {
-            try { if (!CSS.supports(rule.conditionText)) continue; } catch { continue; }
-          }
-          walk(rule.cssRules);
-          continue;
+        // Conditional groups: only descend into conditions that currently
+        // apply, so a token is never claimed from a media query that is not in
+        // effect. Detected by type rather than by "has cssRules" — see below.
+        if (isMediaRule(rule)) {
+          let matches = true;
+          try { matches = window.matchMedia(rule.conditionText).matches; } catch { matches = false; }
+          if (!matches) continue;
+        } else if (isSupportsRule(rule)) {
+          try { if (!CSS.supports(rule.conditionText)) continue; } catch { continue; }
         }
 
-        const sel = rule.selectorText;
-        if (!sel || !rule.style) continue;
-        order++;
-        index.rules.push({ selectorText: sel, style: rule.style, order });
-
-        for (let i = 0; i < rule.style.length; i++) {
-          const prop = rule.style[i];
-          if (prop.startsWith("--")) index.varNames.add(prop);
+        // A style rule carries declarations, and — since CSS Nesting shipped —
+        // may carry child rules as well. So this is not an either/or, and it
+        // cannot be decided by testing `rule.cssRules` for truthiness: every
+        // CSSStyleRule now has a cssRules list, empty or not. Reading that as
+        // "this is a group" skips the rule's own declarations, which quietly
+        // empties the whole token index and takes the !important escalation
+        // down with it, since both read from index.rules.
+        if (rule.selectorText && rule.style) {
+          order++;
+          index.rules.push({ selectorText: rule.selectorText, style: rule.style, order });
+          collectRule(rule, index);
         }
 
-        const m = sel.match(SINGLE_CLASS_RE);
-        if (!m) continue;
-        // The captured text is CSS-escaped ("p-1\.5"); the DOM class is not.
-        const className = m[1].replace(/\\(.)/g, "$1");
-        for (let i = 0; i < rule.style.length; i++) {
-          const prop = rule.style[i];
-          if (prop.startsWith("--")) continue;
-          if (!index.classRules.has(prop)) index.classRules.set(prop, []);
-          index.classRules.get(prop).push({
-            className,
-            value: rule.style.getPropertyValue(prop),
-            order,
-          });
-        }
+        if (rule.cssRules && rule.cssRules.length) walk(rule.cssRules);
       }
     };
 
     for (const sheet of Array.from(document.styleSheets)) {
+      // Our own stylesheets are injected into every page we run on, and their
+      // tokens are the tool's, not the page's. Offering --ccp-accent as a fill
+      // for someone's card would be inventing a design system they never had.
+      if (isOwnStyleSheet(sheet)) continue;
       let rules = null;
       // Cross-origin sheets without CORS throw on access. There is nothing to
       // be done about it and nothing to report: the token layer just sees less.
@@ -1607,6 +1598,53 @@
       index.rules.length = 0;
     }
     return index;
+  }
+
+  const isMediaRule = (rule) =>
+    typeof CSSMediaRule !== "undefined" && rule instanceof CSSMediaRule;
+  const isSupportsRule = (rule) =>
+    typeof CSSSupportsRule !== "undefined" && rule instanceof CSSSupportsRule;
+
+  // tokens.css and content.css ride along on every page as content scripts, so
+  // they are in document.styleSheets like any other sheet. Skipping them by URL
+  // also saves walking a couple of hundred rules that could never match a page
+  // element. The name filter in collectRule is the backstop for anywhere the
+  // URL is not recognisable — the test harness loads them as page stylesheets.
+  function isOwnStyleSheet(sheet) {
+    const href = sheet.href || "";
+    if (!href) return false;
+    try {
+      if (chrome.runtime && chrome.runtime.getURL && href.startsWith(chrome.runtime.getURL(""))) {
+        return true;
+      }
+    } catch { /* getURL is unavailable outside an extension context */ }
+    return /\/(tokens|content)\.css(\?|$)/.test(href);
+  }
+
+  // One rule's contribution: every custom property it declares, and — when the
+  // selector is a single bare class — the utility values it defines.
+  function collectRule(rule, index) {
+    for (let i = 0; i < rule.style.length; i++) {
+      const prop = rule.style[i];
+      // Our own namespace, everywhere in this file, is not the page's.
+      if (prop.startsWith("--") && !prop.startsWith("--ccp-")) index.varNames.add(prop);
+    }
+
+    const m = rule.selectorText.match(SINGLE_CLASS_RE);
+    if (!m) return;
+    // The captured text is CSS-escaped ("p-1\.5"); the DOM class is not.
+    const className = m[1].replace(/\\(.)/g, "$1");
+    if (className.startsWith("ccp-")) return;
+    for (let i = 0; i < rule.style.length; i++) {
+      const prop = rule.style[i];
+      if (prop.startsWith("--")) continue;
+      if (!index.classRules.has(prop)) index.classRules.set(prop, []);
+      index.classRules.get(prop).push({
+        className,
+        value: rule.style.getPropertyValue(prop),
+        order: index.rules.length,
+      });
+    }
   }
 
   // The declaration that actually paints this property on this element:
@@ -1892,8 +1930,16 @@
       key: "spacing",
       label: "Spacing",
       controls: [
-        { prop: "padding", label: "padding", unit: "px", step: 1, min: 0, max: 400, reads: "padding-top" },
-        { prop: "margin", label: "margin", unit: "px", step: 1, min: -400, max: 400, reads: "margin-top" },
+        {
+          prop: "padding", label: "padding", unit: "px", step: 1, min: 0, max: 400,
+          sides: ["padding-top", "padding-right", "padding-bottom", "padding-left"],
+          sideLabels: ["top", "right", "bottom", "left"],
+        },
+        {
+          prop: "margin", label: "margin", unit: "px", step: 1, min: -400, max: 400,
+          sides: ["margin-top", "margin-right", "margin-bottom", "margin-left"],
+          sideLabels: ["top", "right", "bottom", "left"],
+        },
         {
           prop: "gap", label: "gap", unit: "px", step: 1, min: 0, max: 400, reads: "row-gap",
           when: (el) => /flex|grid/.test(getComputedStyle(el).display),
@@ -1908,11 +1954,155 @@
         { prop: "height", label: "height", unit: "px", step: 1, min: 0, max: 4000, auto: true },
       ],
     },
+    {
+      key: "surface",
+      label: "Surface",
+      controls: [
+        { prop: "background-color", label: "fill", kind: "color" },
+        { prop: "opacity", label: "opacity", unit: "%", step: 1, min: 0, max: 100, scale: 100 },
+      ],
+    },
+    {
+      key: "border",
+      label: "Border",
+      // Adaptive mode hides a group that has nothing to show and offers to add
+      // it instead; standard mode always shows it, so a border can be given to
+      // an element that has none without going looking for the affordance.
+      has: (el) => parseFloat(getComputedStyle(el).borderTopWidth) > 0,
+      add: { "border-width": "1px", "border-style": "solid" },
+      controls: [
+        { prop: "border-width", label: "stroke", unit: "px", step: 1, min: 0, max: 40, reads: "border-top-width" },
+        { prop: "border-color", label: "tint", kind: "color", reads: "border-top-color" },
+        {
+          prop: "border-radius", label: "radius", unit: "px", step: 1, min: 0, max: 400,
+          sides: ["border-top-left-radius", "border-top-right-radius",
+                  "border-bottom-right-radius", "border-bottom-left-radius"],
+          sideLabels: ["↖", "↗", "↘", "↙"],
+        },
+      ],
+    },
+    {
+      key: "shadow",
+      label: "Shadow",
+      has: (el) => getComputedStyle(el).boxShadow !== "none",
+      add: { "box-shadow": "0 2px 8px rgb(0 0 0 / 0.15)" },
+      // box-shadow is one property but four decisions, so the panel edits the
+      // parts and writes the whole thing back. Reading works the same way:
+      // the computed shadow is parsed once and the parts are pulled out of it.
+      shadow: true,
+      controls: [
+        { prop: "shadow-y", label: "y", unit: "px", step: 1, min: -80, max: 80, shadowPart: "y" },
+        { prop: "shadow-blur", label: "blur", unit: "px", step: 1, min: 0, max: 200, shadowPart: "blur" },
+        { prop: "shadow-spread", label: "spread", unit: "px", step: 1, min: -80, max: 80, shadowPart: "spread" },
+        { prop: "shadow-color", label: "tint", kind: "color", shadowPart: "color" },
+      ],
+    },
   ];
 
   const controlsOf = (group, el) => group.controls.filter((c) => !c.when || c.when(el));
   const groupsFor = (el) =>
     EDIT_GROUPS.filter((g) => (!g.when || g.when(el)) && controlsOf(g, el).length > 0);
+
+  // Which linked controls the user has opened up into their four sides. Panel
+  // state, not element state: it is a way of looking at the element, so it
+  // resets with the panel rather than following the element around.
+  const editSplit = new Set();
+
+  // ===== box-shadow parts =====
+  // One property, four decisions. The panel edits the parts and writes the
+  // whole declaration back, which means parsing the computed value first.
+  // Chrome emits "rgb(0, 0, 0) 0px 2px 8px 0px", colour first, and a
+  // comma-separated list when there is more than one shadow — only the first
+  // is editable here, and the rest are preserved untouched.
+  function parseBoxShadow(value) {
+    if (!value || value === "none") return null;
+    const shadows = splitTopLevel(value);
+    const first = shadows[0];
+    const colorMatch = first.match(/(rgba?\([^)]*\)|#[0-9a-f]{3,8})/i);
+    const color = colorMatch ? colorMatch[1] : "rgb(0, 0, 0)";
+    const numbers = first.replace(/rgba?\([^)]*\)/gi, " ").match(/-?[\d.]+px/g) || [];
+    const n = (i, fallback) => (numbers[i] !== undefined ? parseFloat(numbers[i]) : fallback);
+    return {
+      color,
+      x: n(0, 0),
+      y: n(1, 0),
+      blur: n(2, 0),
+      spread: n(3, 0),
+      inset: /\binset\b/.test(first),
+      rest: shadows.slice(1),
+    };
+  }
+
+  function formatBoxShadow(parts) {
+    const body = `${parts.color} ${parts.x}px ${parts.y}px ${parts.blur}px ${parts.spread}px`;
+    const one = parts.inset ? `inset ${body}` : body;
+    return [one, ...(parts.rest || [])].join(", ");
+  }
+
+  // Split on commas that are not inside parentheses, so rgb(0, 0, 0) survives.
+  function splitTopLevel(value) {
+    const out = [];
+    let depth = 0, start = 0;
+    for (let i = 0; i < value.length; i++) {
+      const c = value[i];
+      if (c === "(") depth++;
+      else if (c === ")") depth--;
+      else if (c === "," && depth === 0) { out.push(value.slice(start, i).trim()); start = i + 1; }
+    }
+    out.push(value.slice(start).trim());
+    return out.filter(Boolean);
+  }
+
+  function currentShadow(el) {
+    return parseBoxShadow(getComputedStyle(el).boxShadow) ||
+      { color: "rgb(0, 0, 0)", x: 0, y: 0, blur: 0, spread: 0, inset: false, rest: [] };
+  }
+
+  // A shadow part reads out of the parsed shadow and writes the whole property
+  // back, so the registry only ever holds one entry: "box-shadow".
+  function applyShadowPart(control, value) {
+    const el = selectedElement;
+    if (!el || !el.isConnected) return;
+    const parts = currentShadow(el);
+    if (control.shadowPart === "color") parts.color = value;
+    else parts[control.shadowPart === "y" ? "y" : control.shadowPart] = parseFloat(value) || 0;
+    const css = formatBoxShadow(parts);
+    setEditValue(el, "box-shadow", {
+      css, inline: css, priority: neededPriority(el, "box-shadow"), cls: null, token: null,
+    });
+  }
+
+  function shadowPartValue(el, control) {
+    const parts = currentShadow(el);
+    return control.shadowPart === "color" ? parts.color : parts[control.shadowPart];
+  }
+
+  // ===== colour values =====
+  function readColorValue(el, control) {
+    if (control.shadowPart) return shadowPartValue(el, control);
+    return getComputedStyle(el).getPropertyValue(control.reads || control.prop).trim();
+  }
+
+  function applyColorValue(control, cssColor) {
+    if (control.shadowPart) { applyShadowPart(control, cssColor); return; }
+    applyEditProp(control, cssColor);
+  }
+
+  // Colour tokens the page declares, for the picker's palette. Only names that
+  // resolve to a colour are offered — a --space-4 has no business in a swatch
+  // row — and only when the stylesheet walk actually found something.
+  function paletteTokens(el) {
+    if (!tokenIndex || tokenIndex.disabled) return [];
+    const style = getComputedStyle(el);
+    const out = [];
+    for (const name of tokenIndex.varNames) {
+      const raw = style.getPropertyValue(name).trim();
+      const parsed = parseCssColor(raw);
+      if (parsed) out.push({ name, css: raw, hex: formatHex(parsed) });
+      if (out.length >= 24) break;
+    }
+    return out;
+  }
 
   function showEditPanel() {
     removeEditPanel();
@@ -1997,30 +2187,85 @@
       legend.textContent = group.label;
       section.appendChild(legend);
 
+      // A group whose property the element does not have yet: rather than a
+      // row of zeroes pretending to be a border, offer to give it one.
+      if (group.add && group.has && !group.has(selectedElement) &&
+          !isEditedProp(selectedElement, Object.keys(group.add)[0])) {
+        section.appendChild(buildAddRow(group));
+        body.appendChild(section);
+        continue;
+      }
+
       for (const control of controlsOf(group, selectedElement)) {
         section.appendChild(buildEditRow(control));
+        if (control.sides && editSplit.has(control.prop)) {
+          for (let i = 0; i < control.sides.length; i++) {
+            section.appendChild(buildEditRow(sideControl(control, i), true));
+          }
+        }
       }
       body.appendChild(section);
     }
     refreshEditControls();
   }
 
-  function buildEditRow(control) {
-    const row = document.createElement("div");
-    row.className = "ccp-edit-row";
-    row.dataset.prop = control.prop;
+  // Each side of a linked control is a full control in its own right, so it
+  // reads, writes and reports as its own property — which is what the source
+  // will contain once only one side has changed.
+  function sideControl(control, i) {
+    return {
+      ...control,
+      sides: null,
+      prop: control.sides[i],
+      reads: control.sides[i],
+      label: control.sideLabels[i],
+      isSide: true,
+    };
+  }
 
+  function buildAddRow(group) {
+    const row = document.createElement("div");
+    row.className = "ccp-edit-row ccp-edit-addrow";
+    const button = document.createElement("button");
+    button.className = "ccp-edit-add";
+    button.textContent = `+ add ${group.label.toLowerCase()}`;
+    button.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const el = selectedElement;
+      if (!el || !el.isConnected) return;
+      for (const [prop, value] of Object.entries(group.add)) {
+        beginEditGesture(el, prop);
+        setEditValue(el, prop, {
+          css: value, inline: value, priority: neededPriority(el, prop), cls: null, token: null,
+        });
+        commitEditGesture();
+      }
+      renderEditControls();
+    });
+    row.appendChild(button);
+    return row;
+  }
+
+  function buildEditRow(control, isSide) {
+    const row = document.createElement("div");
+    row.className = "ccp-edit-row" + (isSide ? " ccp-edit-side" : "");
+    // Shadow parts all write box-shadow, so the row's dirty state and its
+    // reset both key off that one property.
+    row.dataset.prop = control.shadowPart ? "box-shadow" : control.prop;
+    row.dataset.control = control.prop;
+
+    const resetProp = control.shadowPart ? "box-shadow" : control.prop;
     const dot = document.createElement("button");
     dot.className = "ccp-edit-dot";
-    dot.dataset.prop = control.prop;
     dot.title = `Reset ${control.label}`;
     dot.setAttribute("aria-label", `Reset ${control.label}`);
     dot.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      if (!isEditedProp(selectedElement, control.prop)) return;
-      resetEditProp(selectedElement, control.prop);
-      refreshEditControls();
+      if (!isEditedProp(selectedElement, resetProp)) return;
+      resetEditProp(selectedElement, resetProp);
+      renderEditControls();
     });
 
     const label = document.createElement("span");
@@ -2029,10 +2274,64 @@
 
     row.appendChild(dot);
     row.appendChild(label);
+
+    // The link toggle turns one value into four and back. It sits before the
+    // control so the row still lines up down the same edge either way.
+    if (control.sides) {
+      const link = document.createElement("button");
+      const split = editSplit.has(control.prop);
+      link.className = "ccp-edit-link";
+      link.textContent = split ? "⊟" : "⊞";
+      link.title = split ? "Link all sides" : "Edit each side";
+      link.setAttribute("aria-label", link.title);
+      link.setAttribute("aria-pressed", String(split));
+      link.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (split) editSplit.delete(control.prop);
+        else editSplit.add(control.prop);
+        renderEditControls();
+      });
+      row.appendChild(link);
+    }
+
+    if (control.sides && editSplit.has(control.prop)) {
+      // Split: the parent row is a heading for the four beneath it.
+      row.classList.add("ccp-edit-parent");
+      return row;
+    }
+
     row.appendChild(
-      control.kind === "segment" ? buildSegmentControl(control) : buildNumericControl(control)
+      control.kind === "color" ? buildColorControl(control)
+        : control.kind === "segment" ? buildSegmentControl(control)
+        : buildNumericControl(control)
     );
     return row;
+  }
+
+  function buildColorControl(control) {
+    const wrap = document.createElement("span");
+    wrap.className = "ccp-edit-color";
+
+    const swatch = document.createElement("button");
+    swatch.className = "ccp-edit-swatch";
+    swatch.title = `Change ${control.label}`;
+    swatch.setAttribute("aria-label", `Change ${control.label}`);
+    const fill = document.createElement("i");
+    swatch.appendChild(fill);
+
+    const readout = document.createElement("span");
+    readout.className = "ccp-edit-hex";
+
+    swatch.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openColorPicker(control, swatch);
+    });
+
+    wrap.appendChild(swatch);
+    wrap.appendChild(readout);
+    return wrap;
   }
 
   // Type, arrow, or scrub — the same three ways Figma offers, because each
@@ -2109,6 +2408,206 @@
     return seg;
   }
 
+  // ===== Edit Colour Picker =====
+  // A saturation square, a hue rail and an alpha rail — the react-colorful
+  // shape, rebuilt on our own tokens rather than pulled in as a dependency.
+  // HSV rather than HSL because the square is only linear in S and V, which is
+  // what makes dragging it feel like picking a colour instead of solving one.
+  //
+  // Above the square sits whatever colour tokens the page declares: those are
+  // the values the source can actually name, so they get first offer.
+
+  function openColorPicker(control, anchor) {
+    closeColorPicker();
+    const el = selectedElement;
+    if (!el || !el.isConnected) return;
+
+    const parsed = parseCssColor(readColorValue(el, control)) || { r: 0, g: 0, b: 0, a: 1 };
+    let hsv = rgbToHsv(parsed.r, parsed.g, parsed.b);
+    let alpha = parsed.a;
+
+    const pop = document.createElement("div");
+    pop.className = "ccp-edit-pop";
+    pop.innerHTML = `
+      <div class="ccp-edit-sat"><i class="ccp-edit-sat-dot"></i></div>
+      <div class="ccp-edit-rails">
+        <div class="ccp-edit-hue"><i class="ccp-edit-rail-dot"></i></div>
+        <div class="ccp-edit-alpha"><span></span><i class="ccp-edit-rail-dot"></i></div>
+      </div>
+      <div class="ccp-edit-popfoot">
+        <input class="ccp-edit-hexin" type="text" spellcheck="false" aria-label="Hex colour">
+        <button class="ccp-edit-drop" title="Pick a colour from the page" aria-label="Pick a colour from the page">◎</button>
+      </div>`;
+
+    const sat = pop.querySelector(".ccp-edit-sat");
+    const satDot = pop.querySelector(".ccp-edit-sat-dot");
+    const hue = pop.querySelector(".ccp-edit-hue");
+    const hueDot = hue.querySelector(".ccp-edit-rail-dot");
+    const alphaRail = pop.querySelector(".ccp-edit-alpha");
+    const alphaFill = alphaRail.querySelector("span");
+    const alphaDot = alphaRail.querySelector(".ccp-edit-rail-dot");
+    const hexIn = pop.querySelector(".ccp-edit-hexin");
+    const drop = pop.querySelector(".ccp-edit-drop");
+
+    const tokens = paletteTokens(el);
+    if (tokens.length) {
+      const palette = document.createElement("div");
+      palette.className = "ccp-edit-palette";
+      for (const token of tokens) {
+        const swatch = document.createElement("button");
+        swatch.className = "ccp-edit-pal";
+        swatch.style.backgroundColor = token.hex;
+        swatch.title = `${token.name} — ${token.hex}`;
+        swatch.addEventListener("click", (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          // A token pick names the token, so the delta can say so.
+          const rgb = parseCssColor(token.hex);
+          hsv = rgbToHsv(rgb.r, rgb.g, rgb.b);
+          alpha = rgb.a;
+          commit({ kind: "var", name: token.name });
+          paint();
+        });
+        palette.appendChild(swatch);
+      }
+      pop.insertBefore(palette, pop.firstChild);
+    }
+
+    const currentCss = () => {
+      const rgb = hsvToRgb(hsv.h, hsv.s, hsv.v);
+      return alpha >= 1
+        ? formatHex({ ...rgb })
+        : `rgb(${rgb.r} ${rgb.g} ${rgb.b} / ${Number(alpha.toFixed(3))})`;
+    };
+
+    // Direct assignments rather than setProperty, deliberately: setProperty is
+    // one of the verbs test/edit-audit.mjs reserves for the Edit Apply section,
+    // and keeping it out of here is what lets that audit stay a simple, exact
+    // rule instead of one that has to reason about receivers. The gradients
+    // themselves stay in content.css; only the colour under them comes from JS.
+    function paint() {
+      const rgb = hsvToRgb(hsv.h, hsv.s, hsv.v);
+      const hex = formatHex(rgb);
+      sat.style.backgroundColor = `hsl(${hsv.h} 100% 50%)`;
+      satDot.style.left = `${hsv.s * 100}%`;
+      satDot.style.top = `${(1 - hsv.v) * 100}%`;
+      satDot.style.backgroundColor = hex;
+      hueDot.style.left = `${(hsv.h / 360) * 100}%`;
+      alphaDot.style.left = `${alpha * 100}%`;
+      alphaFill.style.backgroundImage = `linear-gradient(to right, transparent, ${hex})`;
+      if (document.activeElement !== hexIn) hexIn.value = hex;
+      const swatchFill = anchor.querySelector("i");
+      if (swatchFill) swatchFill.style.background = currentCss();
+    }
+
+    function commit(token) {
+      const el2 = selectedElement;
+      if (!el2 || !el2.isConnected) return;
+      const css = currentCss();
+      if (control.shadowPart) {
+        beginEditGesture(el2, "box-shadow");
+        applyShadowPart(control, css);
+      } else {
+        beginEditGesture(el2, control.prop);
+        setEditValue(el2, control.prop, {
+          css, inline: css, priority: neededPriority(el2, control.prop), cls: null,
+          token: token || null,
+        });
+      }
+      refreshEditControls();
+    }
+
+    // One drag handler for all three surfaces: they differ only in what a
+    // position means.
+    const dragSurface = (node, onMove) => {
+      node.addEventListener("pointerdown", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const rect = node.getBoundingClientRect();
+        const apply = (e2) => {
+          const x = Math.min(1, Math.max(0, (e2.clientX - rect.left) / rect.width));
+          const y = Math.min(1, Math.max(0, (e2.clientY - rect.top) / rect.height));
+          onMove(x, y);
+          paint();
+          commit(null);
+        };
+        node.setPointerCapture(ev.pointerId);
+        apply(ev);
+        const move = (e2) => apply(e2);
+        const up = () => {
+          node.removeEventListener("pointermove", move);
+          node.removeEventListener("pointerup", up);
+          node.removeEventListener("pointercancel", up);
+          commitEditGesture();
+          refreshEditControls();
+        };
+        node.addEventListener("pointermove", move);
+        node.addEventListener("pointerup", up);
+        node.addEventListener("pointercancel", up);
+      });
+    };
+
+    dragSurface(sat, (x, y) => { hsv = { h: hsv.h, s: x, v: 1 - y }; });
+    dragSurface(hue, (x) => { hsv = { h: x * 360, s: hsv.s, v: hsv.v }; });
+    dragSurface(alphaRail, (x) => { alpha = x; });
+
+    hexIn.addEventListener("keydown", (ev) => {
+      ev.stopPropagation();
+      if (ev.key !== "Enter") return;
+      const rgb = parseCssColor(hexIn.value.trim());
+      if (!rgb) { paint(); return; }
+      hsv = rgbToHsv(rgb.r, rgb.g, rgb.b);
+      alpha = rgb.a;
+      paint();
+      commit(null);
+      commitEditGesture();
+    });
+
+    // Chromium only, and only from a user gesture — so it is offered when it
+    // exists and simply absent when it does not, rather than failing on click.
+    if (window.EyeDropper) {
+      drop.addEventListener("click", async (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        try {
+          const result = await new window.EyeDropper().open();
+          const rgb = parseCssColor(result.sRGBHex);
+          if (!rgb) return;
+          hsv = rgbToHsv(rgb.r, rgb.g, rgb.b);
+          alpha = 1;
+          paint();
+          commit(null);
+          commitEditGesture();
+        } catch { /* the user pressed Escape; nothing to report */ }
+      });
+    } else {
+      drop.remove();
+    }
+
+    editPanelEl.appendChild(pop);
+    editPopoverEl = pop;
+    positionColorPicker(pop, anchor);
+    paint();
+  }
+
+  function positionColorPicker(pop, anchor) {
+    const panelRect = editPanelEl.getBoundingClientRect();
+    const anchorRect = anchor.getBoundingClientRect();
+    const top = anchorRect.bottom - panelRect.top + GEOMETRY.gap;
+    pop.style.top = `${Math.max(0, top)}px`;
+    // Kept inside the panel's own width so it can never hang off the side of a
+    // panel that is itself parked against the viewport edge.
+    pop.style.left = `${GEOMETRY.margin}px`;
+    pop.style.right = `${GEOMETRY.margin}px`;
+  }
+
+  function closeColorPicker() {
+    if (!editPopoverEl) return;
+    editPopoverEl.remove();
+    editPopoverEl = null;
+    commitEditGesture();
+  }
+
   // ===== Edit Control values =====
 
   function readComputed(el, control) {
@@ -2120,13 +2619,17 @@
   // both report "normal" when nothing has set them), where the honest display
   // is that there is no number yet.
   function numericState(el, control) {
+    if (control.shadowPart) return { auto: false, value: shadowPartValue(el, control) };
     const raw = readComputed(el, control);
     if (control.autoWord && raw === control.autoWord) {
       const base = parseFloat(getComputedStyle(el).fontSize) || 16;
       return { auto: true, value: control.prop === "line-height" ? Math.round(base * 1.2) : 0 };
     }
     const n = parseFloat(raw);
-    return { auto: false, value: isFinite(n) ? n : 0 };
+    const value = isFinite(n) ? n : 0;
+    // opacity is the one control whose displayed unit is not its CSS unit:
+    // people say 60%, the property says 0.6.
+    return { auto: false, value: control.scale ? value * control.scale : value };
   }
 
   const roundTo = (n, decimals) => {
@@ -2151,8 +2654,16 @@
 
   function applyNumeric(control, next) {
     const clamped = Math.min(control.max, Math.max(control.min, next));
+    if (control.shadowPart) {
+      applyShadowPart(control, clamped);
+      refreshEditControls();
+      return clamped;
+    }
     const isKeyword = control.autoWord && control.autoEquals === clamped;
-    applyEditProp(control, isKeyword ? control.autoWord : formatNumeric(clamped, control) + (control.unit || ""));
+    const css = control.scale
+      ? String(roundTo(clamped / control.scale, 3))
+      : formatNumeric(clamped, control) + (control.unit || "");
+    applyEditProp(control, isKeyword ? control.autoWord : css);
     refreshEditControls();
     return clamped;
   }
@@ -2276,15 +2787,41 @@
     if (!editPanelEl || !selectedElement || !selectedElement.isConnected) return;
     const el = selectedElement;
 
+    // Every row, including the four sides a split control expands into.
+    const allControls = [];
     for (const group of EDIT_GROUPS) {
       for (const control of group.controls) {
-        const row = editPanelEl.querySelector(`.ccp-edit-row[data-prop="${control.prop}"]`);
+        allControls.push(control);
+        if (control.sides) {
+          for (let i = 0; i < control.sides.length; i++) allControls.push(sideControl(control, i));
+        }
+      }
+    }
+
+    for (const control of allControls) {
+      {
+        const row = editPanelEl.querySelector(`.ccp-edit-row[data-control="${control.prop}"]`);
         if (!row) continue;
 
-        const edited = isEditedProp(el, control.prop);
+        const edited = isEditedProp(el, row.dataset.prop);
         row.classList.toggle("ccp-edit-dirty", edited);
         const dot = row.querySelector(".ccp-edit-dot");
         if (dot) dot.classList.toggle("ccp-edit-on", edited);
+
+        if (control.kind === "color") {
+          const raw = readColorValue(el, control);
+          const parsed = parseCssColor(raw);
+          const fill = row.querySelector(".ccp-edit-swatch i");
+          if (fill) fill.style.background = raw || "transparent";
+          const hex = row.querySelector(".ccp-edit-hex");
+          if (hex) {
+            const entry = editRegistry.get(el)?.props.get(row.dataset.prop);
+            const token = entry && entry.after && entry.after.token;
+            hex.textContent = token ? token.name : parsed ? formatHex(parsed) : raw;
+            hex.classList.toggle("ccp-edit-token", Boolean(token));
+          }
+          continue;
+        }
 
         if (control.kind === "segment") {
           const raw = readComputed(el, control);
@@ -2335,9 +2872,11 @@
 
   function removeEditPanel() {
     if (!editPanelEl) return;
+    closeColorPicker();
     editPanelEl.remove();
     editPanelEl = null;
     editPanelPos = null;
+    editSplit.clear();
   }
 
   // tag + the first thing that identifies it, coloured the way the info label
@@ -2741,9 +3280,15 @@
     "box-shadow",
   ];
 
+  // A side longhand sorts where its shorthand sorts, so opening padding into
+  // its four sides does not scatter them through the block — padding-top
+  // belongs next to margin, not after box-shadow.
   function editPropRank(prop) {
     const i = EDIT_PROP_ORDER.indexOf(prop);
-    return i === -1 ? EDIT_PROP_ORDER.length : i;
+    if (i !== -1) return i;
+    const shorthand = SHORTHAND_OF[prop];
+    const j = shorthand ? EDIT_PROP_ORDER.indexOf(shorthand) : -1;
+    return j === -1 ? EDIT_PROP_ORDER.length : j;
   }
 
   // A token name is what the source contains, so it leads; the pixel value
@@ -2910,9 +3455,11 @@
       e.preventDefault();
       e.stopImmediatePropagation();
 
-      // Three stages out: editing → selected → probe off. Each Escape gives
+      // Stages out: picker → editing → selected → probe off. Each Escape gives
       // back exactly one layer, so nothing is ever lost by more than a step.
-      if (editing) {
+      if (editPopoverEl) {
+        closeColorPicker();
+      } else if (editing) {
         exitEditMode();
       } else if (selectedElement) {
         deselectElement();

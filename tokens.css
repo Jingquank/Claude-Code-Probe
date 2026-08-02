@@ -87,6 +87,17 @@
   --ccp-mask: #000;
   --ccp-checker: #555;
 
+  /* The colour picker's three constants, non-themed for the same reason as
+     --ccp-checker: they are not decoration, they are the colour space itself.
+     The saturation square is white toward one edge and black toward the other
+     because that is what saturation and value mean, and the hue rail runs the
+     spectrum because that is what hue is. Tinting any of them per theme would
+     make the picker report a colour the page will not actually get. */
+  --ccp-picker-white: #fff;
+  --ccp-picker-black: #000;
+  --ccp-hue-ramp: linear-gradient(to right,
+    #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%);
+
   /* Clawd's two fixed features. The body and legs are themed (see below); these
      two are not, because they have to work against whatever the theme makes the
      body. A dark eye reads on every accent in the roster, and a cast shadow

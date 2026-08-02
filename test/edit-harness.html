@@ -27,6 +27,17 @@
 -->
 <link rel="stylesheet" href="../tokens.css">
 <link rel="stylesheet" href="../content.css">
+<script>
+  // python3 -m http.server answers with a 200 and a long-lived cache, so an
+  // edit to tokens.css or content.css keeps rendering the previous version
+  // until a hard reload — which reads as "my CSS did nothing" rather than as a
+  // stale file. A dev instrument should never be able to lie about that, so
+  // every stylesheet gets a fresh URL on load. content.js is re-fetched anyway
+  // because it is loaded at the end of the body.
+  for (const link of document.querySelectorAll('link[rel="stylesheet"]')) {
+    link.href = link.getAttribute("href").split("?")[0] + "?t=" + Date.now();
+  }
+</script>
 <style>
   /* ===== The fake page's design system =====
      Both halves of what the resolver looks for: custom properties on :root,
@@ -48,6 +59,17 @@
     --radius-md: 8px;
     --radius-lg: 12px;
     --radius-xl: 16px;
+
+    /* Colour tokens, so the picker's palette has real names to offer and the
+       delta can report one instead of a hex. */
+    --ink: #1f1e1b;
+    --ink-dim: #57544c;
+    --ink-soft: #8b887e;
+    --paper: #ffffff;
+    --cream: #faf9f5;
+    --hairline: #e5e0d4;
+    --terra: #a94f30;
+    --terra-soft: #f3e4dd;
   }
 
   .text-xs   { font-size: 12px; }

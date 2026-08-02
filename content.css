@@ -982,6 +982,267 @@
 #ccp-edit-panel .ccp-edit-align-left { justify-content: flex-start; padding-left: 3px; }
 #ccp-edit-panel .ccp-edit-align-right { justify-content: flex-end; padding-right: 3px; }
 
+/* The link toggle turns one value into four. Sides are indented under the row
+   they came from, so the column still reads as a hierarchy rather than as
+   twelve equal rows once everything is open. */
+#ccp-edit-panel .ccp-edit-link {
+  all: initial;
+  box-sizing: border-box;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--ccp-sep);
+  border-radius: var(--ccp-radius-xs);
+  background: transparent;
+  color: var(--ccp-text-muted);
+  font: var(--ccp-text-sm)/1 var(--ccp-font);
+  cursor: pointer;
+  transition: border-color var(--ccp-duration), color var(--ccp-duration);
+}
+
+#ccp-edit-panel .ccp-edit-link:hover,
+#ccp-edit-panel .ccp-edit-link[aria-pressed="true"] {
+  border-color: var(--ccp-accent);
+  color: var(--ccp-accent);
+}
+
+#ccp-edit-panel .ccp-edit-side .ccp-edit-label {
+  padding-left: var(--ccp-md);
+  color: var(--ccp-text-faint);
+}
+
+#ccp-edit-panel .ccp-edit-parent .ccp-edit-label { color: var(--ccp-text-dim); }
+
+#ccp-edit-panel .ccp-edit-add {
+  all: initial;
+  box-sizing: border-box;
+  width: 100%;
+  padding: var(--ccp-xs) var(--ccp-sm);
+  border: 1px dashed var(--ccp-sep);
+  border-radius: var(--ccp-radius-xs);
+  background: transparent;
+  color: var(--ccp-text-muted);
+  font: var(--ccp-text-sm)/1.4 var(--ccp-font);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color var(--ccp-duration), color var(--ccp-duration);
+}
+
+#ccp-edit-panel .ccp-edit-add:hover {
+  border-color: var(--ccp-accent);
+  color: var(--ccp-accent);
+}
+
+/* ===== Edit Panel — colour =====
+   The swatch sits on a chequerboard so a translucent colour reads as
+   translucent rather than as a lighter opaque one. Same reasoning as the info
+   label's colour chips, and the same never-themed backdrop. */
+#ccp-edit-panel .ccp-edit-color {
+  all: initial;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ccp-gap-base);
+  flex: none;
+  width: 82px;
+}
+
+#ccp-edit-panel .ccp-edit-swatch {
+  all: initial;
+  box-sizing: border-box;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  padding: 2px;
+  border: 1px solid var(--ccp-sep);
+  border-radius: var(--ccp-radius-xs);
+  background-color: var(--ccp-checker);
+  background-image:
+    linear-gradient(45deg, var(--ccp-mask) 25%, transparent 25% 75%, var(--ccp-mask) 75%),
+    linear-gradient(45deg, var(--ccp-mask) 25%, transparent 25% 75%, var(--ccp-mask) 75%);
+  background-size: 6px 6px;
+  background-position: 0 0, 3px 3px;
+  cursor: pointer;
+  transition: border-color var(--ccp-duration);
+}
+
+#ccp-edit-panel .ccp-edit-swatch:hover { border-color: var(--ccp-accent); }
+
+#ccp-edit-panel .ccp-edit-swatch i {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 1px;
+}
+
+#ccp-edit-panel .ccp-edit-hex {
+  all: initial;
+  font: var(--ccp-text-sm)/1.4 var(--ccp-font);
+  font-variant-numeric: tabular-nums;
+  color: var(--ccp-text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* A colour that landed on one of the page's own tokens says so instead of
+   showing a hex — the token is what the source contains. */
+#ccp-edit-panel .ccp-edit-hex.ccp-edit-token { color: var(--ccp-accent); }
+
+/* ===== Edit Panel — colour picker ===== */
+#ccp-edit-panel .ccp-edit-pop {
+  all: initial;
+  box-sizing: border-box;
+  position: absolute;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ccp-gap-base);
+  padding: var(--ccp-sm);
+  background: var(--ccp-surface);
+  border: 1px solid rgb(from var(--ccp-accent) r g b / 0.5);
+  border-radius: var(--ccp-radius-md);
+  box-shadow: var(--ccp-shadow-card);
+  font-family: var(--ccp-font);
+}
+
+#ccp-edit-panel .ccp-edit-palette {
+  all: initial;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ccp-gap-pair);
+}
+
+#ccp-edit-panel .ccp-edit-pal {
+  all: initial;
+  box-sizing: border-box;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--ccp-radius-xs);
+  border: 1px solid var(--ccp-sep);
+  /* background-color comes from the token being offered, written by paint() */
+  cursor: pointer;
+}
+
+#ccp-edit-panel .ccp-edit-pal:hover { border-color: var(--ccp-accent); }
+
+/* Saturation to the right, value downward, over the pure hue. The white and
+   black stops are the colour space, not a theme choice — see tokens.css. */
+#ccp-edit-panel .ccp-edit-sat {
+  all: initial;
+  box-sizing: border-box;
+  position: relative;
+  display: block;
+  height: 96px;
+  border-radius: var(--ccp-radius-xs);
+  /* The two gradients are the colour space and live here; the pure hue beneath
+     them is background-color, written by the picker as it moves. */
+  background-image:
+    linear-gradient(to top, var(--ccp-picker-black), transparent),
+    linear-gradient(to right, var(--ccp-picker-white), transparent);
+  touch-action: none;
+}
+
+#ccp-edit-panel .ccp-edit-rails {
+  all: initial;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ccp-gap-base);
+}
+
+#ccp-edit-panel .ccp-edit-hue,
+#ccp-edit-panel .ccp-edit-alpha {
+  all: initial;
+  box-sizing: border-box;
+  position: relative;
+  display: block;
+  height: 10px;
+  border-radius: 5px;
+  touch-action: none;
+}
+
+#ccp-edit-panel .ccp-edit-hue { background: var(--ccp-hue-ramp); }
+
+#ccp-edit-panel .ccp-edit-alpha {
+  background-color: var(--ccp-checker);
+  background-image:
+    linear-gradient(45deg, var(--ccp-mask) 25%, transparent 25% 75%, var(--ccp-mask) 75%),
+    linear-gradient(45deg, var(--ccp-mask) 25%, transparent 25% 75%, var(--ccp-mask) 75%);
+  background-size: 6px 6px;
+  background-position: 0 0, 3px 3px;
+  overflow: hidden;
+}
+
+#ccp-edit-panel .ccp-edit-alpha span {
+  all: initial;
+  display: block;
+  position: absolute;
+  inset: 0;
+  border-radius: 5px;
+  /* background-image is the ramp to the picked colour, written by paint() */
+}
+
+#ccp-edit-panel .ccp-edit-sat-dot,
+#ccp-edit-panel .ccp-edit-rail-dot {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--ccp-picker-white);
+  box-shadow: 0 0 0 1px rgb(from var(--ccp-mask) r g b / 0.4);
+  pointer-events: none;
+  translate: -50% -50%;
+}
+
+/* The square's dot is filled with the colour under it; the rail dots are rings
+   over a ramp that already shows the value, so they stay hollow. */
+#ccp-edit-panel .ccp-edit-rail-dot { top: 50%; background: transparent; }
+
+#ccp-edit-panel .ccp-edit-popfoot {
+  all: initial;
+  display: flex;
+  align-items: center;
+  gap: var(--ccp-gap-base);
+}
+
+#ccp-edit-panel .ccp-edit-hexin {
+  all: initial;
+  box-sizing: border-box;
+  flex: 1;
+  min-width: 0;
+  padding: 2px var(--ccp-xs);
+  border: 1px solid var(--ccp-sep);
+  border-radius: var(--ccp-radius-xs);
+  background: rgb(from var(--ccp-text) r g b / 0.06);
+  color: var(--ccp-text);
+  font: var(--ccp-weight-medium) var(--ccp-text-sm)/1.4 var(--ccp-font);
+  font-variant-numeric: tabular-nums;
+}
+
+#ccp-edit-panel .ccp-edit-hexin:focus { border-color: var(--ccp-accent); }
+
+#ccp-edit-panel .ccp-edit-drop {
+  all: initial;
+  box-sizing: border-box;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--ccp-sep);
+  border-radius: var(--ccp-radius-xs);
+  background: transparent;
+  color: var(--ccp-text-dim);
+  font: var(--ccp-text-base)/1 var(--ccp-font);
+  cursor: pointer;
+}
+
+#ccp-edit-panel .ccp-edit-drop:hover { border-color: var(--ccp-accent); color: var(--ccp-accent); }
+
 /* ===== Settings Button =====
    Viewport chrome, not selection chrome: mounted by activate() and pinned to the
    top-right corner for as long as probe mode is on, whether or not anything is
@@ -1110,9 +1371,30 @@
 #ccp-edit-panel .ccp-edit-act *,
 #ccp-edit-panel .ccp-edit-auto,
 #ccp-edit-panel .ccp-edit-seg button,
-#ccp-edit-panel .ccp-edit-dot.ccp-edit-on {
+#ccp-edit-panel .ccp-edit-dot.ccp-edit-on,
+#ccp-edit-panel .ccp-edit-link,
+#ccp-edit-panel .ccp-edit-add,
+#ccp-edit-panel .ccp-edit-swatch,
+#ccp-edit-panel .ccp-edit-swatch *,
+#ccp-edit-panel .ccp-edit-pal,
+#ccp-edit-panel .ccp-edit-drop {
   cursor: pointer !important;
 }
+
+/* The picker's surfaces are crosshair-and-drag, not click targets. */
+#ccp-edit-panel .ccp-edit-sat,
+#ccp-edit-panel .ccp-edit-sat * {
+  cursor: crosshair !important;
+}
+
+#ccp-edit-panel .ccp-edit-hue,
+#ccp-edit-panel .ccp-edit-hue *,
+#ccp-edit-panel .ccp-edit-alpha,
+#ccp-edit-panel .ccp-edit-alpha * {
+  cursor: ew-resize !important;
+}
+
+#ccp-edit-panel .ccp-edit-hexin { cursor: text !important; }
 
 /* The value chip announces that it can be dragged; the field inside it stays
    a text cursor, because clicking it is how you type instead. */
