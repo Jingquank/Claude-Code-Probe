@@ -4,7 +4,8 @@
   "description": "Inspect, highlight, and copy any element on any webpage.",
   "scripts": {
     "postinstall": "node scripts/postinstall.js",
-    "build": "./build.sh"
+    "build": "./build.sh",
+    "test": "node test/all.mjs"
   },
   "repository": {
     "type": "git",

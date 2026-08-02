@@ -4,16 +4,23 @@
 // classic scripts, so the algorithm cannot be imported, only mirrored (same
 // arrangement as placement.mjs). Change it there and change it here.
 //
-// PILL_OFFSET / GUIDE_OVERSHOOT / PILL_MARGIN must match
-// GEOMETRY.redlinePillOffset / .redlineGuideOvershoot / .redlinePillMargin
-// in content.js. The opts parameter is how user preferences reach the solver
+// The GEOMETRY block below carries the same three keys, with the same values,
+// as GEOMETRY in content.js — and computeRedline refers to them by the same
+// names it does there, so test/mirror-drift.mjs can compare the two copies
+// character for character. Renaming them locally would make every line that
+// uses one read as drift. The opts parameter is how user preferences reach the solver
 // (pill placement, guides, zero pills); DEFAULT_OPTS is shipping behaviour.
 //
 // Run: node test/redline.mjs   (exit 1 on any failure)
 
-const PILL_OFFSET = 8;
-const GUIDE_OVERSHOOT = 4;
-const PILL_MARGIN = 14;
+const GEOMETRY = {
+  redlinePillOffset: 8,
+  redlineGuideOvershoot: 4,
+  redlinePillMargin: 14,
+};
+const PILL_OFFSET = GEOMETRY.redlinePillOffset;
+const GUIDE_OVERSHOOT = GEOMETRY.redlineGuideOvershoot;
+const PILL_MARGIN = GEOMETRY.redlinePillMargin;
 
 const DEFAULT_OPTS = { pillOffset: PILL_OFFSET, guides: true, zeroPills: true };
 const TOGGLED_OPTS = { pillOffset: 0, guides: false, zeroPills: false };
@@ -47,7 +54,7 @@ export function computeRedline(sel, hov, vw, vh, opts) {
         : { kind: "line", x: cross, y: lo, w: 0, h: value, value });
     }
     if (!flush || opts.zeroPills) {
-      const m = PILL_MARGIN;
+      const m = GEOMETRY.redlinePillMargin;
       pills.push({
         kind: "pill",
         x: clamp(axis === "x" ? mid : cross + opts.pillOffset, m, vw - m),
@@ -64,7 +71,7 @@ export function computeRedline(sel, hov, vw, vh, opts) {
       const value = measure("x", x.lo, x.hi, cy);
       if (y.gap && opts.guides && value > 0) {
         const corner = cy < h.t ? h.t : h.b;
-        const past = cy + (cy < h.t ? -1 : 1) * GUIDE_OVERSHOOT;
+        const past = cy + (cy < h.t ? -1 : 1) * GEOMETRY.redlineGuideOvershoot;
         guides.push({
           kind: "guide",
           x: x.hovEdge,
@@ -79,7 +86,7 @@ export function computeRedline(sel, hov, vw, vh, opts) {
       const value = measure("y", y.lo, y.hi, cx);
       if (x.gap && opts.guides && value > 0) {
         const corner = cx < h.l ? h.l : h.r;
-        const past = cx + (cx < h.l ? -1 : 1) * GUIDE_OVERSHOOT;
+        const past = cx + (cx < h.l ? -1 : 1) * GEOMETRY.redlineGuideOvershoot;
         guides.push({
           kind: "guide",
           x: Math.min(corner, past),
