@@ -122,6 +122,44 @@
         </div>
       </details>
 
+      <details class="sp-section" open data-focus="edit">
+        <summary class="sp-summary">
+          <i class="sp-caret" aria-hidden="true"></i>
+          <h2 class="sp-legend" id="editing-legend">Editing</h2>
+        </summary>
+        <div class="sp-section-body">
+          <p class="sp-sub">
+            With an element selected, the pencil in the toolbar opens a panel
+            that tunes it live and copies what changed. These control how much
+            of that panel you see; changes apply to open pages immediately, even
+            with the panel already open.
+          </p>
+
+          <div class="sp-sheet" id="edit-sheet">
+            <div class="sp-sheet-group">
+              <div class="sp-spec" data-hi="groups">
+                <span class="sp-spec-label" id="lbl-groups">Groups the panel shows</span>
+                <i class="sp-spec-leader" aria-hidden="true"></i>
+                <span class="sp-seg" role="radiogroup" aria-labelledby="lbl-groups">
+                  <button type="button" role="radio" data-set="editGroups" data-val="standard">all</button>
+                  <button type="button" role="radio" data-set="editGroups" data-val="adaptive">relevant</button>
+                </span>
+              </div>
+              <div class="sp-spec" data-hi="tokens">
+                <span class="sp-spec-label" id="lbl-tokens">On a design token, show</span>
+                <i class="sp-spec-leader" aria-hidden="true"></i>
+                <span class="sp-seg" role="radiogroup" aria-labelledby="lbl-tokens">
+                  <button type="button" role="radio" data-set="editTokenControls" data-val="both">both</button>
+                  <button type="button" role="radio" data-set="editTokenControls" data-val="token">token</button>
+                  <button type="button" role="radio" data-set="editTokenControls" data-val="value">value</button>
+                </span>
+              </div>
+            </div>
+          </div>
+          <p class="sp-saved" id="saved-editing" role="status" aria-live="polite"></p>
+        </div>
+      </details>
+
       <!--
         These point at the repository rather than at ../PRIVACY.md and
         ../DESIGN.md: build.sh ships no markdown, so relative links would 404 in
@@ -157,6 +195,7 @@
         <span class="sp-tag-slot">
           <span class="sp-tag" data-pv="theme">appearance</span>
           <span class="sp-tag" data-pv="measure">measuring</span>
+          <span class="sp-tag" data-pv="edit">editing</span>
         </span>
       </h2>
       <!-- Both subs share one grid cell so the crossfade swaps them in place
@@ -169,6 +208,11 @@
         <p class="sp-sub" data-pv="measure">
           A held-Option measurement, drawn to scale: gaps, dashed extension
           guides, a flush edge. The readouts follow the settings on the left.
+        </p>
+        <p class="sp-sub" data-pv="edit">
+          The panel that opens on the pencil, at its real scale — a group of
+          rows, a value that types, arrows and scrubs, and the token stepper
+          beside it.
         </p>
       </div>
 
@@ -307,6 +351,67 @@
           <div class="sv-title">
             <b>Redline</b>
             <p class="sv-caption" id="vig-caption">px · whole · beside</p>
+          </div>
+        </div>
+
+        <!--
+          The Editing specimen is the panel at its real 248px, built from the
+          same content.css rules the live panel uses — so what is on screen
+          here is the chrome, not a drawing of it. The two settings act on it
+          directly: `groups` adds or removes the greyed Border group, `tokens`
+          shows or hides the value chip and the stepper.
+        -->
+        <div class="ep-mock" id="edit-mock" aria-hidden="true"
+             data-groups="standard" data-tokens="both">
+          <div id="ccp-edit-panel">
+            <div class="ccp-edit-head">
+              <button type="button" class="ccp-edit-back" tabindex="-1">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+                </svg>
+              </button>
+              <span class="ccp-edit-id"><b class="ccp-edit-id-tag">h2</b><b class="ccp-edit-id-class">.card-title</b></span>
+              <button type="button" class="ccp-edit-act" tabindex="-1">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+                </svg><i class="ccp-edit-count">2</i>
+              </button>
+              <button type="button" class="ccp-edit-act ccp-edit-on" tabindex="-1">↺</button>
+            </div>
+            <div class="ccp-edit-body">
+              <div class="ccp-edit-group" data-ep="typography">
+                <p class="ccp-edit-legend">Typography</p>
+                <div class="ccp-edit-row ccp-edit-dirty" data-ep-row="token">
+                  <button type="button" class="ccp-edit-dot ccp-edit-on" tabindex="-1"></button>
+                  <span class="ccp-edit-label">size</span>
+                  <span class="ccp-edit-numwrap">
+                    <span class="ccp-edit-num"><input class="ccp-edit-input" value="28" readonly tabindex="-1"><i class="ccp-edit-unit">px</i></span>
+                    <span class="ccp-edit-tok"><button type="button" tabindex="-1">‹</button><b>lg</b><button type="button" tabindex="-1">›</button></span>
+                  </span>
+                </div>
+                <div class="ccp-edit-row">
+                  <button type="button" class="ccp-edit-dot" tabindex="-1"></button>
+                  <span class="ccp-edit-label">weight</span>
+                  <span class="ccp-edit-num"><input class="ccp-edit-input" value="600" readonly tabindex="-1"></span>
+                </div>
+                <div class="ccp-edit-row">
+                  <button type="button" class="ccp-edit-dot" tabindex="-1"></button>
+                  <span class="ccp-edit-label">color</span>
+                  <span class="ccp-edit-color">
+                    <button type="button" class="ccp-edit-swatch" tabindex="-1"><i></i></button>
+                    <span class="ccp-edit-hex ccp-edit-token">--ink</span>
+                  </span>
+                </div>
+              </div>
+              <div class="ccp-edit-group" data-ep="border">
+                <p class="ccp-edit-legend">Border</p>
+                <div class="ccp-edit-row">
+                  <button type="button" class="ccp-edit-add" tabindex="-1">+ add border</button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

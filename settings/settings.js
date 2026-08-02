@@ -35,8 +35,18 @@ const REDLINE_PREFS = {
   redlineZeroPills: ["on", "off"],
 };
 
+// Mirror of EDIT_PREFS in content.js — change both.
+const EDIT_PREFS = {
+  editGroups: ["standard", "adaptive"],
+  editTokenControls: ["both", "token", "value"],
+};
+
+// One roster for everything the sheet writes, so a new setting only has to be
+// added to the map above to get storage, keyboard, and live-sync for free.
+const ALL_PREFS = { ...REDLINE_PREFS, ...EDIT_PREFS };
+
 const prefs = {};
-for (const key of Object.keys(REDLINE_PREFS)) prefs[key] = REDLINE_PREFS[key][0];
+for (const key of Object.keys(ALL_PREFS)) prefs[key] = ALL_PREFS[key][0];
 
 // The vignette's two sample gaps — the blueprint's vertical and horizontal
 // measurements. Fractional on purpose, so flipping precision or unit visibly
@@ -77,8 +87,11 @@ const store = {
 const pillHost = document.getElementById("theme-pills");
 const savedAppearance = document.getElementById("saved-appearance");
 const savedMeasuring = document.getElementById("saved-measuring");
+const savedEditing = document.getElementById("saved-editing");
 const resetEl = document.getElementById("measure-reset");
 const sheetEl = document.getElementById("measure-sheet");
+const editSheetEl = document.getElementById("edit-sheet");
+const editMockEl = document.getElementById("edit-mock");
 const railEl = document.getElementById("preview-rail");
 const vigEl = document.getElementById("measure-vig");
 const darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
@@ -127,17 +140,29 @@ function paintTheme() {
   }
 }
 
+// Both sheets, so a control is painted wherever it lives.
+const controlHosts = [sheetEl, editSheetEl].filter(Boolean);
+const eachControl = (selector, fn) => {
+  for (const host of controlHosts) for (const node of host.querySelectorAll(selector)) fn(node);
+};
+
 // One pass syncs every measuring control and the vignette to `prefs`.
 function paintPrefs() {
-  for (const btn of sheetEl.querySelectorAll("[data-set]")) {
+  eachControl("[data-set]", (btn) => {
     const on = prefs[btn.dataset.set] === btn.dataset.val;
     btn.setAttribute("aria-checked", String(on));
     // Roving tabindex, same as the theme pills: the checked option is the
     // group's one tab stop, arrows move within it.
     btn.tabIndex = on ? 0 : -1;
-  }
-  for (const sw of sheetEl.querySelectorAll("[data-sw]")) {
+  });
+  eachControl("[data-sw]", (sw) => {
     sw.setAttribute("aria-checked", String(prefs[sw.dataset.sw] === "on"));
+  });
+  // The editing specimen is the real panel chrome, so the two settings act on
+  // it the way they act on the live one.
+  if (editMockEl) {
+    editMockEl.dataset.groups = prefs.editGroups;
+    editMockEl.dataset.tokens = prefs.editTokenControls;
   }
   // Nothing to reset when everything already sits at its default.
   resetEl.disabled = Object.keys(REDLINE_PREFS)
@@ -189,19 +214,19 @@ function selectTheme(id) {
 // The announce quotes the row's own label and the control's own text, so what
 // is read back is exactly what was clicked — the vocabulary cannot drift.
 function announceText(key, value) {
-  const control = sheetEl.querySelector(`[data-set="${key}"][data-val="${value}"], [data-sw="${key}"]`);
+  const control = document.querySelector(`[data-set="${key}"][data-val="${value}"], [data-sw="${key}"]`);
   const label = control?.closest(".sp-spec")?.querySelector(".sp-spec-label")?.textContent || key;
   const valueText = control?.dataset.set ? control.textContent : value;
   return `${label} · ${valueText}`;
 }
 
 function setPref(key, value) {
-  const roster = REDLINE_PREFS[key];
+  const roster = ALL_PREFS[key];
   if (!roster || !roster.includes(value)) return;
   prefs[key] = value;
   paintPrefs();
   store.set({ [key]: value });
-  announce(savedMeasuring, announceText(key, value));
+  announce(key in EDIT_PREFS ? savedEditing : savedMeasuring, announceText(key, value));
 }
 
 renderPills();
@@ -224,7 +249,7 @@ pillHost.addEventListener("keydown", (e) => {
 });
 
 // The measuring sheet: segmented radios write their value, switches toggle.
-sheetEl.addEventListener("click", (e) => {
+for (const host of controlHosts) host.addEventListener("click", (e) => {
   const radio = e.target.closest("[data-set]");
   if (radio) return setPref(radio.dataset.set, radio.dataset.val);
   const sw = e.target.closest("[data-sw]");
@@ -245,18 +270,24 @@ resetEl.addEventListener("click", () => {
   announce(savedMeasuring, "defaults restored");
 });
 
-// Arrows flip a two-value segment to its other option — the radiogroup
-// pattern collapsed to a pair.
-sheetEl.addEventListener("keydown", (e) => {
-  const keys = ["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp"];
-  if (!keys.includes(e.key)) return;
+// Arrows walk the roster in the direction pressed and wrap at the ends — the
+// standard radiogroup pattern. Written as a cycle rather than "flip to the
+// other one" because the Editing section's token control has three values;
+// for a pair the two are the same behaviour.
+for (const host of controlHosts) host.addEventListener("keydown", (e) => {
+  const forward = ["ArrowRight", "ArrowDown"];
+  const back = ["ArrowLeft", "ArrowUp"];
+  if (!forward.includes(e.key) && !back.includes(e.key)) return;
   const radio = e.target.closest("[data-set]");
   if (!radio) return;
   e.preventDefault();
   const key = radio.dataset.set;
-  const other = REDLINE_PREFS[key].find((v) => v !== prefs[key]);
-  setPref(key, other);
-  sheetEl.querySelector(`[data-set="${key}"][data-val="${other}"]`)?.focus();
+  const roster = ALL_PREFS[key];
+  if (!roster) return;
+  const step = forward.includes(e.key) ? 1 : -1;
+  const next = roster[(roster.indexOf(prefs[key]) + step + roster.length) % roster.length];
+  setPref(key, next);
+  document.querySelector(`[data-set="${key}"][data-val="${next}"]`)?.focus();
 });
 
 // The rail answers whichever section the pointer or focus is in: the chrome
@@ -274,11 +305,13 @@ for (const zone of document.querySelectorAll("[data-focus]")) {
 // Hovering or focusing into a spec row spotlights the part of the vignette it
 // controls — keyboard users get the same lesson pointer users do.
 for (const row of document.querySelectorAll(".sp-spec")) {
+  // Each row spotlights inside whichever preview its section owns.
+  const target = row.closest('[data-focus="edit"]') ? editMockEl : vigEl;
   const spotlight = () => {
-    vigEl.dataset.hi = row.dataset.hi;
+    if (target) target.dataset.hi = row.dataset.hi;
   };
   const unspot = () => {
-    delete vigEl.dataset.hi;
+    if (target) delete target.dataset.hi;
   };
   row.addEventListener("pointerenter", spotlight);
   row.addEventListener("pointerleave", unspot);
@@ -304,10 +337,10 @@ store.onChange((changes, area) => {
     }
   }
   let touched = false;
-  for (const key of Object.keys(REDLINE_PREFS)) {
+  for (const key of Object.keys(ALL_PREFS)) {
     if (!changes[key]) continue;
     const next = changes[key].newValue;
-    if (REDLINE_PREFS[key].includes(next) && next !== prefs[key]) {
+    if (ALL_PREFS[key].includes(next) && next !== prefs[key]) {
       prefs[key] = next;
       touched = true;
     }
@@ -315,10 +348,10 @@ store.onChange((changes, area) => {
   if (touched) paintPrefs();
 });
 
-store.get([THEME_KEY, ...Object.keys(REDLINE_PREFS)], (stored) => {
+store.get([THEME_KEY, ...Object.keys(ALL_PREFS)], (stored) => {
   if (stored && typeof stored[THEME_KEY] === "string") current = stored[THEME_KEY];
-  for (const key of Object.keys(REDLINE_PREFS)) {
-    if (stored && REDLINE_PREFS[key].includes(stored[key])) prefs[key] = stored[key];
+  for (const key of Object.keys(ALL_PREFS)) {
+    if (stored && ALL_PREFS[key].includes(stored[key])) prefs[key] = stored[key];
   }
   paintTheme();
   paintPrefs();

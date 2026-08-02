@@ -920,6 +920,18 @@
   color: var(--ccp-text-faint);
 }
 
+/* Token-only mode. The number stays in the layout rather than being removed,
+   so the panel does not reflow as you move between elements that happen to sit
+   on a scale and ones that do not. */
+#ccp-edit-panel .ccp-edit-num.ccp-edit-quiet {
+  width: 34px;
+  border-color: transparent;
+  background: transparent;
+}
+
+#ccp-edit-panel .ccp-edit-num.ccp-edit-quiet .ccp-edit-input { color: var(--ccp-text-faint); }
+#ccp-edit-panel .ccp-edit-num.ccp-edit-quiet .ccp-edit-unit { display: none; }
+
 #ccp-edit-panel .ccp-edit-auto {
   all: initial;
   box-sizing: border-box;

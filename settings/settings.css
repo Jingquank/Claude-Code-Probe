@@ -522,7 +522,8 @@ details:not([open]) > .sp-summary .sp-caret {
 }
 
 .sp-preview > .ccp-mock,
-.sp-preview > .sp-vig {
+.sp-preview > .sp-vig,
+.sp-preview > .ep-mock {
   grid-area: 1 / 1;
 }
 
@@ -663,17 +664,79 @@ details:not([open]) > .sp-summary .sp-caret {
    keeps the fading side visible until the fade completes.) */
 .ccp-mock,
 .sp-vig,
+.ep-mock,
 .sp-rail [data-pv] {
   transition: opacity var(--ccp-duration-fast) ease,
               visibility var(--ccp-duration-fast);
 }
 
+/* Three modes now, so the rule is "hide everything the current mode does not
+   own" rather than a list of pairs. */
 .sp-rail[data-mode="theme"] .sp-vig,
+.sp-rail[data-mode="theme"] .ep-mock,
 .sp-rail[data-mode="theme"] [data-pv="measure"],
+.sp-rail[data-mode="theme"] [data-pv="edit"],
 .sp-rail[data-mode="measure"] .ccp-mock,
-.sp-rail[data-mode="measure"] [data-pv="theme"] {
+.sp-rail[data-mode="measure"] .ep-mock,
+.sp-rail[data-mode="measure"] [data-pv="theme"],
+.sp-rail[data-mode="measure"] [data-pv="edit"],
+.sp-rail[data-mode="edit"] .ccp-mock,
+.sp-rail[data-mode="edit"] .sp-vig,
+.sp-rail[data-mode="edit"] [data-pv="theme"],
+.sp-rail[data-mode="edit"] [data-pv="measure"] {
   opacity: 0;
   visibility: hidden;
+}
+
+/* ===== The editing specimen =====
+   The real panel chrome, rendered through content.css, so this is the thing
+   itself rather than a drawing of it. Only two overrides: it is not fixed
+   here, and it does not need its own shadow on the blueprint. */
+.ep-mock {
+  display: grid;
+  place-items: center;
+  padding: var(--ccp-md) 0;
+}
+
+.ep-mock #ccp-edit-panel {
+  position: static;
+  max-height: none;
+}
+
+/* The live panel fills this from the element's own colour; the specimen has no
+   element, so it stands in with the theme's ink — the swatch is showing that a
+   colour is there, not which one. */
+.ep-mock .ccp-edit-swatch i { background: var(--ccp-text-dim); }
+
+/* The two settings act on the specimen the way they act on the live panel:
+   "relevant" drops a group the element does not have, and the token control
+   chooses which half of a token-bearing row is shown.
+   Each selector carries #ccp-edit-panel so it outranks the id-scoped rule in
+   content.css it is overriding — the same reason the anatomy sheet's overrides
+   above are written class + id. */
+.ep-mock[data-groups="adaptive"] [data-ep="border"] { display: none; }
+
+.ep-mock[data-tokens="value"] #ccp-edit-panel .ccp-edit-tok { display: none; }
+
+.ep-mock[data-tokens="token"] #ccp-edit-panel [data-ep-row="token"] .ccp-edit-num {
+  width: 34px;
+  border-color: transparent;
+  background: transparent;
+}
+.ep-mock[data-tokens="token"] #ccp-edit-panel [data-ep-row="token"] .ccp-edit-input {
+  color: var(--ccp-text-faint);
+}
+.ep-mock[data-tokens="token"] #ccp-edit-panel [data-ep-row="token"] .ccp-edit-unit {
+  display: none;
+}
+
+/* Spotlight, the same lesson the measuring rows give: hovering a row in the
+   sheet marks the part of the panel it controls. */
+.ep-mock[data-hi="groups"] [data-ep="border"],
+.ep-mock[data-hi="tokens"] [data-ep-row="token"] {
+  outline: 2px solid rgb(from var(--ccp-accent) r g b / 0.45);
+  outline-offset: 3px;
+  border-radius: var(--ccp-radius-xs);
 }
 
 /* ===== The measuring vignette =====

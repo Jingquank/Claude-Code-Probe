@@ -168,6 +168,48 @@
     }
   });
 
+  // ===== Edit Preferences =====
+  // Same shape as the redline roster above: flat keys, default first,
+  // unrecognised values fall back silently.
+  //
+  // editGroups decides whether the panel shows every group it can edit or only
+  // the ones this element already has — the difference between "give this a
+  // border" being one click away and being out of sight until you need it.
+  // editTokenControls decides whether a token-bearing value offers its scale,
+  // its raw number, or both.
+  const EDIT_PREFS = {
+    editGroups: ["standard", "adaptive"],
+    editTokenControls: ["both", "token", "value"],
+  };
+  const editPrefs = {};
+  for (const key of Object.keys(EDIT_PREFS)) editPrefs[key] = EDIT_PREFS[key][0];
+
+  function setEditPref(key, value) {
+    const roster = EDIT_PREFS[key];
+    if (roster) editPrefs[key] = roster.includes(value) ? value : roster[0];
+  }
+
+  chrome.storage?.local.get(Object.keys(EDIT_PREFS), (stored) => {
+    if (!stored) return;
+    for (const key of Object.keys(EDIT_PREFS)) {
+      if (key in stored) setEditPref(key, stored[key]);
+    }
+  });
+
+  // Changing a preference with the panel open re-renders it in place, the same
+  // no-reload contract redline and the theme keep.
+  chrome.storage?.onChanged.addListener((changes, area) => {
+    if (area !== "local") return;
+    let touched = false;
+    for (const key of Object.keys(EDIT_PREFS)) {
+      if (changes[key]) {
+        setEditPref(key, changes[key].newValue);
+        touched = true;
+      }
+    }
+    if (touched && editing) renderEditControls();
+  });
+
   // The quiet-overlay preference paints entirely from CSS; this class is its
   // only JS surface. Held low (removed) whenever redline itself is off.
   function applyRedlineQuiet() {
@@ -2239,10 +2281,13 @@
       legend.textContent = group.label;
       section.appendChild(legend);
 
-      // A group whose property the element does not have yet: rather than a
-      // row of zeroes pretending to be a border, offer to give it one.
+      // A group whose property the element does not have yet. In standard mode
+      // it offers to add one, so the affordance is always in the same place;
+      // in adaptive mode the group is simply not there, and the panel is only
+      // as tall as this element needs.
       if (group.add && group.has && !group.has(selectedElement) &&
           !isEditedProp(selectedElement, Object.keys(group.add)[0])) {
+        if (editPrefs.editGroups === "adaptive") continue;
         section.appendChild(buildAddRow(group));
         body.appendChild(section);
         continue;
@@ -2415,6 +2460,13 @@
     // rather than only the digits.
     wrap.addEventListener("pointerdown", (e) => onNumericScrubStart(e, control, input));
 
+    // "token" hides the raw number once a scale is available: the whole point
+    // of a design system is that the pixel count is not the decision.
+    if (editPrefs.editTokenControls === "token" &&
+        familyForControl(selectedElement, control)) {
+      wrap.classList.add("ccp-edit-quiet");
+    }
+
     const extra = [];
     if (control.auto) {
       const auto = document.createElement("button");
@@ -2432,7 +2484,9 @@
     // The stepper only exists when this element's value is actually sitting on
     // one of the page's scales. Offering "‹ — ›" over a value that belongs to
     // no scale would promise a move that cannot happen.
-    const family = familyForControl(selectedElement, control);
+    const family = editPrefs.editTokenControls === "value"
+      ? null
+      : familyForControl(selectedElement, control);
     if (family) {
       const stepper = document.createElement("span");
       stepper.className = "ccp-edit-tok";
