@@ -1943,9 +1943,11 @@
   }
 
   // ===== Build Structured Element Info =====
-  // A fenced comment header: no per-field tags, and the fence both delimits the block
-  // from the surrounding prompt and stops "#" from rendering as a markdown heading.
-  function buildElementInfo(el) {
+  // The pointer header alone, shared by Copy Code and the Edit Mode delta block so
+  // both name an element in exactly the same dialect. `located` reports whether a
+  // source file or component chain was found — the caller's cue for how much of
+  // the rendered subtree the payload still needs to carry.
+  function buildPointerHeader(el) {
     const source = getSourceLocation(el);
     const component = getComponentChain(el);
 
@@ -1969,9 +1971,17 @@
       .map((f) => f.lines.map((l, i) => (i === 0 ? `# ${f.key}: ` : "#   ") + l).join("\n"))
       .join("\n");
 
+    return { header, located: Boolean(source || component) };
+  }
+
+  // A fenced comment header: no per-field tags, and the fence both delimits the block
+  // from the surrounding prompt and stops "#" from rendering as a markdown heading.
+  function buildElementInfo(el) {
+    const { header, located } = buildPointerHeader(el);
+
     // With a file or component to open, the agent reads the real source and a rendered
     // subtree is a lossy copy of it. With neither, the subtree is all the payload has.
-    const html = source || component ? buildRootTag(el) : buildSkeletonHTML(el);
+    const html = located ? buildRootTag(el) : buildSkeletonHTML(el);
 
     return "```\n" + header + "\n" + html + "\n```";
   }
