@@ -943,6 +943,58 @@
   color: var(--ccp-on-accent);
 }
 
+/* The token stepper sits beside the raw value rather than replacing it: the
+   number is what you are judging, the token is what the source will say. Both
+   are true at once, so the panel shows both. */
+#ccp-edit-panel .ccp-edit-tok {
+  all: initial;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  border: 1px solid rgb(from var(--ccp-accent) r g b / 0.4);
+  border-radius: var(--ccp-radius-xs);
+  overflow: hidden;
+}
+
+#ccp-edit-panel .ccp-edit-tok button {
+  all: initial;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 13px;
+  height: 18px;
+  background: transparent;
+  color: var(--ccp-text-muted);
+  font: var(--ccp-weight-bold) var(--ccp-text-sm)/1 var(--ccp-font);
+  cursor: pointer;
+  transition: background var(--ccp-duration), color var(--ccp-duration);
+}
+
+#ccp-edit-panel .ccp-edit-tok button:hover {
+  background: rgb(from var(--ccp-accent) r g b / 0.2);
+  color: var(--ccp-accent);
+}
+
+#ccp-edit-panel .ccp-edit-tok b {
+  all: initial;
+  min-width: 26px;
+  text-align: center;
+  font: var(--ccp-weight-medium) 9px/1 var(--ccp-font);
+  color: var(--ccp-accent);
+  padding: 0 1px;
+}
+
+/* A raw scrub can land between rungs. The stepper stays — stepping from there
+   is well defined — but it stops claiming a token it is not on. */
+#ccp-edit-panel .ccp-edit-tok.ccp-edit-offscale {
+  border-style: dashed;
+  border-color: var(--ccp-sep);
+}
+
+#ccp-edit-panel .ccp-edit-tok.ccp-edit-offscale b { color: var(--ccp-text-faint); }
+
 #ccp-edit-panel .ccp-edit-seg {
   all: initial;
   box-sizing: border-box;
@@ -1373,6 +1425,7 @@
 #ccp-edit-panel .ccp-edit-seg button,
 #ccp-edit-panel .ccp-edit-dot.ccp-edit-on,
 #ccp-edit-panel .ccp-edit-link,
+#ccp-edit-panel .ccp-edit-tok button,
 #ccp-edit-panel .ccp-edit-add,
 #ccp-edit-panel .ccp-edit-swatch,
 #ccp-edit-panel .ccp-edit-swatch *,

@@ -34,6 +34,7 @@
   let editPopoverEl = null;
   let editGesture = null;
   let tokenIndex = null;
+  let editTokenFamilies = null;
   // Strong element references, deliberately: the undo stack has to hold them
   // anyway, edits outlive deselection, and a page reload is what clears the
   // world. Every path that touches a record re-checks el.isConnected, since a
@@ -1832,6 +1833,7 @@
     // apps inject styles as you navigate, and a stale index would offer tokens
     // that no longer exist.
     tokenIndex = collectTokenSources();
+    editTokenFamilies = buildTokenFamilies(selectedElement);
 
     // Capture phase, on document, so the page never sees these at all.
     document.addEventListener("pointerdown", onEditPointerGuard, true);
@@ -1858,6 +1860,7 @@
 
     removeEditPanel();
     tokenIndex = null;
+    editTokenFamilies = null;
 
     // The label's readout is built from computed styles, so it would otherwise
     // still be quoting the values the element had before it was tuned.
@@ -2086,6 +2089,55 @@
   function applyColorValue(control, cssColor) {
     if (control.shadowPart) { applyShadowPart(control, cssColor); return; }
     applyEditProp(control, cssColor);
+  }
+
+  // ===== Token families for the panel =====
+  // Built once per Edit Mode entry from whatever the stylesheet walk found.
+  // A property gets a stepper only when its own value sits on a scale with
+  // somewhere to step to, which is why families of one are dropped upstream.
+
+  function buildTokenFamilies(el) {
+    if (!tokenIndex || tokenIndex.disabled) return [];
+    const rem = tokenRemBase();
+    const em = tokenEmBase(el);
+    const style = getComputedStyle(el);
+    const entries = [];
+
+    for (const name of tokenIndex.varNames) {
+      const resolved = parseCssLength(style.getPropertyValue(name), rem, em);
+      if (resolved !== null) entries.push({ name, resolved });
+    }
+    // Utility classes are scales too — text-sm and text-lg are rungs whether
+    // or not the page also declares a custom property for them.
+    for (const [prop, candidates] of tokenIndex.classRules) {
+      if (!TOKEN_SCALE_PROPS.has(prop)) continue;
+      for (const candidate of candidates) {
+        const resolved = parseCssLength(candidate.value, rem, em);
+        if (resolved !== null) entries.push({ name: candidate.className, resolved, kind: "class" });
+      }
+    }
+    return groupTokenFamilies(entries);
+  }
+
+  // Which properties a class-based scale is allowed to be read from. Without
+  // this, a .p-4 that also sets margin would offer padding rungs for margin.
+  const TOKEN_SCALE_PROPS = new Set([
+    "font-size", "padding", "margin", "gap", "row-gap", "column-gap",
+    "border-radius", "border-width", "line-height", "letter-spacing",
+  ]);
+
+  // The family a control should step along: the one its current value sits on,
+  // or — when the value is off-scale — the one whose name matches the property
+  // most closely. Never a guess: if nothing matches, there is no stepper.
+  function familyForControl(el, control) {
+    if (!editTokenFamilies || editTokenFamilies.length === 0) return null;
+    const detected = detectPropertyToken(el, control.reads || control.prop,
+      getComputedStyle(el).getPropertyValue(control.reads || control.prop).trim(), tokenIndex);
+    if (detected) {
+      const owner = editTokenFamilies.find((f) => f.members.some((m) => m.name === detected.name));
+      if (owner) return owner;
+    }
+    return null;
   }
 
   // Colour tokens the page declares, for the picker's palette. Only names that
@@ -2363,6 +2415,7 @@
     // rather than only the digits.
     wrap.addEventListener("pointerdown", (e) => onNumericScrubStart(e, control, input));
 
+    const extra = [];
     if (control.auto) {
       const auto = document.createElement("button");
       auto.className = "ccp-edit-auto";
@@ -2373,13 +2426,100 @@
         e.stopPropagation();
         toggleAuto(control);
       });
-      const holder = document.createElement("span");
-      holder.className = "ccp-edit-numwrap";
-      holder.appendChild(wrap);
-      holder.appendChild(auto);
-      return holder;
+      extra.push(auto);
     }
-    return wrap;
+
+    // The stepper only exists when this element's value is actually sitting on
+    // one of the page's scales. Offering "‹ — ›" over a value that belongs to
+    // no scale would promise a move that cannot happen.
+    const family = familyForControl(selectedElement, control);
+    if (family) {
+      const stepper = document.createElement("span");
+      stepper.className = "ccp-edit-tok";
+      stepper.dataset.family = family.prefix;
+      const down = document.createElement("button");
+      down.textContent = "‹";
+      down.title = `Step ${control.label} down the ${family.prefix} scale`;
+      const name = document.createElement("b");
+      const up = document.createElement("button");
+      up.textContent = "›";
+      up.title = `Step ${control.label} up the ${family.prefix} scale`;
+      down.addEventListener("click", (e) => {
+        e.preventDefault(); e.stopPropagation(); stepControlToken(control, family, -1);
+      });
+      up.addEventListener("click", (e) => {
+        e.preventDefault(); e.stopPropagation(); stepControlToken(control, family, 1);
+      });
+      stepper.appendChild(down);
+      stepper.appendChild(name);
+      stepper.appendChild(up);
+      extra.push(stepper);
+    }
+
+    if (extra.length === 0) return wrap;
+    const holder = document.createElement("span");
+    holder.className = "ccp-edit-numwrap";
+    holder.appendChild(wrap);
+    for (const node of extra) holder.appendChild(node);
+    return holder;
+  }
+
+  // A step along a scale, not an arithmetic nudge. When the target rung is a
+  // utility class the element already wears, the edit is a class swap — that
+  // is what the source contains, so that is what the delta should say.
+  function stepControlToken(control, family, dir) {
+    const el = selectedElement;
+    if (!el || !el.isConnected) return;
+    const prop = control.reads || control.prop;
+    const current = parseCssLength(
+      getComputedStyle(el).getPropertyValue(prop).trim(), tokenRemBase(), tokenEmBase(el));
+    if (current === null) return;
+    const next = stepToken(family.members, current, dir);
+    if (!next) return;
+
+    const detected = detectPropertyToken(el, prop, getComputedStyle(el).getPropertyValue(prop).trim(), tokenIndex);
+    const isVar = next.name.startsWith("--");
+    const asClass = detected && detected.kind === "class" && !isVar;
+
+    // A var rung is applied as the var() itself, so the source keeps its
+    // indirection instead of being flattened to a pixel count. Inline always
+    // outranks a stylesheet, so this always takes.
+    //
+    // `cls` stays whatever the element already wore: this path overrides the
+    // value, it does not take the element's class away. Without that, falling
+    // back from a class step would strip the class it started with.
+    const keepClass = detected && detected.kind === "class" ? detected.name : null;
+    const valueEdit = {
+      css: `${next.resolved}px`,
+      inline: isVar ? `var(${next.name})` : `${next.resolved}px`,
+      priority: neededPriority(el, control.prop),
+      cls: keepClass,
+      token: isVar ? { kind: "var", name: next.name } : null,
+    };
+
+    beginEditGesture(el, control.prop);
+    if (asClass) {
+      // A class swap carries the value on the class, so nothing is written
+      // inline — which also means the class has to win the cascade to have any
+      // effect at all.
+      setEditValue(el, control.prop, {
+        css: `${next.resolved}px`, inline: null, priority: "",
+        cls: next.name, token: { kind: "class", name: next.name },
+      });
+      const got = parseCssLength(
+        getComputedStyle(el).getPropertyValue(prop).trim(), tokenRemBase(), tokenEmBase(el));
+      if (got === null || Math.abs(got - next.resolved) > 0.5) {
+        // The page outranks its own utility class — `.card p` beats `.text-lg`
+        // on specificity, and this is common. Reporting "text-sm → text-base"
+        // would be advice that does nothing in the source either, so take the
+        // class back off and change the value instead.
+        setEditValue(el, control.prop, valueEdit);
+      }
+    } else {
+      setEditValue(el, control.prop, valueEdit);
+    }
+    commitEditGesture();
+    renderEditControls();
   }
 
   function buildSegmentControl(control) {
@@ -2632,6 +2772,13 @@
     return { auto: false, value: control.scale ? value * control.scale : value };
   }
 
+  // The stepper is 60px wide and the family prefix is already its title, so
+  // only the step itself needs to fit: "--title-lg" reads as "lg".
+  function shortTokenName(name) {
+    const split = splitTokenName(name);
+    return split ? split.step : name;
+  }
+
   const roundTo = (n, decimals) => {
     const f = Math.pow(10, decimals || 0);
     return Math.round(n * f) / f;
@@ -2848,6 +2995,18 @@
         if (wrap) wrap.classList.toggle("ccp-edit-untouched", isAuto || state.auto);
         const auto = row.querySelector(".ccp-edit-auto");
         if (auto) auto.setAttribute("aria-checked", String(Boolean(isAuto)));
+
+        // The stepper reads out where the value sits now — a rung's name, or a
+        // dash when a raw scrub has left it between rungs.
+        const stepper = row.querySelector(".ccp-edit-tok");
+        if (stepper) {
+          const family = editTokenFamilies &&
+            editTokenFamilies.find((f) => f.prefix === stepper.dataset.family);
+          const onRung = family ? matchToken(family.members, state.value) : null;
+          stepper.querySelector("b").textContent = onRung ? shortTokenName(onRung.name) : "—";
+          stepper.classList.toggle("ccp-edit-offscale", !onRung);
+          stepper.title = onRung ? onRung.name : `Off the ${stepper.dataset.family} scale`;
+        }
       }
     }
 
@@ -3058,10 +3217,15 @@
   // inline  — what to write to the style attribute, or null to remove it
   // cls     — the utility class realising this value, or null
   // token   — { kind: "class" | "var", name } when the value sits on a token
-  function applyEditValue(el, prop, next) {
+  // `prev` is what is on the element right now, and it has to be passed in
+  // rather than looked up: callers record the new value before applying it, so
+  // a lookup here would return the value being written and conclude that the
+  // class had not changed — leaving a token step recorded but never performed.
+  function applyEditValue(el, prop, next, prev) {
     const record = ensureEditRecord(el);
     const entry = record.props.get(prop);
-    const prevCls = entry && entry.after ? entry.after.cls : null;
+    const current = prev !== undefined ? prev : (entry ? entry.after : null);
+    const prevCls = current ? current.cls || null : null;
     if (prevCls !== (next.cls || null)) swapUtilityClass(el, prevCls, next.cls || null);
     applyDeclaration(el, prop, next.inline, next.priority);
   }
@@ -3137,8 +3301,11 @@
     const record = ensureEditRecord(el);
     const entry = record.props.get(prop);
     const before = entry ? entry.before : editGesture.before;
+    // On the first touch the element still wears whatever it started with, so
+    // that is what a class swap has to replace.
+    const prev = entry ? entry.after : before;
+    applyEditValue(el, prop, next, prev);
     record.props.set(prop, { before, after: next });
-    applyEditValue(el, prop, next);
   }
 
   function commitEditGesture() {
@@ -3151,7 +3318,7 @@
     if (sameEditValue(entry.before, entry.after)) {
       // Scrubbed away and back again: not an edit, and not history.
       record.props.delete(g.prop);
-      applyEditValue(g.el, g.prop, entry.before);
+      applyEditValue(g.el, g.prop, entry.before, entry.after);
       pruneRecord(g.el);
       return;
     }
@@ -3183,7 +3350,7 @@
     if (!entry) return;
     commitEditGesture();
     record.props.delete(prop);
-    applyEditValue(el, prop, entry.before);
+    applyEditValue(el, prop, entry.before, entry.after);
     pushUndo({ kind: "single", el, prop, before: entry.after, after: entry.before, isReset: true });
     pruneRecord(el);
   }
@@ -3215,7 +3382,9 @@
           record.originalStyleAttr = item.styleAttr;
           record.originalClassAttr = item.classAttr;
           record.props = new Map(item.props);
-          for (const [prop, e] of record.props) applyEditValue(item.el, prop, e.after);
+          // The element was restored to its original state by the reset this
+          // is undoing, so that original is what each value is replacing.
+          for (const [prop, e] of record.props) applyEditValue(item.el, prop, e.after, e.before);
         }
       } else {
         for (const item of entry.items) {
@@ -3232,7 +3401,9 @@
     const record = ensureEditRecord(entry.el);
     const original = record.props.get(entry.prop);
     const baseline = original ? original.before : other;
-    applyEditValue(entry.el, entry.prop, value);
+    // Undo and redo swap between exactly two states, so the one being left is
+    // always the other side of this entry.
+    applyEditValue(entry.el, entry.prop, value, other);
     if (sameEditValue(value, baseline) && !record.props.has(entry.prop)) {
       // Back at the untouched state: the property is no longer an edit.
       record.props.delete(entry.prop);
