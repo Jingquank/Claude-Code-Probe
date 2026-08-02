@@ -1855,6 +1855,65 @@
   // for the rest of the edit session. Entering Edit Mode again re-solves, so
   // the panel always starts beside the element it is about to tune.
 
+  // The inventory, in the order the panel stacks it. Each control names the CSS
+  // property it edits, so the delta block and the registry key off the same
+  // string the source will contain.
+  //
+  // `writes` is for properties whose longhands are what actually paint: editing
+  // "padding" linked means writing one shorthand, but reading has to come off a
+  // longhand, because the computed shorthand is "16px 8px 16px 8px" the moment
+  // the sides differ. `when` is the relevance rule from the settings decision —
+  // typography only where there is text of its own, gap only where it can act.
+  const EDIT_GROUPS = [
+    {
+      key: "typography",
+      label: "Typography",
+      when: (el) => getDirectText(el).length > 0,
+      controls: [
+        { prop: "font-size", label: "size", unit: "px", step: 1, min: 1, max: 400 },
+        { prop: "font-weight", label: "weight", unit: "", step: 100, min: 100, max: 900 },
+        // line-height's "normal" has no fixed numeric equivalent — it depends
+        // on the font's own metrics — so returning to the displayed number is
+        // a real declaration and gets reported as one. letter-spacing's does:
+        // "normal" is exactly 0, so landing back on 0 writes the keyword and
+        // leaves no edit behind.
+        { prop: "line-height", label: "leading", unit: "px", step: 1, min: 0, max: 400, autoWord: "normal" },
+        { prop: "letter-spacing", label: "tracking", unit: "px", step: 0.1, decimals: 2, min: -20, max: 40, autoWord: "normal", autoEquals: 0 },
+        {
+          prop: "text-align", label: "align", kind: "segment", options: ["left", "center", "right"],
+          // Unset text-align computes to "start", which is "left" in every
+          // left-to-right document — without this the row reads as though
+          // nothing were selected at all.
+          equivalents: { start: "left", end: "right" },
+        },
+      ],
+    },
+    {
+      key: "spacing",
+      label: "Spacing",
+      controls: [
+        { prop: "padding", label: "padding", unit: "px", step: 1, min: 0, max: 400, reads: "padding-top" },
+        { prop: "margin", label: "margin", unit: "px", step: 1, min: -400, max: 400, reads: "margin-top" },
+        {
+          prop: "gap", label: "gap", unit: "px", step: 1, min: 0, max: 400, reads: "row-gap",
+          when: (el) => /flex|grid/.test(getComputedStyle(el).display),
+        },
+      ],
+    },
+    {
+      key: "size",
+      label: "Size",
+      controls: [
+        { prop: "width", label: "width", unit: "px", step: 1, min: 0, max: 4000, auto: true },
+        { prop: "height", label: "height", unit: "px", step: 1, min: 0, max: 4000, auto: true },
+      ],
+    },
+  ];
+
+  const controlsOf = (group, el) => group.controls.filter((c) => !c.when || c.when(el));
+  const groupsFor = (el) =>
+    EDIT_GROUPS.filter((g) => (!g.when || g.when(el)) && controlsOf(g, el).length > 0);
+
   function showEditPanel() {
     removeEditPanel();
 
@@ -1879,8 +1938,33 @@
     identity.className = "ccp-edit-id";
     identity.innerHTML = editPanelIdentity(selectedElement);
 
+    const copy = document.createElement("button");
+    copy.className = "ccp-edit-act ccp-edit-copy";
+    copy.innerHTML = `${ICONS.code}<i class="ccp-edit-count"></i>`;
+    copy.title = "Copy pointer and edits";
+    copy.setAttribute("aria-label", "Copy pointer and edits");
+    copy.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      copyEdits(copy);
+    });
+
+    const resetAll = document.createElement("button");
+    resetAll.className = "ccp-edit-act ccp-edit-resetall";
+    resetAll.textContent = "↺";
+    resetAll.title = "Reset every edit";
+    resetAll.setAttribute("aria-label", "Reset every edit");
+    resetAll.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      resetAllEdits();
+      refreshEditControls();
+    });
+
     head.appendChild(back);
     head.appendChild(identity);
+    head.appendChild(copy);
+    head.appendChild(resetAll);
     head.addEventListener("pointerdown", onEditDragStart);
 
     const body = document.createElement("div");
@@ -1890,7 +1974,363 @@
     editPanelEl.appendChild(body);
     document.documentElement.appendChild(editPanelEl);
 
+    renderEditControls();
     placeEditPanel();
+  }
+
+  // ===== Edit Controls =====
+  // Stacked sections, one row per property: a dirty dot, a label, and the
+  // control. The dot is both the "this is edited" mark and the way to take one
+  // property back, which is why it sits with the row rather than in a menu.
+
+  function renderEditControls() {
+    if (!editPanelEl || !selectedElement) return;
+    const body = editPanelEl.querySelector(".ccp-edit-body");
+    body.textContent = "";
+
+    for (const group of groupsFor(selectedElement)) {
+      const section = document.createElement("div");
+      section.className = "ccp-edit-group";
+
+      const legend = document.createElement("p");
+      legend.className = "ccp-edit-legend";
+      legend.textContent = group.label;
+      section.appendChild(legend);
+
+      for (const control of controlsOf(group, selectedElement)) {
+        section.appendChild(buildEditRow(control));
+      }
+      body.appendChild(section);
+    }
+    refreshEditControls();
+  }
+
+  function buildEditRow(control) {
+    const row = document.createElement("div");
+    row.className = "ccp-edit-row";
+    row.dataset.prop = control.prop;
+
+    const dot = document.createElement("button");
+    dot.className = "ccp-edit-dot";
+    dot.dataset.prop = control.prop;
+    dot.title = `Reset ${control.label}`;
+    dot.setAttribute("aria-label", `Reset ${control.label}`);
+    dot.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!isEditedProp(selectedElement, control.prop)) return;
+      resetEditProp(selectedElement, control.prop);
+      refreshEditControls();
+    });
+
+    const label = document.createElement("span");
+    label.className = "ccp-edit-label";
+    label.textContent = control.label;
+
+    row.appendChild(dot);
+    row.appendChild(label);
+    row.appendChild(
+      control.kind === "segment" ? buildSegmentControl(control) : buildNumericControl(control)
+    );
+    return row;
+  }
+
+  // Type, arrow, or scrub — the same three ways Figma offers, because each
+  // suits a different question: typing when you know the number, arrows when
+  // you are counting steps, scrubbing when you are judging by eye.
+  function buildNumericControl(control) {
+    const wrap = document.createElement("span");
+    wrap.className = "ccp-edit-num";
+    wrap.dataset.prop = control.prop;
+
+    const input = document.createElement("input");
+    input.className = "ccp-edit-input";
+    input.type = "text";
+    input.inputMode = "decimal";
+    input.spellcheck = false;
+    input.setAttribute("aria-label", control.label);
+
+    wrap.appendChild(input);
+    if (control.unit) {
+      const unit = document.createElement("i");
+      unit.className = "ccp-edit-unit";
+      unit.textContent = control.unit;
+      wrap.appendChild(unit);
+    }
+
+    input.addEventListener("keydown", (e) => onNumericKey(e, control));
+    input.addEventListener("blur", () => commitNumericInput(control, input));
+    // A scrub starts on the wrapper, so the drag surface is the whole chip
+    // rather than only the digits.
+    wrap.addEventListener("pointerdown", (e) => onNumericScrubStart(e, control, input));
+
+    if (control.auto) {
+      const auto = document.createElement("button");
+      auto.className = "ccp-edit-auto";
+      auto.textContent = "auto";
+      auto.title = `Let ${control.label} size itself`;
+      auto.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleAuto(control);
+      });
+      const holder = document.createElement("span");
+      holder.className = "ccp-edit-numwrap";
+      holder.appendChild(wrap);
+      holder.appendChild(auto);
+      return holder;
+    }
+    return wrap;
+  }
+
+  function buildSegmentControl(control) {
+    const seg = document.createElement("span");
+    seg.className = "ccp-edit-seg";
+    seg.dataset.prop = control.prop;
+    seg.setAttribute("role", "radiogroup");
+    seg.setAttribute("aria-label", control.label);
+
+    for (const option of control.options) {
+      const button = document.createElement("button");
+      button.dataset.value = option;
+      button.setAttribute("role", "radio");
+      button.title = option;
+      button.textContent = { left: "≡", center: "≡", right: "≡" }[option] || option;
+      button.classList.add(`ccp-edit-align-${option}`);
+      button.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        applyEditProp(control, option);
+        commitEditGesture();
+        refreshEditControls();
+      });
+      seg.appendChild(button);
+    }
+    return seg;
+  }
+
+  // ===== Edit Control values =====
+
+  function readComputed(el, control) {
+    return getComputedStyle(el).getPropertyValue(control.reads || control.prop).trim();
+  }
+
+  // The number a control shows. `autoWord` covers the properties whose computed
+  // value can be a keyword rather than a length (line-height and letter-spacing
+  // both report "normal" when nothing has set them), where the honest display
+  // is that there is no number yet.
+  function numericState(el, control) {
+    const raw = readComputed(el, control);
+    if (control.autoWord && raw === control.autoWord) {
+      const base = parseFloat(getComputedStyle(el).fontSize) || 16;
+      return { auto: true, value: control.prop === "line-height" ? Math.round(base * 1.2) : 0 };
+    }
+    const n = parseFloat(raw);
+    return { auto: false, value: isFinite(n) ? n : 0 };
+  }
+
+  const roundTo = (n, decimals) => {
+    const f = Math.pow(10, decimals || 0);
+    return Math.round(n * f) / f;
+  };
+
+  const formatNumeric = (n, control) =>
+    String(roundTo(n, control.decimals || 0));
+
+  function applyEditProp(control, cssValue) {
+    const el = selectedElement;
+    if (!el || !el.isConnected) return;
+    setEditValue(el, control.prop, {
+      css: cssValue,
+      inline: cssValue,
+      priority: neededPriority(el, control.prop),
+      cls: null,
+      token: null,
+    });
+  }
+
+  function applyNumeric(control, next) {
+    const clamped = Math.min(control.max, Math.max(control.min, next));
+    const isKeyword = control.autoWord && control.autoEquals === clamped;
+    applyEditProp(control, isKeyword ? control.autoWord : formatNumeric(clamped, control) + (control.unit || ""));
+    refreshEditControls();
+    return clamped;
+  }
+
+  function toggleAuto(control) {
+    const el = selectedElement;
+    if (!el || !el.isConnected) return;
+    const record = editRegistry.get(el);
+    const entry = record && record.props.get(control.prop);
+    const isAuto = entry ? entry.after.css === "auto" : !el.style.getPropertyValue(control.prop);
+    if (isAuto) {
+      applyNumeric(control, numericState(el, control).value);
+    } else {
+      applyEditProp(control, "auto");
+      refreshEditControls();
+    }
+    commitEditGesture();
+    refreshEditControls();
+  }
+
+  function onNumericKey(e, control) {
+    const input = e.currentTarget;
+    if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+      e.preventDefault();
+      e.stopPropagation();
+      const dir = e.key === "ArrowUp" ? 1 : -1;
+      const step = control.step * (e.shiftKey ? 10 : 1);
+      const current = parseFloat(input.value);
+      const base = isFinite(current) ? current : numericState(selectedElement, control).value;
+      beginEditGesture(selectedElement, control.prop);
+      const applied = applyNumeric(control, roundTo(base + dir * step, control.decimals || 0));
+      // The field keeps focus while arrowing, and refreshEditControls leaves
+      // focused fields alone so it cannot type over you — so stepping has to
+      // write the new number itself. Without this the field shows the old
+      // value and the eventual blur commits it, undoing every step taken.
+      input.value = formatNumeric(applied, control);
+      return;
+    }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      e.stopPropagation();
+      commitNumericInput(control, input);
+      input.blur();
+      return;
+    }
+    if (e.key === "Escape") {
+      // Escape in a field abandons the typing, not the mode — the panel's own
+      // Escape stage only applies once the field has given the key back.
+      e.stopPropagation();
+      e.preventDefault();
+      refreshEditControls();
+      input.blur();
+      return;
+    }
+    // Everything else is typing; it must not reach the page's shortcuts.
+    e.stopPropagation();
+  }
+
+  function commitNumericInput(control, input) {
+    const el = selectedElement;
+    if (!el || !el.isConnected) return;
+    const typed = parseFloat(input.value);
+    if (!isFinite(typed)) { refreshEditControls(); return; }
+    beginEditGesture(el, control.prop);
+    applyNumeric(control, typed);
+    commitEditGesture();
+    refreshEditControls();
+  }
+
+  // Pointer-down on a value is ambiguous until it moves: a click means "let me
+  // type", a drag means "let me judge". So the gesture stays undecided for a
+  // few pixels, and only then takes the focus away and starts scrubbing.
+  function onNumericScrubStart(e, control, input) {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    const el = selectedElement;
+    if (!el || !el.isConnected) return;
+
+    const startX = e.clientX;
+    const start = numericState(el, control).value;
+    const wrap = e.currentTarget;
+    let scrubbing = false;
+
+    const move = (ev) => {
+      const dx = ev.clientX - startX;
+      if (!scrubbing) {
+        if (Math.abs(dx) < 3) return;
+        scrubbing = true;
+        wrap.classList.add("ccp-edit-scrubbing");
+        beginEditGesture(el, control.prop);
+        if (document.activeElement === input) input.blur();
+      }
+      // Two pixels per step keeps a full-width drag inside a sane range while
+      // still landing on every value; Shift multiplies the step, not the speed.
+      const step = control.step * (ev.shiftKey ? 10 : 1);
+      applyNumeric(control, roundTo(start + Math.round(dx / 2) * step, control.decimals || 0));
+    };
+    const up = () => {
+      wrap.removeEventListener("pointermove", move);
+      wrap.removeEventListener("pointerup", up);
+      wrap.removeEventListener("pointercancel", up);
+      wrap.classList.remove("ccp-edit-scrubbing");
+      if (scrubbing) {
+        commitEditGesture();
+        refreshEditControls();
+      } else {
+        input.focus();
+        input.select();
+      }
+    };
+
+    wrap.setPointerCapture(e.pointerId);
+    wrap.addEventListener("pointermove", move);
+    wrap.addEventListener("pointerup", up);
+    wrap.addEventListener("pointercancel", up);
+  }
+
+  // Repaint every control from the element's current state. Called after any
+  // change, including undo, so what the panel shows is never a guess.
+  function refreshEditControls() {
+    if (!editPanelEl || !selectedElement || !selectedElement.isConnected) return;
+    const el = selectedElement;
+
+    for (const group of EDIT_GROUPS) {
+      for (const control of group.controls) {
+        const row = editPanelEl.querySelector(`.ccp-edit-row[data-prop="${control.prop}"]`);
+        if (!row) continue;
+
+        const edited = isEditedProp(el, control.prop);
+        row.classList.toggle("ccp-edit-dirty", edited);
+        const dot = row.querySelector(".ccp-edit-dot");
+        if (dot) dot.classList.toggle("ccp-edit-on", edited);
+
+        if (control.kind === "segment") {
+          const raw = readComputed(el, control);
+          const value = (control.equivalents && control.equivalents[raw]) || raw;
+          for (const button of row.querySelectorAll(".ccp-edit-seg button")) {
+            button.setAttribute("aria-checked", String(button.dataset.value === value));
+          }
+          continue;
+        }
+
+        const input = row.querySelector(".ccp-edit-input");
+        if (!input) continue;
+        const record = editRegistry.get(el);
+        const entry = record && record.props.get(control.prop);
+        const isAuto = entry
+          ? entry.after.css === "auto"
+          : control.auto && !el.style.getPropertyValue(control.prop);
+        const state = numericState(el, control);
+        // Typing must never be overwritten mid-keystroke.
+        if (document.activeElement !== input) {
+          input.value = formatNumeric(state.value, control);
+        }
+        const wrap = row.querySelector(".ccp-edit-num");
+        if (wrap) wrap.classList.toggle("ccp-edit-untouched", isAuto || state.auto);
+        const auto = row.querySelector(".ccp-edit-auto");
+        if (auto) auto.setAttribute("aria-checked", String(Boolean(isAuto)));
+      }
+    }
+
+    const count = editedPropCount(el);
+    const badge = editPanelEl.querySelector(".ccp-edit-count");
+    if (badge) badge.textContent = count ? String(count) : "";
+    const resetAll = editPanelEl.querySelector(".ccp-edit-resetall");
+    if (resetAll) resetAll.classList.toggle("ccp-edit-on", editRegistry.size > 0);
+  }
+
+  // ===== Copy the delta block =====
+  function copyEdits(btnEl) {
+    const el = selectedElement;
+    if (!el) return;
+    commitEditGesture();
+    const text = buildEditsBlock(el);
+    navigator.clipboard.writeText(text).then(
+      () => setButtonSuccess(btnEl),
+      () => showToast("Clipboard blocked — check the page's permissions")
+    );
   }
 
   function removeEditPanel() {
@@ -2180,10 +2620,14 @@
     pushUndo({ kind: "single", el: g.el, prop: g.prop, before: entry.before, after: entry.after });
   }
 
+  // Two values are the same edit when they render the same, from the same
+  // token — the value, not the mechanism that achieves it. Comparing the
+  // inline string instead would call "no inline declaration, 0px from a
+  // stylesheet" and "inline 0px" different, so scrubbing a property away and
+  // back would leave a dirty dot and a delta line for a change nobody can see.
   function sameEditValue(a, b) {
     if (!a || !b) return a === b;
-    return a.css === b.css && (a.cls || null) === (b.cls || null) &&
-      (a.inline || null) === (b.inline || null) && (a.priority || "") === (b.priority || "");
+    return a.css === b.css && (a.cls || null) === (b.cls || null);
   }
 
   function pushUndo(entry) {

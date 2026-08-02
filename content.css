@@ -725,6 +725,51 @@
 #ccp-edit-panel .ccp-edit-id-id { color: var(--ccp-syntax-id); font-weight: var(--ccp-weight-medium); }
 #ccp-edit-panel .ccp-edit-id-class { color: var(--ccp-syntax-class); font-weight: var(--ccp-weight-medium); }
 
+/* The header's two actions. Copy carries a count of what it would write, so
+   the panel always says how much is pending without opening anything. */
+#ccp-edit-panel .ccp-edit-act {
+  all: initial;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ccp-gap-pair);
+  flex: none;
+  height: 20px;
+  min-width: 20px;
+  padding: 0 var(--ccp-xs);
+  border: 1px solid var(--ccp-sep);
+  border-radius: var(--ccp-radius-xs);
+  background: transparent;
+  color: var(--ccp-text-dim);
+  font: var(--ccp-weight-medium) var(--ccp-text-sm)/1 var(--ccp-font);
+  cursor: pointer;
+  transition: border-color var(--ccp-duration), color var(--ccp-duration),
+              background var(--ccp-duration);
+}
+
+#ccp-edit-panel .ccp-edit-act:hover {
+  border-color: var(--ccp-accent);
+  color: var(--ccp-accent);
+  background: rgb(from var(--ccp-accent) r g b / 0.15);
+}
+
+#ccp-edit-panel .ccp-edit-act svg { width: 11px; height: 11px; }
+
+#ccp-edit-panel .ccp-edit-act.ccp-edit-on { color: var(--ccp-accent); }
+
+#ccp-edit-panel .ccp-edit-count {
+  all: initial;
+  font: var(--ccp-weight-bold) 8px/1 var(--ccp-font);
+  font-variant-numeric: tabular-nums;
+  color: var(--ccp-on-accent);
+  background: var(--ccp-accent);
+  border-radius: var(--ccp-radius-xs);
+  padding: 1px 3px;
+}
+
+#ccp-edit-panel .ccp-edit-count:empty { display: none; }
+
 #ccp-edit-panel .ccp-edit-body {
   all: initial;
   box-sizing: border-box;
@@ -735,6 +780,207 @@
   overflow-y: auto;
   min-height: 0;
 }
+
+/* ===== Edit Panel — control rows =====
+   One row per property: dot, label, control. The label column is elastic and
+   the control column is not, so every value chip in the panel lines up down a
+   single edge no matter how long the labels get. */
+#ccp-edit-panel .ccp-edit-group + .ccp-edit-group {
+  margin-top: var(--ccp-md);
+  padding-top: var(--ccp-gap-section);
+  border-top: 1px solid var(--ccp-sep);
+}
+
+#ccp-edit-panel .ccp-edit-legend {
+  all: initial;
+  display: block;
+  font: var(--ccp-weight-medium) 9px/1 var(--ccp-font);
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ccp-text-muted);
+  margin-bottom: var(--ccp-gap-base);
+}
+
+#ccp-edit-panel .ccp-edit-row {
+  all: initial;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--ccp-gap-base);
+  padding: 2px 0;
+  font-family: var(--ccp-font);
+}
+
+#ccp-edit-panel .ccp-edit-label {
+  all: initial;
+  font: var(--ccp-text-sm)/1.4 var(--ccp-font);
+  color: var(--ccp-text-muted);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The dirty dot is the edit's only permanent mark in the panel, and the way to
+   take one property back. Hollow when the property is untouched so the column
+   still reads as a column; filled and clickable once it has something to
+   revert. */
+#ccp-edit-panel .ccp-edit-dot {
+  all: initial;
+  box-sizing: border-box;
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1px solid var(--ccp-sep);
+  background: transparent;
+  cursor: default;
+  transition: background var(--ccp-duration), border-color var(--ccp-duration);
+}
+
+#ccp-edit-panel .ccp-edit-dot.ccp-edit-on {
+  background: var(--ccp-accent);
+  border-color: var(--ccp-accent);
+  cursor: pointer;
+}
+
+#ccp-edit-panel .ccp-edit-dot.ccp-edit-on:hover {
+  background: var(--ccp-text);
+  border-color: var(--ccp-text);
+}
+
+#ccp-edit-panel .ccp-edit-numwrap {
+  all: initial;
+  display: flex;
+  align-items: center;
+  gap: var(--ccp-gap-pair);
+  flex: none;
+}
+
+/* The value chip is the drag surface as well as the field, which is why the
+   whole thing carries the resize cursor and why the input inside it is
+   transparent rather than looking like a text box. */
+#ccp-edit-panel .ccp-edit-num {
+  all: initial;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 1px;
+  flex: none;
+  width: 58px;
+  padding: 2px var(--ccp-xs);
+  border: 1px solid var(--ccp-sep);
+  border-radius: var(--ccp-radius-xs);
+  background: rgb(from var(--ccp-text) r g b / 0.06);
+  font-family: var(--ccp-font);
+  transition: border-color var(--ccp-duration), background var(--ccp-duration);
+}
+
+#ccp-edit-panel .ccp-edit-num:hover,
+#ccp-edit-panel .ccp-edit-num.ccp-edit-scrubbing {
+  border-color: var(--ccp-accent);
+}
+
+#ccp-edit-panel .ccp-edit-num:focus-within {
+  border-color: var(--ccp-accent);
+  background: rgb(from var(--ccp-accent) r g b / 0.12);
+}
+
+#ccp-edit-panel .ccp-edit-input {
+  all: initial;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  text-align: right;
+  font: var(--ccp-weight-medium) var(--ccp-text-sm)/1.4 var(--ccp-font);
+  font-variant-numeric: tabular-nums;
+  color: var(--ccp-text);
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
+#ccp-edit-panel .ccp-edit-input::selection {
+  background: rgb(from var(--ccp-accent) r g b / 0.35);
+}
+
+#ccp-edit-panel .ccp-edit-unit {
+  all: initial;
+  font: 9px/1.4 var(--ccp-font);
+  color: var(--ccp-text-faint);
+  flex: none;
+}
+
+/* A value nothing has set yet — line-height reporting "normal", a width that
+   is still auto. The number shown is real, it just isn't a decision anyone
+   made, so it reads quieter than one that was. */
+#ccp-edit-panel .ccp-edit-num.ccp-edit-untouched .ccp-edit-input {
+  color: var(--ccp-text-faint);
+}
+
+#ccp-edit-panel .ccp-edit-auto {
+  all: initial;
+  box-sizing: border-box;
+  flex: none;
+  padding: 2px var(--ccp-xs);
+  border: 1px solid var(--ccp-sep);
+  border-radius: var(--ccp-radius-xs);
+  background: transparent;
+  color: var(--ccp-text-muted);
+  font: var(--ccp-weight-medium) 8px/1.4 var(--ccp-font);
+  letter-spacing: var(--ccp-tracking-wide);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background var(--ccp-duration), color var(--ccp-duration),
+              border-color var(--ccp-duration);
+}
+
+#ccp-edit-panel .ccp-edit-auto[aria-checked="true"] {
+  background: var(--ccp-accent);
+  border-color: var(--ccp-accent);
+  color: var(--ccp-on-accent);
+}
+
+#ccp-edit-panel .ccp-edit-seg {
+  all: initial;
+  box-sizing: border-box;
+  display: inline-flex;
+  flex: none;
+  border: 1px solid var(--ccp-sep);
+  border-radius: var(--ccp-radius-xs);
+  overflow: hidden;
+}
+
+#ccp-edit-panel .ccp-edit-seg button {
+  all: initial;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 18px;
+  background: transparent;
+  color: var(--ccp-text-muted);
+  cursor: pointer;
+  font: var(--ccp-text-sm)/1 var(--ccp-font);
+  transition: background var(--ccp-duration), color var(--ccp-duration);
+}
+
+#ccp-edit-panel .ccp-edit-seg button + button {
+  border-left: 1px solid var(--ccp-sep);
+}
+
+#ccp-edit-panel .ccp-edit-seg button[aria-checked="true"] {
+  background: var(--ccp-accent);
+  color: var(--ccp-on-accent);
+}
+
+/* The three alignment glyphs are one character shifted three ways, so they
+   read as the same mark moving rather than three different symbols. */
+#ccp-edit-panel .ccp-edit-align-left { justify-content: flex-start; padding-left: 3px; }
+#ccp-edit-panel .ccp-edit-align-right { justify-content: flex-end; padding-right: 3px; }
 
 /* ===== Settings Button =====
    Viewport chrome, not selection chrome: mounted by activate() and pinned to the
@@ -858,4 +1104,28 @@
 #ccp-edit-panel .ccp-edit-head.ccp-edit-dragging,
 #ccp-edit-panel .ccp-edit-head.ccp-edit-dragging * {
   cursor: grabbing !important;
+}
+
+#ccp-edit-panel .ccp-edit-act,
+#ccp-edit-panel .ccp-edit-act *,
+#ccp-edit-panel .ccp-edit-auto,
+#ccp-edit-panel .ccp-edit-seg button,
+#ccp-edit-panel .ccp-edit-dot.ccp-edit-on {
+  cursor: pointer !important;
+}
+
+/* The value chip announces that it can be dragged; the field inside it stays
+   a text cursor, because clicking it is how you type instead. */
+#ccp-edit-panel .ccp-edit-num,
+#ccp-edit-panel .ccp-edit-unit {
+  cursor: ew-resize !important;
+}
+
+#ccp-edit-panel .ccp-edit-input {
+  cursor: text !important;
+}
+
+#ccp-edit-panel .ccp-edit-num.ccp-edit-scrubbing,
+#ccp-edit-panel .ccp-edit-num.ccp-edit-scrubbing * {
+  cursor: ew-resize !important;
 }
