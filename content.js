@@ -620,7 +620,9 @@
         into.push(node);
       }
     };
-    tetherPool("ccp-tether-seg", 2, tetherSegEls);
+    // Three segments, not two: the single-turn L covers almost everything, but
+    // the two-turn fallback that keeps the right angle needs a third.
+    tetherPool("ccp-tether-seg", 3, tetherSegEls);
     tetherPool("ccp-tether-tick", 4, tetherTickEls);
     overlayContainer.appendChild(tetherEl);
 
@@ -1463,6 +1465,27 @@
       : { x, y: r.y, nx: 0, ny: -1 };
   }
 
+  // The tick the run lands on: the midpoint of whichever edge of the clearance
+  // box faces (ax, ay), exactly.
+  //
+  // Not tetherSide(). Its slide along the edge is right for the panel end,
+  // where the anchor should track the far end of the run, and wrong here,
+  // where the anchor IS a tick's centre — and its inset arithmetic leaves the
+  // result up to a pixel off the true midpoint on a short edge, which on a
+  // 16px tick is visibly not the middle.
+  function tetherFacingTick(box, ax, ay) {
+    const cx = box.x + box.w / 2;
+    const cy = box.y + box.h / 2;
+    if (Math.abs(ax - cx) * box.h >= Math.abs(ay - cy) * box.w) {
+      return ax >= cx
+        ? { x: box.x + box.w, y: cy, nx: 1, ny: 0 }
+        : { x: box.x, y: cy, nx: -1, ny: 0 };
+    }
+    return ay >= cy
+      ? { x: cx, y: box.y + box.h, nx: 0, ny: 1 }
+      : { x: cx, y: box.y, nx: 0, ny: -1 };
+  }
+
   // Does the axis-aligned segment a→b touch `box`? Segments are strokes, not
   // areas, so this is a plain interval overlap on both axes.
   function tetherSegHits(a, b, box) {
@@ -1531,23 +1554,44 @@
         panel.y < box.y + box.h && panel.y + panel.h > box.y) return result;
 
     const a = tetherSide(panel, bcx, bcy, GEOMETRY.tetherStub);
-    // The far end is the midpoint of whichever edge faces the panel — no
-    // sliding here, because that midpoint is a tick, and the run has to land on
-    // the tick rather than near it.
-    const s = tetherSide(box, a.x, a.y, Infinity);
+    // The far end is a tick's centre, exactly — the run has to land on the
+    // middle of the tick, not near it.
+    const s = tetherFacingTick(box, a.x, a.y);
     const b = { x: s.x, y: s.y };
 
-    // Turn at the TICK's outward coordinate, not the panel's. Both legs then
-    // lie on the far side of the tick from the element, so neither can enter
-    // the box — the property test/tether.mjs sweeps. The mirror L (turning at
-    // the panel's coordinate) is the fallback for the configurations where the
-    // first would clip, and if both clip the ticks stand alone.
-    const first = s.nx !== 0 ? { x: b.x, y: a.y } : { x: a.x, y: b.y };
-    const other = s.nx !== 0 ? { x: a.x, y: b.y } : { x: b.x, y: a.y };
-    for (const corner of [first, other]) {
-      if (tetherSegHits(a, corner, box) || tetherSegHits(corner, b, box)) continue;
-      result.segs = tetherLeg(a, b, corner);
-      break;
+    // The run has to arrive PERPENDICULAR to the tick and stop at its middle,
+    // so the junction reads as a T. A tick lies along its edge, so a final leg
+    // parallel to it would lie on top of the tick's near half, swallow it, and
+    // come out looking like it started at the tick's end — the endpoint would
+    // still be the centre, and it would still look wrong.
+    //
+    // Perpendicular means the last leg runs along the tick's normal, so the
+    // turn goes on the OTHER axis from the normal: a horizontal normal (the
+    // left and right ticks, which are vertical bars) wants a horizontal final
+    // leg, so the corner takes the panel's x and the tick's y.
+    //
+    // This is clear of the element for the same reason the ticks are: `s` is
+    // the edge of the clearance box facing `a`, so `a` is already on that
+    // edge's outward side, and the corner inherits it. tetherSegHits stays as
+    // the proof rather than the argument.
+    const perp = s.nx !== 0 ? { x: a.x, y: b.y } : { x: b.x, y: a.y };
+    if (!tetherSegHits(a, perp, box) && !tetherSegHits(perp, b, box)) {
+      result.segs = tetherLeg(a, b, perp);
+      return result;
+    }
+
+    // Where one turn cannot do it, take two rather than give up the right
+    // angle — pushing the turn out onto the tick's own normal ray guarantees
+    // the last leg approaches along that ray. A parallel arrival is never the
+    // fallback; that is the thing being removed.
+    const out = {
+      x: b.x + s.nx * GEOMETRY.tetherStub,
+      y: b.y + s.ny * GEOMETRY.tetherStub,
+    };
+    const elbow = s.nx !== 0 ? { x: out.x, y: a.y } : { x: a.x, y: out.y };
+    const legs = [[a, elbow], [elbow, out], [out, b]];
+    if (!legs.some(([p, q]) => tetherSegHits(p, q, box))) {
+      result.segs = [...tetherLeg(a, out, elbow), ...tetherLeg(out, b, out)];
     }
     return result;
   }

@@ -48,6 +48,19 @@ function tetherSide(r, tx, ty, inset) {
     : { x, y: r.y, nx: 0, ny: -1 };
 }
 
+function tetherFacingTick(box, ax, ay) {
+  const cx = box.x + box.w / 2;
+  const cy = box.y + box.h / 2;
+  if (Math.abs(ax - cx) * box.h >= Math.abs(ay - cy) * box.w) {
+    return ax >= cx
+      ? { x: box.x + box.w, y: cy, nx: 1, ny: 0 }
+      : { x: box.x, y: cy, nx: -1, ny: 0 };
+  }
+  return ay >= cy
+    ? { x: cx, y: box.y + box.h, nx: 0, ny: 1 }
+    : { x: cx, y: box.y, nx: 0, ny: -1 };
+}
+
 function tetherSegHits(a, b, box) {
   const x0 = Math.min(a.x, b.x);
   const x1 = Math.max(a.x, b.x);
@@ -100,17 +113,55 @@ export function computeTether(rect, panel, vw, vh, opts) {
       panel.y < box.y + box.h && panel.y + panel.h > box.y) return result;
 
   const a = tetherSide(panel, bcx, bcy, STUB);
-  const s = tetherSide(box, a.x, a.y, Infinity);
+  const s = tetherFacingTick(box, a.x, a.y);
   const b = { x: s.x, y: s.y };
 
-  const first = s.nx !== 0 ? { x: b.x, y: a.y } : { x: a.x, y: b.y };
-  const other = s.nx !== 0 ? { x: a.x, y: b.y } : { x: b.x, y: a.y };
-  for (const corner of [first, other]) {
-    if (tetherSegHits(a, corner, box) || tetherSegHits(corner, b, box)) continue;
-    result.segs = tetherLeg(a, b, corner);
-    break;
+  const perp = s.nx !== 0 ? { x: a.x, y: b.y } : { x: b.x, y: a.y };
+  if (!tetherSegHits(a, perp, box) && !tetherSegHits(perp, b, box)) {
+    result.segs = tetherLeg(a, b, perp);
+    return result;
+  }
+
+  const out = { x: b.x + s.nx * STUB, y: b.y + s.ny * STUB };
+  const elbow = s.nx !== 0 ? { x: out.x, y: a.y } : { x: a.x, y: out.y };
+  const legs = [[a, elbow], [elbow, out], [out, b]];
+  if (!legs.some(([p, q]) => tetherSegHits(p, q, box))) {
+    result.segs = [...tetherLeg(a, out, elbow), ...tetherLeg(out, b, out)];
   }
   return result;
+}
+
+// Which tick does a run land on, and what is its normal axis? Mirrors the
+// ordering of the ticks array: top, bottom, left, right.
+function facingTick(out) {
+  const [top, bottom, left, right] = out.ticks;
+  return [
+    { tick: top, axis: "y", cx: top.x + top.w / 2, cy: top.y + top.h / 2 },
+    { tick: bottom, axis: "y", cx: bottom.x + bottom.w / 2, cy: bottom.y + bottom.h / 2 },
+    { tick: left, axis: "x", cx: left.x + left.w / 2, cy: left.y + left.h / 2 },
+    { tick: right, axis: "x", cx: right.x + right.w / 2, cy: right.y + right.h / 2 },
+  ];
+}
+
+// The far end of the run: whichever endpoint of the last segment is NOT shared
+// with the previous one (or, for a lone segment, whichever lands on a tick).
+function runTerminus(out) {
+  const segs = out.segs;
+  if (!segs.length) return null;
+  const last = segs[segs.length - 1];
+  const ends = [
+    { x: last.x, y: last.y },
+    { x: last.x + last.w, y: last.y + last.h },
+  ];
+  const axis = last.w >= last.h ? "x" : "y"; // the axis the segment runs along
+  for (const t of facingTick(out)) {
+    for (const e of ends) {
+      if (Math.abs(e.x - t.cx) < 0.5 && Math.abs(e.y - t.cy) < 0.5) {
+        return { end: e, tick: t, segAxis: axis };
+      }
+    }
+  }
+  return { end: null, tick: null, segAxis: axis };
 }
 
 // ===== Helpers =====
@@ -182,8 +233,12 @@ check("the run lands on the facing tick", (t) => {
   const ends = segs.flatMap((s) => [
     { x: s.x, y: s.y }, { x: s.x + s.w, y: s.y + s.h },
   ]);
-  t(ends.some((p) => Math.abs(p.x - rx) < 0.6 && Math.abs(p.y - ry) < 0.6),
-    "no segment endpoint reaches the facing tick");
+  // Exactly, not nearly. The first cut of this used tetherSide()'s along-edge
+  // slide for the far anchor, whose inset arithmetic landed up to a pixel off
+  // the midpoint on a short edge — invisible on a big element, and plainly not
+  // the middle of a 16px tick on a small one.
+  t(ends.some((p) => Math.abs(p.x - rx) < 0.01 && Math.abs(p.y - ry) < 0.01),
+    "no segment endpoint lands exactly on the facing tick's centre");
 });
 
 check("every segment is axis-aligned", (t) => {
@@ -271,6 +326,81 @@ check("sweep · no tick or segment ever enters the element", (t) => {
 
   rows.push({ case: `  (swept ${configs} configs)`, result: "info", detail: "" });
   t(bad === 0, `${bad} configs put chrome inside the element; first: ${first}`);
+});
+
+// The property this whole routing exists for. A run that ends at the tick's
+// centre but arrives ALONG the tick lies on top of its near half and reads as
+// starting at the tick's end — endpoint right, angle wrong. Both halves are
+// asserted together, because either alone passes the broken version.
+check("sweep · every run meets its tick square-on, at the centre", (t) => {
+  let runs = 0;
+  let bad = 0;
+  let first = "";
+
+  const elXs = [-120, 0, 60, 400, 900, 1200];
+  const elYs = [-80, 0, 40, 300, 700, 780];
+  const elSizes = [[40, 30], [250, 140], [900, 500]];
+  const panelXs = [4, 300, 700, 1060];
+  const panelYs = [4, 200, 460, 700];
+  const panelSizes = [[216, 338], [216, 120]];
+
+  for (const [ew, eh] of elSizes) {
+    for (const ex of elXs) {
+      for (const ey of elYs) {
+        const el = { left: ex, top: ey, width: ew, height: eh };
+        for (const [pw, ph] of panelSizes) {
+          for (const px of panelXs) {
+            for (const py of panelYs) {
+              for (const tick of [TICK, TICK_LOUD]) {
+                const out = computeTether(el, { x: px, y: py, w: pw, h: ph }, 1280, 800, { tick });
+                if (!out.segs.length) continue;
+                runs++;
+                const term = runTerminus(out);
+                const why = !term.tick
+                  ? "the run does not end on any tick's centre"
+                  // the last segment must run ALONG the tick's normal axis,
+                  // which is the axis the tick does NOT span
+                  : term.segAxis !== term.tick.axis
+                    ? `last segment runs on ${term.segAxis}, tick normal is ${term.tick.axis} (parallel arrival)`
+                    : "";
+                if (why) {
+                  bad++;
+                  if (!first) {
+                    first = `el=${JSON.stringify(el)} panel=${JSON.stringify({ x: px, y: py, w: pw, h: ph })} ` +
+                            `tick=${tick}: ${why}`;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  rows.push({ case: `  (${runs} configs emitted a run)`, result: "info", detail: "" });
+  t(runs > 0, "no configuration produced a run at all — the sweep proves nothing");
+  t(bad === 0, `${bad} runs arrived wrong; first: ${first}`);
+});
+
+check("the run is never collinear with the tick it lands on", (t) => {
+  // The exact failure this replaced: panel low and right of a short element
+  // produced a vertical run down a vertical tick.
+  for (const panel of [
+    { x: 900, y: 600, w: 216, h: 200 },
+    { x: 900, y: 40, w: 216, h: 200 },
+    { x: 60, y: 640, w: 216, h: 140 },
+    { x: 430, y: 620, w: 216, h: 150 },
+  ]) {
+    const out = computeTether(EL, panel, 1280, 800);
+    if (!out.segs.length) continue;
+    const term = runTerminus(out);
+    t(!!term.tick, `run from ${JSON.stringify(panel)} does not land on a tick centre`);
+    if (term.tick) {
+      t(term.segAxis === term.tick.axis,
+        `run from ${JSON.stringify(panel)} arrives parallel to its tick`);
+    }
+  }
 });
 
 check("sweep · segments stay axis-aligned and non-negative", (t) => {
