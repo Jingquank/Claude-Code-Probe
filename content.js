@@ -44,6 +44,53 @@
   const undoStack = [];
   const redoStack = [];
 
+  // ===== Ours =====
+  // One list, one predicate. "Our own chrome is not page data" is a rule this
+  // file needs in four unrelated places — hit-testing, counting how unique a
+  // string is on the page, reading the page's design tokens, walking its
+  // stylesheets — and it used to be written out separately at each of them.
+  // That is how --ccp-accent ended up being offered as a fill for the user's
+  // elements: the stylesheet walk was the one site nobody remembered.
+  //
+  // Adding a new injected root means adding it here and nowhere else.
+  const OUR_ROOTS = [
+    "ccp-overlay-container",
+    "ccp-label",
+    "ccp-toolbar",
+    "ccp-settings-btn",
+    "ccp-toast",
+    "ccp-edit-panel",
+  ];
+  const OUR_CHROME = OUR_ROOTS.map((id) => `#${id}`).join(",");
+  const OUR_PREFIX = "ccp-";
+
+  // Every form of "is this ours?" the file asks, in one place.
+  const isOurs = {
+    // A node: ours if it is one of our roots or lives inside one. The id test
+    // alone is not enough — an unprefixed child (a <span> in a button, an SVG
+    // path) only matches through closest().
+    node(el) {
+      if (!el || !el.closest) return false;
+      return Boolean(el.id?.startsWith(OUR_PREFIX) || el.closest(OUR_CHROME));
+    },
+    // A custom property or class name from the page's CSS.
+    name(name) {
+      return typeof name === "string" &&
+        (name.startsWith(OUR_PREFIX) || name.startsWith(`--${OUR_PREFIX}`));
+    },
+    // A stylesheet: ours ride along on every page as content scripts, so their
+    // tokens are the tool's and not the page's.
+    styleSheet(sheet) {
+      const href = (sheet && sheet.href) || "";
+      if (!href) return false;
+      try {
+        const base = chrome.runtime?.getURL?.("");
+        if (base && href.startsWith(base)) return true;
+      } catch { /* getURL is unavailable outside an extension context */ }
+      return /\/(tokens|content)\.css(\?|$)/.test(href);
+    },
+  };
+
   // ===== Geometry =====
   // The one group of design values that stays in JS instead of moving to
   // tokens.css. computeChromeLayout() is a pure function — test/placement.mjs
@@ -931,7 +978,7 @@
     const tag = el.tagName.toLowerCase();
     const id = el.id ? `#${el.id}` : "";
     const classes = Array.from(el.classList)
-      .filter((c) => !c.startsWith("ccp-"))
+      .filter((c) => !isOurs.name(c))
       .slice(0, 3)
       .map((c) => `.${c}`)
       .join("");
@@ -1078,7 +1125,7 @@
       const aTag = ancestor.tagName.toLowerCase();
       const aId = ancestor.id ? `#${ancestor.id}` : "";
       const aClass = Array.from(ancestor.classList)
-        .filter((c) => !c.startsWith("ccp-"))
+        .filter((c) => !isOurs.name(c))
         .slice(0, 1)
         .map((c) => `.${c}`)
         .join("");
@@ -1579,7 +1626,11 @@
 
   function collectTokenSources() {
     const index = {
-      disabled: false,
+      disabled: false,       // gave up: the page is too large to walk
+      blocked: 0,            // stylesheets we were not allowed to read
+      readable: 0,           // stylesheets we were
+      offered: 0,            // rules those sheets actually contained
+      suspect: false,        // we read sheets full of rules and collected none
       classRules: new Map(), // property -> [{ className, value, order }]
       varNames: new Set(),
       rules: [],             // { selectorText, style, order } for the winner walk
@@ -1622,17 +1673,29 @@
       // Our own stylesheets are injected into every page we run on, and their
       // tokens are the tool's, not the page's. Offering --ccp-accent as a fill
       // for someone's card would be inventing a design system they never had.
-      if (isOwnStyleSheet(sheet)) continue;
+      if (isOurs.styleSheet(sheet)) continue;
       let rules = null;
-      // Cross-origin sheets without CORS throw on access. There is nothing to
-      // be done about it and nothing to report: the token layer just sees less.
-      try { rules = sheet.cssRules; } catch { continue; }
-      if (rules) walk(rules);
+      // Cross-origin sheets without CORS throw on access. Nothing can be done
+      // about it, but it is worth counting: it is the difference between "this
+      // page has no design tokens" and "this page's design tokens are behind a
+      // door", and the panel says so.
+      try { rules = sheet.cssRules; } catch { index.blocked++; continue; }
+      if (rules) {
+        index.readable++;
+        index.offered += rules.length;
+        walk(rules);
+      }
       if (index.disabled) break;
     }
     // Constructed sheets (CSS-in-JS runtimes) live outside document.styleSheets.
     for (const sheet of Array.from(document.adoptedStyleSheets || [])) {
-      try { if (sheet.cssRules) walk(sheet.cssRules); } catch { /* same as above */ }
+      try {
+        if (sheet.cssRules) {
+          index.readable++;
+          index.offered += sheet.cssRules.length;
+          walk(sheet.cssRules);
+        }
+      } catch { index.blocked++; }
       if (index.disabled) break;
     }
 
@@ -1641,6 +1704,20 @@
       index.varNames.clear();
       index.rules.length = 0;
     }
+
+    // The sanity check. Not "did we find tokens" — plenty of pages have none,
+    // and that is a fact about the page. This asks something a working
+    // collector can never answer yes to: we were handed stylesheets full of
+    // rules, and came back with nothing at all.
+    //
+    // That is exactly the shape the CSS-Nesting bug had. Every style rule
+    // acquired a cssRules list, the walk read each one as a group, recursed
+    // into an empty list, and collected zero declarations — silently, for
+    // weeks. A collector that cannot notice it collected nothing will keep
+    // failing that way.
+    index.suspect = !index.disabled && index.readable > 0 && index.offered > 0 &&
+      index.rules.length === 0;
+
     return index;
   }
 
@@ -1649,36 +1726,19 @@
   const isSupportsRule = (rule) =>
     typeof CSSSupportsRule !== "undefined" && rule instanceof CSSSupportsRule;
 
-  // tokens.css and content.css ride along on every page as content scripts, so
-  // they are in document.styleSheets like any other sheet. Skipping them by URL
-  // also saves walking a couple of hundred rules that could never match a page
-  // element. The name filter in collectRule is the backstop for anywhere the
-  // URL is not recognisable — the test harness loads them as page stylesheets.
-  function isOwnStyleSheet(sheet) {
-    const href = sheet.href || "";
-    if (!href) return false;
-    try {
-      if (chrome.runtime && chrome.runtime.getURL && href.startsWith(chrome.runtime.getURL(""))) {
-        return true;
-      }
-    } catch { /* getURL is unavailable outside an extension context */ }
-    return /\/(tokens|content)\.css(\?|$)/.test(href);
-  }
-
   // One rule's contribution: every custom property it declares, and — when the
   // selector is a single bare class — the utility values it defines.
   function collectRule(rule, index) {
     for (let i = 0; i < rule.style.length; i++) {
       const prop = rule.style[i];
-      // Our own namespace, everywhere in this file, is not the page's.
-      if (prop.startsWith("--") && !prop.startsWith("--ccp-")) index.varNames.add(prop);
+      if (prop.startsWith("--") && !isOurs.name(prop)) index.varNames.add(prop);
     }
 
     const m = rule.selectorText.match(SINGLE_CLASS_RE);
     if (!m) return;
     // The captured text is CSS-escaped ("p-1\.5"); the DOM class is not.
     const className = m[1].replace(/\\(.)/g, "$1");
-    if (className.startsWith("ccp-")) return;
+    if (isOurs.name(className)) return;
     for (let i = 0; i < rule.style.length; i++) {
       const prop = rule.style[i];
       if (prop.startsWith("--")) continue;
@@ -3105,10 +3165,10 @@
     if (!el) return "";
     const tag = el.tagName.toLowerCase();
     let rest = "";
-    if (el.id && !el.id.startsWith("ccp-")) {
+    if (el.id && !isOurs.name(el.id)) {
       rest = `<b class="ccp-edit-id-id">#${escapeHtml(el.id)}</b>`;
     } else {
-      const cls = Array.from(el.classList).find((c) => !c.startsWith("ccp-"));
+      const cls = Array.from(el.classList).find((c) => !isOurs.name(c));
       if (cls) rest = `<b class="ccp-edit-id-class">.${escapeHtml(cls)}</b>`;
     }
     return `<b class="ccp-edit-id-tag">${tag}</b>${rest}`;
@@ -3304,19 +3364,42 @@
   // visible style="" — residue on the user's page from a tool that promised to
   // leave none. A second removal takes the node with it. Verified directly in
   // the browser; do not tidy this away.
+  // Put the element back and then check that it went back, rather than
+  // trusting the calls. The check is not paranoia about the API: once an
+  // inline declaration block has been written through CSSOM, Chrome's first
+  // removeAttribute empties the block but leaves the attribute node in place,
+  // so a single removal leaves a visible style="" on an element the tool had
+  // finished with. Repeating until the attribute reads back as the snapshot
+  // turns a known browser quirk into an invariant that holds whatever the
+  // browser does next — and would have caught that quirk on the day it landed.
+  //
+  // The attribute names are written out literally rather than passed in, and
+  // that is load-bearing: test/edit-audit.mjs recognises a write to the page by
+  // matching setAttribute("style"|"class") as text. Threading the name through
+  // a variable makes those writes invisible to the audit, which is a hole in
+  // the one check that keeps page mutation confined to this section.
   function restoreElement(record) {
     const el = record.el;
-    if (record.originalStyleAttr === null) {
-      el.removeAttribute("style");
-      if (el.hasAttribute("style")) el.removeAttribute("style");
-    } else {
-      el.setAttribute("style", record.originalStyleAttr);
-    }
-    if (record.originalClassAttr === null) {
-      el.removeAttribute("class");
-      if (el.hasAttribute("class")) el.removeAttribute("class");
-    } else {
-      el.setAttribute("class", record.originalClassAttr);
+    untilStable(
+      () => {
+        if (record.originalStyleAttr === null) el.removeAttribute("style");
+        else el.setAttribute("style", record.originalStyleAttr);
+      },
+      () => el.getAttribute("style") === record.originalStyleAttr
+    );
+    untilStable(
+      () => {
+        if (record.originalClassAttr === null) el.removeAttribute("class");
+        else el.setAttribute("class", record.originalClassAttr);
+      },
+      () => el.getAttribute("class") === record.originalClassAttr
+    );
+  }
+
+  function untilStable(write, settled) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      write();
+      if (settled()) return;
     }
   }
 
@@ -3336,7 +3419,27 @@
     const current = prev !== undefined ? prev : (entry ? entry.after : null);
     const prevCls = current ? current.cls || null : null;
     if (prevCls !== (next.cls || null)) swapUtilityClass(el, prevCls, next.cls || null);
+
+    // Verify rather than assume. neededPriority already asks the cascade
+    // whether an !important page rule is in the way, but it can only see
+    // stylesheets it was allowed to read — a cross-origin sheet throws, and the
+    // rule inside it is invisible. So the write is checked against the only
+    // authority that cannot be wrong: whether the computed value actually
+    // moved. If we meant to change something and nothing changed, the page
+    // outranks us, and there is exactly one thing left to try.
+    //
+    // Only the plain path is checked. An already-escalated write has nothing
+    // above it, and a null inline (a class swap, or a removal) is verified by
+    // the caller that understands what it meant.
+    const worthChecking =
+      next.inline && next.priority !== "important" && (!current || current.css !== next.css);
+    const beforeComputed = worthChecking ? getComputedStyle(el).getPropertyValue(prop) : null;
+
     applyDeclaration(el, prop, next.inline, next.priority);
+
+    if (worthChecking && getComputedStyle(el).getPropertyValue(prop) === beforeComputed) {
+      applyDeclaration(el, prop, next.inline, "important");
+    }
   }
 
   // Read the element's current state for a property as an EditValue. This is
@@ -3817,20 +3920,9 @@
     // Use elementFromPoint to ignore our overlay
     const el = document.elementFromPoint(e.clientX, e.clientY);
     if (!el) return null;
-    // Skip our own elements. The id check only catches a top-level root — an
-    // unprefixed child (a <span> inside a button, an SVG path) needs the
-    // closest() clauses, so every root we inject has to appear in both lists.
-    if (
-      el.id?.startsWith("ccp-") ||
-      el.closest("#ccp-overlay-container") ||
-      el.closest("#ccp-toolbar") ||
-      el.closest("#ccp-label") ||
-      el.closest("#ccp-settings-btn") ||
-      el.closest("#ccp-toast") ||
-      el.closest("#ccp-edit-panel")
-    ) {
-      return keep;
-    }
+    // Skip our own elements — see isOurs, which is the only place the roster
+    // of injected roots lives.
+    if (isOurs.node(el)) return keep;
     return el;
   }
 
@@ -3958,7 +4050,7 @@
     }
 
     const classes = Array.from(el.classList)
-      .filter((c) => !c.startsWith("ccp-"))
+      .filter((c) => !isOurs.name(c))
       .slice(0, 2);
     if (classes.length > 0) {
       selector += classes.map((c) => `.${c}`).join("");
@@ -4024,7 +4116,7 @@
 
   function formatAttrs(el) {
     return Array.from(el.attributes)
-      .filter((a) => !a.name.startsWith("ccp-") && a.name !== "style" && !TOOLING_ATTR.test(a.name))
+      .filter((a) => !isOurs.name(a.name) && a.name !== "style" && !TOOLING_ATTR.test(a.name))
       .map((a) => ` ${a.name}="${a.value}"`)
       .join("");
   }
@@ -4102,12 +4194,6 @@
   // ===== Pointer fields =====
   // The payload's job is to point at a source construct, not to describe the DOM.
   // Each helper returns a string, an array of lines, or null to be omitted.
-
-  // Our own chrome is excluded from the page when counting how unique a text
-  // string or attribute is — otherwise the label's own readout of an element
-  // gets counted as a second occurrence of it.
-  const OUR_CHROME =
-    "#ccp-toolbar,#ccp-label,#ccp-overlay-container,#ccp-settings-btn,#ccp-toast";
 
   // Trim an absolute path down to something that reads as project-relative.
   function toProjectPath(p) {
@@ -4270,7 +4356,7 @@
     if (!node) return null;
     const tag = node.tagName.toLowerCase();
     if (node.id) return `${tag}#${node.id}`;
-    const cls = Array.from(node.classList).filter((c) => !c.startsWith("ccp-"))[0];
+    const cls = Array.from(node.classList).filter((c) => !isOurs.name(c))[0];
     return cls ? `${tag}.${cls}` : tag;
   }
 
@@ -4300,7 +4386,7 @@
   // Tag + sorted class list: two siblings sharing one are almost always one template.
   function signatureOf(node) {
     const cls = Array.from(node.classList)
-      .filter((c) => !c.startsWith("ccp-"))
+      .filter((c) => !isOurs.name(c))
       .sort()
       .join(".");
     return node.tagName + (cls ? "." + cls : "");

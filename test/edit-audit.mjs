@@ -13,6 +13,11 @@
 //   .setProperty(     .removeProperty(
 //   .setAttribute("style"|"class", …)      .removeAttribute("style"|"class")
 //
+// A fifth rule guards the other four rather than the page: those match the
+// attribute name as text, so an attribute write whose name arrives in a
+// variable is invisible to them. Such a write is banned outright, everywhere,
+// because it would silently switch the audit off.
+//
 // Those four are exclusive on purpose. Chrome elements are positioned with
 // direct assignments (node.style.left = …) and classed with classList, which
 // this audit ignores — so the extension's own DOM stays unrestricted while the
@@ -56,6 +61,18 @@ const RULES = [
   { name: "removeProperty", re: /\.removeProperty\s*\(/ },
   { name: 'setAttribute("style"|"class")', re: /\.setAttribute\s*\(\s*["'](?:style|class)["']/ },
   { name: 'removeAttribute("style"|"class")', re: /\.removeAttribute\s*\(\s*["'](?:style|class)["']/ },
+  // The rules above match the attribute name as *text*, which means an
+  // attribute write whose name arrives in a variable is invisible to them —
+  // a hole big enough to drive the whole feature through, and one a perfectly
+  // reasonable refactor opens by accident (it did: restoreElement briefly
+  // took the name as a parameter). Every attribute write in this file names
+  // its attribute literally; anything that does not is either a mistake or
+  // needs this rule reconsidered on purpose.
+  {
+    name: "setAttribute/removeAttribute with a computed name",
+    re: /\.(?:set|remove)Attribute\s*\(\s*(?!["'])/,
+    everywhere: true,
+  },
 ];
 
 // Strip line comments and block comments so prose never counts as code.
@@ -113,7 +130,9 @@ check("host-page writes live only in Edit Apply", (fail) => {
       if (!rule.re.test(line)) continue;
       const lineNo = i + 1;
       const section = sectionAt(lineNo).name;
-      if (section !== MUTATION_SECTION) {
+      // `everywhere` rules are not about *where* a write lives but about a
+      // shape that would make writes unreadable to this audit wherever it is.
+      if (rule.everywhere || section !== MUTATION_SECTION) {
         strays.push(`${rule.name} at content.js:${lineNo} in "${section}"`);
       }
     }
@@ -128,6 +147,9 @@ check("the audited verbs are actually in use", (fail) => {
   if (!apply) return;
   const body = code.slice(apply.start - 1, apply.end);
   for (const rule of RULES) {
+    // An `everywhere` rule bans a shape rather than locating a verb, so it is
+    // supposed to match nothing at all — its absence is the pass.
+    if (rule.everywhere) continue;
     if (!body.some((line) => rule.re.test(line))) {
       fail(`${rule.name} no longer appears in ${MUTATION_SECTION} — audit would pass vacuously`);
     }
@@ -145,6 +167,11 @@ check("the audit detects a planted violation", (fail) => {
     ['el.setAttribute("style", "color:red");', 'setAttribute("style"|"class")'],
     ["el.removeAttribute('class');", 'removeAttribute("style"|"class")'],
     ['node.setAttribute( "class" , x);', 'setAttribute("style"|"class")'],
+    // The shape that made the other four blind — an attribute write whose
+    // name is not visible as text.
+    ["el.setAttribute(name, snapshot);", "setAttribute/removeAttribute with a computed name"],
+    ["el.removeAttribute(attr);", "setAttribute/removeAttribute with a computed name"],
+    ["el.setAttribute(ATTRS[i], v);", "setAttribute/removeAttribute with a computed name"],
   ];
   for (const [sample, ruleName] of samples) {
     const rule = RULES.find((r) => r.name === ruleName);
