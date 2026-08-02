@@ -157,6 +157,7 @@ Each carries a comment at its definition, or the next sweep absorbs it.
 | `--ccp-checker` | the chequerboard behind a translucent swatch. The swatch reports the *page's* colour, so its backdrop must stay a neutral reference or the tool misreports what it is inspecting |
 | `--ccp-mask` | a stencil, not a colour — `mask-image` reads only its alpha. Theming it could do nothing useful and could break the mask |
 | `resolveBackgroundColor()`'s `#ffffff` | the browser's default page background, reported as a fact about the page |
+| `--ccp-picker-white` / `--ccp-picker-black` / `--ccp-hue-ramp` | the edit panel's colour space, not its decoration. The saturation square is white toward one edge and black toward the other because that is what saturation and value *mean*, and the rail runs the spectrum because that is what hue is. Tinting any of them would make the picker report a colour the page will not get |
 
 The colour swatch's *fill* is written inline from JS for the same reason. Only its
 border follows the theme.
@@ -247,25 +248,87 @@ The measuring preferences set the pattern; a new setting is four sites, all flat
    function pure and the `test/redline.mjs` sweep honest (§5). Paint-only values
    should be a class toggled on `<html>` and a rule in `content.css`, like the
    quiet overlay.
-3. A row in the settings sheet: label, leader, control — segmented pair for
-   named values, switch for booleans — plus a `data-hi` hook if the vignette can
-   show the effect.
+3. A row in the settings sheet: label, leader, control — a segmented group for
+   named values, switch for booleans — plus a `data-hi` hook if the section's
+   preview can show the effect. The segmented control takes any number of
+   options: its arrow keys walk the roster in the direction pressed and wrap,
+   which is the same behaviour for a pair and the correct one for the Editing
+   section's three.
 4. The `storage.onChanged` listeners on both sides keep open tabs and second
    settings windows in step; a redline setting must also repaint a measurement
-   the user is holding at that moment (`scheduleRedline()` on change).
+   the user is holding at that moment (`scheduleRedline()` on change), and an
+   edit setting re-renders an open panel (`renderEditControls()`).
 
-The settings page never learns the extension's logic: the vignette is hand-drawn
-geometry and the only shared code is `formatRedlineValue`, mirrored with a
-change-both comment, same as the placement spec.
+Everything that spans both sheets — storage reads, painting, keyboard, live sync
+— runs off `ALL_PREFS`, so a new setting gets all four for free once its roster
+is in the map.
+
+The settings page never learns the extension's logic. The measuring vignette is
+hand-drawn geometry and the only shared code is `formatRedlineValue`, mirrored
+with a change-both comment, same as the placement spec. The Editing specimen
+goes one step further and *is* the panel — the real markup rendered through
+`content.css` — so the two settings act on it exactly as they act on the live
+one, and it cannot drift into showing chrome that no longer exists.
 
 ---
+
+## Edit Mode writes to the page, and that changes the contract
+
+Everything else this extension does is additive: it appends its own chrome and
+reads the page. Edit Mode is the first feature that reaches in and changes the
+user's DOM, which is a different kind of risk — a stray write that nothing
+restores leaves the page altered after the tool is gone. Four rules hold it.
+
+**One door.** Every host-page write goes through the `Edit Apply` section of
+`content.js`, and `test/edit-audit.mjs` parses the file's own section banners to
+prove it: `setProperty`, `removeProperty`, and `setAttribute`/`removeAttribute`
+of `"style"` or `"class"` may appear there and nowhere else. Those verbs were
+absent from the file before Edit Mode, which is what makes the rule exact rather
+than heuristic — chrome positions itself with direct assignments and
+`classList`, and the audit ignores all of it. It also refuses to pass vacuously:
+if the section stops using a verb, the audit says so. **This is why the colour
+picker writes `node.style.backgroundColor = …` instead of `setProperty`** — a
+receiver-aware audit would be fragile, so the picker simply does not need the
+verb.
+
+**Restoring is byte-exact.** The `style` and `class` attribute strings are
+recorded once at first touch and put back verbatim, so a page that shipped
+`style="color:red"` gets that attribute back rather than a normalised rewrite.
+The double `removeAttribute` in `restoreElement` is not redundant: once an
+inline block has been written through CSSOM, Chrome's first removal empties it
+but leaves the attribute node, and an element the tool had finished with would
+still carry a visible `style=""`.
+
+**Never claim a token that isn't there.** The resolver reports a design token
+only when its resolved value equals the computed value; a length that depends on
+layout is `null` rather than a guess, a family of one is dropped because a scale
+you cannot step along is not a scale, and a value between rungs claims nothing.
+A utility-class step is applied and then *checked*: `.card p` outranks
+`.text-lg` on specificity often enough that a swap which silently does nothing
+is the common case, so when the computed value did not move, the class comes off
+and the delta reports the value instead. Claiming the swap would be advice that
+does nothing in the source either.
+
+**The extension's own tokens are not the page's.** `tokens.css` and
+`content.css` ride along on every page as content scripts, so the stylesheet
+walk skips them by URL, with the `ccp-` namespace filtered as a backstop.
+Without that, `--ccp-accent` gets offered as a fill for someone's card.
+
+One trap worth naming, because it silently disabled the whole token layer once:
+CSS Nesting gave every `CSSStyleRule` a `cssRules` list, so `if (rule.cssRules)`
+no longer means "this is a group rule". Detect by rule type, and read a style
+rule's own declarations whether or not it also has children.
 
 ## Verification
 
 ```sh
-node test/tokens.mjs     # 71 checks: literals, completeness, undeclared vars,
-                         # badge drift, contrast
-node test/sim.mjs        # 138/138 — proves the refactor moved no geometry
+node test/tokens.mjs       # 71 checks: literals, completeness, undeclared vars,
+                           # badge drift, contrast
+node test/sim.mjs          # 138/138 — proves the refactor moved no geometry
+node test/edit-audit.mjs   # host-page writes still live in one section
+node test/edit-tokens.mjs  # the token resolver, over three real corpora
+node test/edit-color.mjs   # picker round trips, bounded by 8-bit quantisation
+node test/edit-deltas.mjs  # the shape of the block the panel copies
 ```
 
 Then, in the browser — a `content.js` or `content.css` edit needs an *extension*
@@ -278,7 +341,14 @@ reload, not just a page reload:
 3. `System` follows an OS light/dark flip live.
 4. Per theme: the label's swatches still show *page* colours, and light-theme
    shadows read as shadows.
-5. Turn on reduced motion at the OS level: Clawd stops walking and bobbing.
+5. Turn on reduced motion at the OS level: Clawd stops walking and bobbing, and
+   the undo flash holds still instead of pulsing — it stays *visible*, because
+   it is the only way an undo on an off-screen element announces itself, and
+   zeroing it would remove information rather than motion.
+6. Edit Mode, in `test/edit-harness.html` (which runs the real `content.js`
+   against a fake page, so this needs no extension reload): tune something,
+   Escape back out, and confirm the element carries no `style` attribute —
+   through undo, the per-property dot, and Reset All alike.
 
 ## Out of scope
 

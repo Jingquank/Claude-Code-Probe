@@ -33,6 +33,7 @@
   let editPanelPos = null;
   let editPopoverEl = null;
   let editGesture = null;
+  let editFlashTimer = null;
   let tokenIndex = null;
   let editTokenFamilies = null;
   // Strong element references, deliberately: the undo stack has to hold them
@@ -2955,6 +2956,7 @@
         scrubbing = true;
         wrap.classList.add("ccp-edit-scrubbing");
         beginEditGesture(el, control.prop);
+        suppressTransitions(el);
         if (document.activeElement === input) input.blur();
       }
       // Two pixels per step keeps a full-width drag inside a sane range while
@@ -2968,6 +2970,7 @@
       wrap.removeEventListener("pointercancel", up);
       wrap.classList.remove("ccp-edit-scrubbing");
       if (scrubbing) {
+        releaseTransitions(el);
         commitEditGesture();
         refreshEditControls();
       } else {
@@ -3180,13 +3183,46 @@
     head.addEventListener("pointercancel", up);
   }
 
-  // Undo can land on an element that is not the one on screen in front of you.
-  // Saying so is the minimum; C10 gives that element's box a flash as well.
+  // Undo walks one timeline across every element edited this session, so it can
+  // land on something that is not the element in front of you — and a change
+  // you cannot see is worse than no change at all. The element gets a flash
+  // where it stands, and a toast says which way to look if it is off screen.
   function onEditHistoryApplied(el) {
     if (el && el !== selectedElement) {
+      flashElementBox(el);
       showToast("Undid an edit on another element");
     }
     if (selectedElement && selectedElement.isConnected) updateOverlay(selectedElement);
+    renderEditControls();
+  }
+
+  function flashElementBox(el) {
+    if (!overlayContainer || !el || !el.isConnected) return;
+    const rect = el.getBoundingClientRect();
+    if (rect.width <= 0 && rect.height <= 0) return;
+
+    let flash = document.getElementById("ccp-edit-flash");
+    if (!flash) {
+      flash = document.createElement("div");
+      flash.id = "ccp-edit-flash";
+      overlayContainer.appendChild(flash);
+    }
+    flash.style.top = rect.top + "px";
+    flash.style.left = rect.left + "px";
+    flash.style.width = rect.width + "px";
+    flash.style.height = rect.height + "px";
+    // Restart the animation on a repeat undo: without the reflow between the
+    // two class writes the browser coalesces them and nothing replays.
+    flash.classList.remove("ccp-edit-flashing");
+    void flash.offsetWidth;
+    flash.classList.add("ccp-edit-flashing");
+    // Cleared on a timer rather than on animationend, because under reduced
+    // motion there is no animation to end — the ring simply holds and then
+    // goes, so both paths finish the same way.
+    clearTimeout(editFlashTimer);
+    editFlashTimer = setTimeout(() => {
+      flash.classList.remove("ccp-edit-flashing");
+    }, 700);
   }
 
   // ===== Edit Apply =====
@@ -3322,6 +3358,26 @@
     return winner && winner.important && !winner.fromInline ? "important" : "";
   }
 
+  // A page that animates the property being scrubbed makes the element chase
+  // the pointer half a second behind, which reads as the tool being slow
+  // rather than the page being animated. Transitions are suppressed for the
+  // length of a gesture and restored when it commits — recorded on the record,
+  // so a gesture interrupted by anything at all still gives them back.
+  function suppressTransitions(el) {
+    const record = ensureEditRecord(el);
+    if (record.heldTransition !== undefined) return;
+    record.heldTransition = el.style.getPropertyValue("transition") || null;
+    el.style.setProperty("transition", "none", "important");
+  }
+
+  function releaseTransitions(el) {
+    const record = editRegistry.get(el);
+    if (!record || record.heldTransition === undefined) return;
+    if (record.heldTransition === null) el.style.removeProperty("transition");
+    else el.style.setProperty("transition", record.heldTransition);
+    delete record.heldTransition;
+  }
+
   function pruneRecord(el) {
     const record = editRegistry.get(el);
     if (!record) return;
@@ -3389,6 +3445,9 @@
     const g = editGesture;
     editGesture = null;
     if (!g) return;
+    // Whatever ended the gesture — a pointerup, Escape, a deselect — the page's
+    // own transitions come back before anything else happens.
+    releaseTransitions(g.el);
     const record = editRegistry.get(g.el);
     const entry = record && record.props.get(g.prop);
     if (!entry) return;

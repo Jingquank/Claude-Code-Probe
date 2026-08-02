@@ -46,9 +46,58 @@ Then load it: `chrome://extensions` → Developer mode → Load unpacked → sel
 |---|---|
 | **Copy Code** | Where the element came from in your source, and how to find it again |
 | **Screenshot** | PNG of the element |
+| **Edit** | Opens a panel that tunes the element live, and copies what changed |
 | **Select Parent** | Moves the selection up one level in the DOM — click again to keep climbing |
 
 Paste into Claude Code and it knows exactly which element you mean.
+
+### Editing an element
+
+The pencil opens a panel beside the element — an inspector column of the
+properties worth reaching for: type, spacing, size, fill, border, shadow. Every
+number can be typed, arrow-keyed, or dragged sideways to scrub, and the page
+updates under your hands. Drag the panel's header to move it out of the way;
+`‹` goes back to the selection.
+
+**It steps your design tokens, not just pixels.** If a heading is set to
+`var(--title-sm)`, the panel says so and offers the rungs either side — press
+`›` and it writes `var(--title-lg)`, keeping the indirection your source has
+rather than flattening it to a pixel count. It reads utility classes the same
+way, and when a class would lose the cascade (a page rule outranking
+`.text-lg`, which is ordinary) it changes the value instead and says so, rather
+than claiming a swap that would do nothing in your source either.
+
+Nothing is applied blind:
+
+- Each edited property gets a dot — click it to take that one property back.
+- **⌘Z** walks one timeline across every element you've touched this session,
+  giving back one change at a time. **⇧⌘Z** redoes.
+- The reset button in the header puts every element back exactly as it was
+  found — attribute strings and all.
+
+Then **copy**, and you get the usual source pointer plus what changed:
+
+```
+# source: src/components/SkillCard.tsx
+# selector: main > .cards > article.card:first-child
+# edits: apply these style changes to this element in the source
+#   font-size: --title-sm (18px) → --title-lg (28px)
+#   padding-top: 16px → 24px
+#   background-color: #ffffff → --terra (#a94f30)
+<article class="card">…</article>
+```
+
+The before-value is there on purpose: it's how Claude Code finds the
+declaration to change.
+
+While the panel is open the page is inert — clicks and menus over it are
+swallowed, so scrubbing a value across a page full of links can't navigate away
+mid-drag. **Esc** steps back out one layer at a time: picker, then panel, then
+selection, then Probe Mode. Measuring still works throughout — hold **Option**
+and the panel steps aside exactly as the toolbar does.
+
+Edits live in the page until you undo them, reset them, or reload. Nothing is
+written to your files; the copied block is the instruction to make them real.
 
 ### What the outline tells you
 
@@ -87,8 +136,8 @@ anything is selected. It opens the settings page in a tab.
 
 The page is a spec sheet — dotted-leader rows in collapsible sections, with a preview
 rail that answers whichever section you're in: the probe chrome while you pick a theme,
-a measuring vignette while you tune redlines. Hovering a measuring row spotlights the
-part of the vignette that row controls.
+a measuring vignette while you tune redlines, the edit panel while you tune editing.
+Hovering a row spotlights the part of the preview that row controls.
 
 **Appearance** — the theme. Eight of them.
 
@@ -110,9 +159,15 @@ dashed extension guides (on / off), a quiet overlay that hides the box-model
 tints while measuring (off by default), and whether flush edges are marked with
 a `0`.
 
+**Editing** — two controls over the panel the pencil opens: whether it shows
+every group it can edit or only the ones this element already has, and whether a
+value sitting on a design token offers its scale, its raw number, or both. The
+preview here is the panel itself, at its real scale, so both settings act on it
+exactly as they act on the live one.
+
 Everything is stored on this device with `chrome.storage.local` and never leaves it.
 Changes repaint tabs that are already open — including a measurement you're holding
-at that moment; no reload.
+at that moment, or an edit panel already open; no reload.
 
 The gear hides itself when the info panel or the toolbar lands on top of it — three of
 the six placement strategies dock the panel to the top edge, which is where the gear

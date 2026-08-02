@@ -122,8 +122,17 @@
   .ccp-spin,
   #ccp-label .ccp-clawd,
   #ccp-label .ccp-clawd svg,
-  #ccp-label .ccp-marquee-inner {
+  #ccp-label .ccp-marquee-inner,
+  #ccp-edit-flash.ccp-edit-flashing {
     animation: none;
+  }
+
+  /* The flash is the only way an undo on an off-screen element announces
+     itself, so zeroing the animation would remove information rather than
+     motion. It stays put and visible instead — the toast still says what
+     happened, and the ring says where. */
+  #ccp-edit-flash.ccp-edit-flashing {
+    opacity: 1;
   }
 }
 
@@ -628,6 +637,27 @@
   padding-left: var(--ccp-md);
   padding-right: var(--ccp-md);
   color: var(--ccp-accent);
+}
+
+/* An undo can land on an element other than the one being edited. It gets a
+   single pulse where it stands, so the change is never invisible — and it
+   lives in the overlay container, which is already pointer-events:none, so it
+   cannot get in the way of the page underneath. */
+#ccp-edit-flash {
+  position: fixed;
+  border: var(--ccp-ring) solid var(--ccp-accent);
+  border-radius: var(--ccp-radius-sm);
+  opacity: 0;
+  pointer-events: none;
+}
+
+#ccp-edit-flash.ccp-edit-flashing {
+  animation: ccp-edit-flash var(--ccp-duration-slow) var(--ccp-ease) 2 alternate;
+}
+
+@keyframes ccp-edit-flash {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 /* ===== Edit Panel =====
