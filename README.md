@@ -179,6 +179,7 @@ view. `test/` holds the rig that proves it:
 | `test/edit-deltas.mjs` | the delta block's shape — token-first sides, fixed order, stable output |
 | `test/edit-audit.mjs` | proves every host-page write still lives in one section of `content.js` |
 | `test/harness.html` | browser harness: simulate, or sweep the real extension and reconcile |
+| `test/edit-harness.html` | runs the real `content.js` against a fake page — Edit Mode without a rebuild |
 | `test/PLACEMENT-PLAN.md` | why the placement works the way it does |
 
 ```sh
@@ -191,6 +192,7 @@ node test/edit-deltas.mjs                # what the Edit panel copies
 node test/edit-audit.mjs                 # host-page writes stay in one place
 
 python3 -m http.server 8765              # then open /test/harness.html
+                                         # or /test/edit-harness.html — press "p"
 ```
 
 The harness is keyboard-driven — `s` simulates, `r` sweeps the live extension, `n`/`p`

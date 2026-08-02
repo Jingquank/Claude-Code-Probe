@@ -30,6 +30,7 @@
   // redline — `editing` is only ever true while selectedElement is set.
   let editing = false;
   let editPanelEl = null;
+  let editPanelPos = null;
   let editGesture = null;
   let tokenIndex = null;
   // Strong element references, deliberately: the undo stack has to hold them
@@ -187,6 +188,8 @@
     camera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>',
     parent: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3"/><path d="M12 20v-8"/><polyline points="9 15 12 12 15 15"/></svg>',
     settings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
+    edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg>',
+    back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>',
   };
 
   // ===== Clawd Mascot SVG (mood="happy", from clawd-react) =====
@@ -415,8 +418,14 @@
     };
     // During redline the label and toolbar are visibility:hidden but still laid
     // out, so hit() would report a collision with an invisible box — the gear
-    // stays put instead.
-    settingsButtonEl.classList.toggle("ccp-yielded", !redlining && (hit(labelEl) || hit(toolbarEl)));
+    // stays put instead. Editing hides them the same way, and puts the panel
+    // in their place: it is the interactive box now, so it is what the gear
+    // has to yield to.
+    const hushed = redlining || editing;
+    settingsButtonEl.classList.toggle(
+      "ccp-yielded",
+      (!hushed && (hit(labelEl) || hit(toolbarEl))) || (editing && hit(editPanelEl))
+    );
   }
 
   // ===== Corner radius =====
@@ -1762,6 +1771,232 @@
     return c.a === undefined || c.a >= 1 ? base : base + h(c.a * 255);
   }
 
+  // ===== Edit Mode =====
+  // A sub-mode of selection, in the same shape as redline: it cannot be
+  // reached without a selection, every deselection path leaves it, and its
+  // entire CSS surface is one class on <html>.
+  //
+  // Where it differs from redline is the pointer. Redline is a held modifier
+  // and the page underneath stays live; Edit Mode owns the mouse for as long
+  // as it lasts. While editing, the page is inert — clicks, double-clicks and
+  // context menus over it are swallowed, and hover tracking stays dead — so
+  // that dragging a value across a page full of links cannot navigate away
+  // mid-scrub. Changing which element you are tuning is deliberate: back out
+  // to selection, click the next one, edit again.
+
+  function enterEditMode() {
+    if (!probeActive || !selectedElement || editing) return;
+    editing = true;
+    document.documentElement.classList.add("ccp-editing");
+
+    // One walk of the page's stylesheets per entry, so a token step knows the
+    // scales. Rebuilt each time rather than cached across entries: single-page
+    // apps inject styles as you navigate, and a stale index would offer tokens
+    // that no longer exist.
+    tokenIndex = collectTokenSources();
+
+    // Capture phase, on document, so the page never sees these at all.
+    document.addEventListener("pointerdown", onEditPointerGuard, true);
+    document.addEventListener("mousedown", onEditPointerGuard, true);
+    document.addEventListener("mouseup", onEditPointerGuard, true);
+    document.addEventListener("dblclick", onEditPointerGuard, true);
+    document.addEventListener("contextmenu", onEditPointerGuard, true);
+
+    showEditPanel();
+    updateSettingsButtonVisibility();
+  }
+
+  function exitEditMode() {
+    if (!editing) return;
+    commitEditGesture();
+    editing = false;
+    document.documentElement.classList.remove("ccp-editing");
+
+    document.removeEventListener("pointerdown", onEditPointerGuard, true);
+    document.removeEventListener("mousedown", onEditPointerGuard, true);
+    document.removeEventListener("mouseup", onEditPointerGuard, true);
+    document.removeEventListener("dblclick", onEditPointerGuard, true);
+    document.removeEventListener("contextmenu", onEditPointerGuard, true);
+
+    removeEditPanel();
+    tokenIndex = null;
+
+    // The label's readout is built from computed styles, so it would otherwise
+    // still be quoting the values the element had before it was tuned.
+    if (selectedElement && selectedElement.isConnected) updateOverlay(selectedElement);
+    updateSettingsButtonVisibility();
+  }
+
+  // Anything aimed at our own chrome passes; everything else dies here.
+  function onEditPointerGuard(e) {
+    if (!editing) return;
+    if (isOwnEditChrome(e.target)) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  }
+
+  function isOwnEditChrome(node) {
+    return Boolean(
+      (editPanelEl && editPanelEl.contains(node)) ||
+      (settingsButtonEl && settingsButtonEl.contains(node)) ||
+      (toastEl && toastEl.contains(node))
+    );
+  }
+
+  // ===== Edit Panel =====
+  // The panel opens where the toolbar was. That spot is already solved for
+  // "interactive chrome that must not be clipped", so rather than inventing a
+  // second placement rule, computeChromeLayout is asked the same question with
+  // the panel's dimensions in the toolbar's place and a zero-height label —
+  // which rides the solver's existing label-hidden branch. The solver is not
+  // modified, so its 8,280-config sweep still covers this.
+  //
+  // After that the panel is the user's: drag it anywhere, and it stays there
+  // for the rest of the edit session. Entering Edit Mode again re-solves, so
+  // the panel always starts beside the element it is about to tune.
+
+  function showEditPanel() {
+    removeEditPanel();
+
+    editPanelEl = document.createElement("div");
+    editPanelEl.id = "ccp-edit-panel";
+
+    const head = document.createElement("div");
+    head.className = "ccp-edit-head";
+
+    const back = document.createElement("button");
+    back.className = "ccp-edit-back";
+    back.innerHTML = ICONS.back;
+    back.title = "Back to selection";
+    back.setAttribute("aria-label", "Back to selection");
+    back.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      exitEditMode();
+    });
+
+    const identity = document.createElement("span");
+    identity.className = "ccp-edit-id";
+    identity.innerHTML = editPanelIdentity(selectedElement);
+
+    head.appendChild(back);
+    head.appendChild(identity);
+    head.addEventListener("pointerdown", onEditDragStart);
+
+    const body = document.createElement("div");
+    body.className = "ccp-edit-body";
+
+    editPanelEl.appendChild(head);
+    editPanelEl.appendChild(body);
+    document.documentElement.appendChild(editPanelEl);
+
+    placeEditPanel();
+  }
+
+  function removeEditPanel() {
+    if (!editPanelEl) return;
+    editPanelEl.remove();
+    editPanelEl = null;
+    editPanelPos = null;
+  }
+
+  // tag + the first thing that identifies it, coloured the way the info label
+  // colours the same parts, so the panel reads as the same tool.
+  function editPanelIdentity(el) {
+    if (!el) return "";
+    const tag = el.tagName.toLowerCase();
+    let rest = "";
+    if (el.id && !el.id.startsWith("ccp-")) {
+      rest = `<b class="ccp-edit-id-id">#${escapeHtml(el.id)}</b>`;
+    } else {
+      const cls = Array.from(el.classList).find((c) => !c.startsWith("ccp-"));
+      if (cls) rest = `<b class="ccp-edit-id-class">.${escapeHtml(cls)}</b>`;
+    }
+    return `<b class="ccp-edit-id-tag">${tag}</b>${rest}`;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  }
+
+  function placeEditPanel() {
+    if (!editPanelEl || !selectedElement) return;
+    const vw = document.documentElement.clientWidth;
+    const vh = document.documentElement.clientHeight;
+    const w = editPanelEl.offsetWidth;
+    const h = editPanelEl.offsetHeight;
+
+    if (editPanelPos) {
+      // Already dragged: keep the user's spot, only pulling it back into view.
+      const { top, left } = clampEditPanel(editPanelPos.top, editPanelPos.left, w, h, vw, vh);
+      editPanelPos = { top, left };
+    } else {
+      const layout = computeChromeLayout(
+        selectedElement.getBoundingClientRect(),
+        { w: 0, h: 0 },
+        { w, h },
+        vw, vh
+      );
+      editPanelPos = { top: layout.toolbar.top, left: layout.toolbar.left };
+    }
+    editPanelEl.style.top = editPanelPos.top + "px";
+    editPanelEl.style.left = editPanelPos.left + "px";
+  }
+
+  function clampEditPanel(top, left, w, h, vw, vh) {
+    const M = GEOMETRY.margin;
+    return {
+      top: Math.max(M, Math.min(top, Math.max(M, vh - h - M))),
+      left: Math.max(M, Math.min(left, Math.max(M, vw - w - M))),
+    };
+  }
+
+  function onEditDragStart(e) {
+    // Buttons in the header are buttons first; only the bar itself drags.
+    if (!editPanelEl || e.button !== 0 || e.target.closest("button")) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const rect = editPanelEl.getBoundingClientRect();
+    const offsetX = e.clientX - rect.left;
+    const offsetY = e.clientY - rect.top;
+    const head = e.currentTarget;
+
+    const move = (ev) => {
+      const vw = document.documentElement.clientWidth;
+      const vh = document.documentElement.clientHeight;
+      const { top, left } = clampEditPanel(
+        ev.clientY - offsetY, ev.clientX - offsetX,
+        editPanelEl.offsetWidth, editPanelEl.offsetHeight, vw, vh
+      );
+      editPanelPos = { top, left };
+      editPanelEl.style.top = top + "px";
+      editPanelEl.style.left = left + "px";
+    };
+    const up = () => {
+      head.removeEventListener("pointermove", move);
+      head.removeEventListener("pointerup", up);
+      head.removeEventListener("pointercancel", up);
+      head.classList.remove("ccp-edit-dragging");
+    };
+
+    head.setPointerCapture(e.pointerId);
+    head.classList.add("ccp-edit-dragging");
+    head.addEventListener("pointermove", move);
+    head.addEventListener("pointerup", up);
+    head.addEventListener("pointercancel", up);
+  }
+
+  // Undo can land on an element that is not the one on screen in front of you.
+  // Saying so is the minimum; C10 gives that element's box a flash as well.
+  function onEditHistoryApplied(el) {
+    if (el && el !== selectedElement) {
+      showToast("Undid an edit on another element");
+    }
+    if (selectedElement && selectedElement.isConnected) updateOverlay(selectedElement);
+  }
+
   // ===== Edit Apply =====
   // THE ONLY SECTION IN THIS FILE THAT WRITES TO AN ELEMENT OF THE HOST PAGE.
   //
@@ -2151,6 +2386,9 @@
       // Measurements are viewport-relative too, so they track in the same
       // frame — instant, because chasing a scroll with a glide reads as lag
       if (redlining) renderRedline({ instant: true });
+      // The panel is viewport-anchored, not element-anchored: a resize can
+      // strand it off-screen, so pull it back without moving it otherwise.
+      if (editing) placeEditPanel();
     });
   }
 
@@ -2164,9 +2402,15 @@
     if (toolbarEl && toolbarEl.contains(e.target)) return;
     if (settingsButtonEl && settingsButtonEl.contains(e.target)) return;
     if (toastEl && toastEl.contains(e.target)) return;
+    if (editPanelEl && editPanelEl.contains(e.target)) return;
 
     e.preventDefault();
     e.stopImmediatePropagation();
+
+    // The page is inert while editing: no re-selecting, and no Option+click
+    // re-anchoring either, since that path runs through selection. Measuring
+    // still works — it just cannot move the thing being edited.
+    if (editing) return;
 
     const target = getTargetElement(e);
     if (!target) return;
@@ -2203,11 +2447,30 @@
       return;
     }
 
+    // Undo walks one chronological timeline across every element edited this
+    // session. It only claims the key when there is something to undo — with
+    // an empty stack the page keeps its own Cmd+Z, which matters on the kind
+    // of page (an editor, a form) people are most likely to be tuning.
+    if (editing && (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z") {
+      if (isTextEntry(e.target)) return; // let a field undo its own typing
+      const el = e.shiftKey ? performRedo() : performUndo();
+      if (el) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        onEditHistoryApplied(el);
+      }
+      return;
+    }
+
     if (e.key === "Escape") {
       e.preventDefault();
       e.stopImmediatePropagation();
 
-      if (selectedElement) {
+      // Three stages out: editing → selected → probe off. Each Escape gives
+      // back exactly one layer, so nothing is ever lost by more than a step.
+      if (editing) {
+        exitEditMode();
+      } else if (selectedElement) {
         deselectElement();
       } else {
         // Notify background to update badge
@@ -2215,6 +2478,12 @@
         deactivate();
       }
     }
+  }
+
+  function isTextEntry(node) {
+    if (!node) return false;
+    const tag = node.tagName;
+    return tag === "INPUT" || tag === "TEXTAREA" || node.isContentEditable === true;
   }
 
   function onKeyUp(e) {
@@ -2245,7 +2514,8 @@
       el.closest("#ccp-toolbar") ||
       el.closest("#ccp-label") ||
       el.closest("#ccp-settings-btn") ||
-      el.closest("#ccp-toast")
+      el.closest("#ccp-toast") ||
+      el.closest("#ccp-edit-panel")
     ) {
       return keep;
     }
@@ -2253,6 +2523,7 @@
   }
 
   function deselectElement() {
+    exitEditMode(); // and every deselection path ends editing — same reason
     stopRedline(); // every deselection path ends redline — it has no anchor
     selectedElement = null;
     if (overlayContainer) {
@@ -2274,16 +2545,24 @@
     const bar = document.createElement("div");
     bar.className = "ccp-bar";
 
-    // Actions read selectedElement at click time so they follow "Select Parent" hops
+    // Actions read selectedElement at click time so they follow "Select Parent" hops.
+    // Edit is icon-only: it opens a mode rather than performing an action, and the
+    // two labelled buttons beside it are what the bar is for.
     const buttons = [
       { label: "Copy Code", icon: ICONS.code, action: (btnEl) => copyElement(selectedElement, btnEl) },
       { label: "Screenshot", icon: ICONS.camera, action: (btnEl) => copyScreenshot(selectedElement, btnEl) },
+      { label: "Edit", icon: ICONS.edit, iconOnly: true, action: () => enterEditMode() },
     ];
 
     for (const btn of buttons) {
       const button = document.createElement("button");
-      button.dataset.origHtml = btn.icon + `<span>${btn.label}</span>`;
+      button.dataset.origHtml = btn.icon + (btn.iconOnly ? "" : `<span>${btn.label}</span>`);
       button.innerHTML = button.dataset.origHtml;
+      if (btn.iconOnly) {
+        button.className = "ccp-icon-btn";
+        button.title = btn.label;
+        button.setAttribute("aria-label", btn.label);
+      }
       button.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();

@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Probe Edit Mode — harness</title>
+<!--
+  Runs the real content.js against a fake page, so Edit Mode can be exercised
+  without the build-reload-reselect cycle a packed extension needs.
+
+  This loads the actual content.css and content.js — not a mirror of them, the
+  files themselves — behind a small stub of the four chrome.* calls the content
+  script makes at load time. Everything downstream (placement, redline, the
+  token walk, the edit registry) is the shipping code path.
+
+  The page below is built to have something to find: a design system declared
+  as custom properties, utility classes that resolve to the same scale, an
+  element whose padding is set by an !important rule, and a card sitting inside
+  a flex row so spacing has something to measure against.
+
+  Serve it over HTTP — file:// blocks the stylesheet walk the token resolver
+  depends on (cssRules on a file:// sheet throws the same as cross-origin):
+
+      python3 -m http.server 8765     # then open /test/edit-harness.html
+
+  Press "p" to toggle Probe Mode. Then: click an element, click the pencil.
+-->
+<link rel="stylesheet" href="../tokens.css">
+<link rel="stylesheet" href="../content.css">
+<style>
+  /* ===== The fake page's design system =====
+     Both halves of what the resolver looks for: custom properties on :root,
+     and single-class utility rules. The two agree on the same numbers, so a
+     value can legitimately be reported as either. */
+  :root {
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+    --space-6: 32px;
+
+    --title-sm: 18px;
+    --title-md: 22px;
+    --title-lg: 28px;
+
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+  }
+
+  .text-xs   { font-size: 12px; }
+  .text-sm   { font-size: 14px; }
+  .text-base { font-size: 16px; }
+  .text-lg   { font-size: 18px; }
+  .text-xl   { font-size: 20px; }
+  .text-2xl  { font-size: 24px; }
+
+  .p-1 { padding: 4px; }
+  .p-2 { padding: 8px; }
+  .p-3 { padding: 12px; }
+  .p-4 { padding: 16px; }
+  .p-5 { padding: 24px; }
+  .p-6 { padding: 32px; }
+
+  .rounded-sm { border-radius: 4px; }
+  .rounded-md { border-radius: 8px; }
+  .rounded-lg { border-radius: 12px; }
+
+  /* ===== The page itself ===== */
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 32px;
+    font: 15px/1.5 system-ui, -apple-system, sans-serif;
+    background: #faf9f5;
+    color: #141413;
+  }
+  h1 { font-size: var(--title-lg); margin: 0 0 4px; }
+  .lede { color: #57544c; margin: 0 0 28px; }
+
+  .row { display: flex; gap: var(--space-5); align-items: flex-start; flex-wrap: wrap; }
+
+  .card {
+    background: #ffffff;
+    border: 1px solid #e5e0d4;
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    width: 260px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    box-shadow: 0 2px 8px rgb(0 0 0 / 0.06);
+  }
+  .card h2 { font-size: var(--title-sm); margin: 0; }
+  .card p { margin: 0; color: #57544c; font-size: 14px; }
+  .tag {
+    align-self: flex-start;
+    background: #f3e4dd;
+    color: #a94f30;
+    border-radius: var(--radius-sm);
+    padding: 2px 8px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  /* An !important declaration, so the apply path's priority escalation has
+     something real to fight. Without matching it, an inline padding write
+     would silently do nothing. */
+  .stubborn { padding: 20px !important; }
+
+  .note {
+    margin-top: 28px;
+    padding: 12px 14px;
+    border-left: 3px solid #d6d1c4;
+    color: #57544c;
+    font-size: 13px;
+    max-width: 62ch;
+  }
+  kbd {
+    font: 12px ui-monospace, monospace;
+    background: #efece4; border: 1px solid #ddd8cb; border-bottom-width: 2px;
+    border-radius: 4px; padding: 1px 5px;
+  }
+  #hud {
+    position: fixed; left: 12px; bottom: 12px; z-index: 2147483000;
+    font: 12px/1.4 ui-monospace, monospace;
+    background: #141413; color: #faf9f5;
+    padding: 8px 10px; border-radius: 8px; opacity: 0.92;
+  }
+  #hud b { color: #d97757; font-weight: 500; }
+</style>
+</head>
+<body>
+
+<h1>AI Skills for Design Engineers</h1>
+<p class="lede">For designers and engineers building better interfaces.</p>
+
+<div class="row">
+  <article class="card">
+    <span class="tag">animation</span>
+    <h2>emil-design-eng</h2>
+    <p class="text-sm">The main skill — mostly animation, plus some design advice.</p>
+  </article>
+
+  <article class="card p-5">
+    <span class="tag">audit</span>
+    <h2>improve-animations</h2>
+    <p class="text-sm">Audit the motion in your codebase and get prioritised plans.</p>
+  </article>
+
+  <article class="card stubborn">
+    <span class="tag">!important</span>
+    <h2>stubborn-card</h2>
+    <p class="text-sm">Its padding is set by an !important page rule, so editing it
+      has to escalate to match.</p>
+  </article>
+</div>
+
+<p class="note">
+  <kbd>p</kbd> toggles Probe Mode. Click an element to select it, then the pencil in
+  the toolbar to edit. <kbd>Esc</kbd> steps back out one layer at a time; hold
+  <kbd>Option</kbd> with something selected to measure.
+</p>
+
+<div id="hud">probe <b id="hud-state">off</b> · press <b>p</b></div>
+
+<script>
+// ===== chrome.* stub =====
+// The four calls content.js makes. Storage is backed by localStorage so a
+// theme picked here survives a reload, the way the real one does.
+(function () {
+  const listeners = [];
+  const changeListeners = [];
+  const read = () => {
+    try { return JSON.parse(localStorage.getItem("ccp-harness-store") || "{}"); }
+    catch { return {}; }
+  };
+  const write = (obj) => localStorage.setItem("ccp-harness-store", JSON.stringify(obj));
+
+  window.chrome = {
+    runtime: {
+      onMessage: { addListener: (fn) => listeners.push(fn) },
+      sendMessage: (msg) => { if (msg && msg.type === "DEACTIVATE") setState(false); },
+      openOptionsPage: () => window.open("../settings/index.html", "_blank"),
+    },
+    storage: {
+      local: {
+        get: (key, cb) => {
+          const store = read();
+          const keys = Array.isArray(key) ? key : [key];
+          const out = {};
+          for (const k of keys) if (k in store) out[k] = store[k];
+          cb(out);
+        },
+        set: (obj, cb) => {
+          const store = read();
+          const changes = {};
+          for (const [k, v] of Object.entries(obj)) {
+            changes[k] = { oldValue: store[k], newValue: v };
+            store[k] = v;
+          }
+          write(store);
+          for (const fn of changeListeners) fn(changes, "local");
+          if (cb) cb();
+        },
+      },
+      onChanged: { addListener: (fn) => changeListeners.push(fn) },
+    },
+  };
+
+  let active = false;
+  const hud = () => {
+    document.getElementById("hud-state").textContent = active ? "on" : "off";
+  };
+  function setState(next) {
+    active = next;
+    for (const fn of listeners) fn({ type: "TOGGLE_PROBE", active });
+    hud();
+  }
+
+  // "p" toggles. Probe Mode swallows clicks on the page, so a button would be
+  // unclickable the moment it was needed — the same reason the placement
+  // harness is keyboard-driven.
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "p" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      const t = e.target;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      setState(!active);
+    }
+  }, true);
+
+  window.__ccpHarness = { setState, isActive: () => active };
+  hud();
+})();
+</script>
+<script src="../content.js"></script>
+</body>
+</html>

@@ -240,6 +240,49 @@
   pointer-events: none !important;
 }
 
+/* ===== Edit Mode =====
+   The same hush, for the same reasons, plus one of its own: the beam. The
+   sweep is a "look here" animation, and while you are tuning an element the
+   answer to "which one" is settled — a rotating gradient behind live controls
+   is just motion competing with the thing you are judging. The box stays, so
+   you never lose track of what you are editing; only the movement goes. This
+   is the treatment .ccp-plain already applies for over-large elements. */
+.ccp-editing #ccp-label,
+.ccp-editing #ccp-toolbar {
+  visibility: hidden;
+  pointer-events: none;
+}
+.ccp-editing #ccp-toolbar * {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+/* Scoped through the container *and* .ccp-selected on purpose: the rule that
+   turns these on for a selection is `#ccp-overlay-container.ccp-selected
+   #ccp-bloom` at (2,1,0), so a plain `.ccp-editing #ccp-bloom` at (1,1,0)
+   loses and the bloom keeps rotating behind the panel. Matching the shape and
+   adding the mode class makes it (2,2,0) — a win on specificity rather than on
+   source order, which would break the first time these sections were reordered. */
+.ccp-editing #ccp-overlay-container.ccp-selected #ccp-sweep-spin,
+.ccp-editing #ccp-overlay-container.ccp-selected #ccp-bloom {
+  display: none;
+}
+.ccp-editing #ccp-overlay-container.ccp-selected #ccp-border-box {
+  background: var(--ccp-accent);
+}
+
+/* Measuring while editing hushes the panel exactly as it hushes the toolbar,
+   so the measurement has the page to itself. The panel's roots declare
+   `all: initial` too, so the descendant rule is as load-bearing here as it is
+   above. Releasing Option brings it back where it was. */
+.ccp-redlining #ccp-edit-panel {
+  visibility: hidden;
+  pointer-events: none;
+}
+.ccp-redlining #ccp-edit-panel * {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
 /* ===== Element Label ===== */
 #ccp-label {
   position: fixed;
@@ -578,6 +621,121 @@
   transition: none !important;
 }
 
+/* Edit opens a mode rather than performing an action, so it stays an icon at
+   every density — the two labelled buttons beside it are what the bar is for,
+   and a third word would make the rail the widest thing on the page. */
+#ccp-toolbar .ccp-bar button.ccp-icon-btn {
+  padding-left: var(--ccp-md);
+  padding-right: var(--ccp-md);
+  color: var(--ccp-accent);
+}
+
+/* ===== Edit Panel =====
+   The one piece of chrome the user positions. It takes the toolbar's solved
+   spot on entry (see placeEditPanel) and then stays wherever it is dragged,
+   which is why it has no positional transition at all: every other box in this
+   file is placed by the solver and glides between solutions, but a panel that
+   eased toward the pointer would smear behind the drag. */
+#ccp-edit-panel {
+  all: initial;
+  position: fixed;
+  z-index: var(--ccp-z-chrome);
+  box-sizing: border-box;
+  font-family: var(--ccp-font);
+  color: var(--ccp-text);
+  background: var(--ccp-surface);
+  border: 1px solid rgb(from var(--ccp-accent) r g b / 0.5);
+  border-radius: var(--ccp-radius-lg);
+  box-shadow: var(--ccp-shadow-card);
+  width: 248px;
+  /* Taller than the viewport is a real case on a short window; the panel
+     scrolls inside itself rather than growing past the screen, which is what
+     lets the placement solver always find room for it. */
+  max-height: calc(100vh - 2 * var(--ccp-xs));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* The panel is dragged by its header, and a drag that selects text as it
+     goes feels broken. */
+  user-select: none;
+}
+
+#ccp-edit-panel .ccp-edit-head {
+  all: initial;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--ccp-gap-base);
+  padding: var(--ccp-gap-base) var(--ccp-sm);
+  border-bottom: 1px solid var(--ccp-sep);
+  font-family: var(--ccp-font);
+  cursor: grab;
+  /* Without this the browser claims the gesture for scrolling and the panel
+     stutters or stops following the pointer on trackpads and touch. */
+  touch-action: none;
+}
+
+#ccp-edit-panel .ccp-edit-head.ccp-edit-dragging {
+  cursor: grabbing;
+}
+
+#ccp-edit-panel .ccp-edit-back {
+  all: initial;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--ccp-sep);
+  border-radius: var(--ccp-radius-xs);
+  background: transparent;
+  color: var(--ccp-text-dim);
+  cursor: pointer;
+  transition: border-color var(--ccp-duration), color var(--ccp-duration),
+              background var(--ccp-duration);
+}
+
+#ccp-edit-panel .ccp-edit-back:hover {
+  border-color: var(--ccp-accent);
+  color: var(--ccp-accent);
+  background: rgb(from var(--ccp-accent) r g b / 0.15);
+}
+
+#ccp-edit-panel .ccp-edit-back svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* The same tag / #id / .class colouring the info label uses, so the panel
+   reads as the same tool looking at the same element. */
+#ccp-edit-panel .ccp-edit-id {
+  all: initial;
+  font: var(--ccp-weight-medium) var(--ccp-text-sm)/var(--ccp-leading-tight) var(--ccp-font);
+  color: var(--ccp-text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1;
+}
+
+#ccp-edit-panel .ccp-edit-id-tag { color: var(--ccp-accent); font-weight: var(--ccp-weight-bold); }
+#ccp-edit-panel .ccp-edit-id-id { color: var(--ccp-syntax-id); font-weight: var(--ccp-weight-medium); }
+#ccp-edit-panel .ccp-edit-id-class { color: var(--ccp-syntax-class); font-weight: var(--ccp-weight-medium); }
+
+#ccp-edit-panel .ccp-edit-body {
+  all: initial;
+  box-sizing: border-box;
+  display: block;
+  font-family: var(--ccp-font);
+  color: var(--ccp-text);
+  padding: var(--ccp-sm) var(--ccp-md);
+  overflow-y: auto;
+  min-height: 0;
+}
+
 /* ===== Settings Button =====
    Viewport chrome, not selection chrome: mounted by activate() and pinned to the
    top-right corner for as long as probe mode is on, whether or not anything is
@@ -682,4 +840,22 @@
 #ccp-toolbar .ccp-parent-btn.ccp-button-disabled,
 #ccp-toolbar .ccp-parent-btn.ccp-button-disabled * {
   cursor: not-allowed !important;
+}
+
+/* The edit panel is the one surface where the page's flattened arrow is wrong
+   throughout: everything in it is grabbable, clickable or scrubbable, and the
+   cursor is how each of those announces itself. */
+#ccp-edit-panel .ccp-edit-back,
+#ccp-edit-panel .ccp-edit-back * {
+  cursor: pointer !important;
+}
+
+#ccp-edit-panel .ccp-edit-head,
+#ccp-edit-panel .ccp-edit-head * {
+  cursor: grab !important;
+}
+
+#ccp-edit-panel .ccp-edit-head.ccp-edit-dragging,
+#ccp-edit-panel .ccp-edit-head.ccp-edit-dragging * {
+  cursor: grabbing !important;
 }
