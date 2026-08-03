@@ -39,6 +39,23 @@ in the block and a separate thing to undo.
 narrow column of titled groups, chosen over eleven alternatives in
 `test/edit-ui-prototypes.html`.
 
+**Tether** — what says "this panel edits that element" in Edit Mode, once the
+selection box has been taken away. Four ticks at the element's edge midpoints
+plus a dashed run from the panel to the tick on the facing edge. Chosen over
+eleven alternatives in `test/edit-association-prototypes.html`.
+
+The box had to go, and the reason is the whole design: the panel writes
+`border-width`, `border-color`, `border-radius` and `box-shadow`, and the box is
+a ring drawn 2px outside the element — sitting on exactly the four things being
+judged. The tether works only in the ring of space *outside* the element, and
+`test/tether.mjs` sweeps that as a property rather than trusting it.
+
+Not the same thing as Redline, though they share a dashed vocabulary on purpose.
+Redline measures the distance between two elements and puts a number on it; the
+tether asserts a relationship between chrome and an element and carries no
+value. A run that is longer means the panel was dragged further away, nothing
+more.
+
 **Delta block** — what the panel copies: the same source pointer Copy Code
 emits, plus one line per edit. This is the product. The panel is how you produce
 it.

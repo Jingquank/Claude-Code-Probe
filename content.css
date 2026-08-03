@@ -134,6 +134,23 @@
   #ccp-edit-flash.ccp-edit-flashing {
     opacity: 1;
   }
+
+  /* The tether never animates on its own; it only glides. Stillness means the
+     glide goes, not the tether — it is the only thing left saying which
+     element the panel is editing, so removing it would remove information
+     rather than motion, the same call made for the flash just above.
+
+     Scoped through the container on purpose. Everything else in this block
+     quiets a rule declared ABOVE it and so wins on source order; the tether's
+     transitions are declared below, in its own section, and a matching
+     `#ccp-tether .ccp-tether-tick` at (1,1,0) would silently lose to them.
+     Adding the container makes it (2,1,0) — the same specificity-over-order
+     argument the Edit Mode section makes, and for the same reason: a section
+     reorder must not be able to break it. */
+  #ccp-overlay-container #ccp-tether .ccp-tether-tick,
+  #ccp-overlay-container #ccp-tether .ccp-tether-seg {
+    transition: none;
+  }
 }
 
 /* ===== Redline =====
@@ -249,13 +266,84 @@
   pointer-events: none !important;
 }
 
+/* ===== Tether =====
+   What says "this panel edits that element" now that Edit Mode has taken the
+   selection box away. Four solid ticks at the edge midpoints, sitting outside
+   the element, and one dashed run from the panel to the tick on the facing
+   edge. Everything lives in the ring of space outside the element's box — the
+   ticks lie flat along their edge rather than pointing at it, so they can only
+   ever be tangent to that clearance, never inside it.
+
+   Solid ticks against a dashed run is the whole grammar: dashed is Redline's
+   guide vocabulary and means reference, solid means subject. The weights say
+   which end is the thing being edited.
+
+   Same structure as the redline layer above, for the same reason — a wrapper
+   that never moves, holding nodes kept out of reach of the blanket `> div`
+   glide so renderTether() can decide per frame which snap and which glide.
+   Nothing here self-animates, so like the redline nodes this section adds no
+   animations to the reduced-motion block; its transitions are listed there
+   only so a stated preference for stillness also stops the glide. */
+#ccp-tether {
+  position: fixed;
+  inset: 0;
+  display: none;
+}
+
+.ccp-editing #ccp-tether {
+  display: block;
+}
+
+#ccp-tether .ccp-tether-tick,
+#ccp-tether .ccp-tether-seg {
+  position: fixed;
+  transition: top var(--ccp-duration) var(--ccp-ease),
+              left var(--ccp-duration) var(--ccp-ease),
+              width var(--ccp-duration) var(--ccp-ease),
+              height var(--ccp-duration) var(--ccp-ease),
+              opacity var(--ccp-duration) var(--ccp-ease);
+}
+
+#ccp-tether .ccp-tether-tick {
+  background: var(--ccp-accent);
+  border-radius: 1px;
+}
+
+/* Dashed via a border, not a background image: horizontal runs dash through
+   border-top and vertical through border-left, which is exactly how the
+   redline guides do it and keeps the dash phase consistent between them. */
+#ccp-tether .ccp-tether-seg-h {
+  border-top: 1px dashed rgb(from var(--ccp-accent) r g b / 0.55);
+}
+
+#ccp-tether .ccp-tether-seg-v {
+  border-left: 1px dashed rgb(from var(--ccp-accent) r g b / 0.55);
+}
+
+/* Loud: a row is under the pointer, a gesture is open, or a value just landed.
+   The ticks lengthen and the run comes up to full strength. Nothing moves
+   closer to the element — the clearance is fixed, and amplifying it would be
+   the one change that could break the constraint. */
+.ccp-tether-loud #ccp-tether .ccp-tether-seg-h {
+  border-top-color: var(--ccp-accent);
+}
+
+.ccp-tether-loud #ccp-tether .ccp-tether-seg-v {
+  border-left-color: var(--ccp-accent);
+}
+
 /* ===== Edit Mode =====
    The same hush, for the same reasons, plus one of its own: the beam. The
    sweep is a "look here" animation, and while you are tuning an element the
    answer to "which one" is settled — a rotating gradient behind live controls
-   is just motion competing with the thing you are judging. The box stays, so
-   you never lose track of what you are editing; only the movement goes. This
-   is the treatment .ccp-plain already applies for over-large elements. */
+   is just motion competing with the thing you are judging.
+
+   The box used to stay, flattened to a solid stroke. It no longer does. The
+   panel writes border-width, border-color, border-radius and box-shadow, and a
+   ring drawn 2px outside the element sits on top of all four — you cannot
+   judge a 2px stroke through an accent stroke, or watch a corner round under
+   one. The whole box goes, and the tether takes over the job of saying which
+   element this panel belongs to, working only in the space outside it. */
 .ccp-editing #ccp-label,
 .ccp-editing #ccp-toolbar {
   visibility: hidden;
@@ -272,11 +360,16 @@
    adding the mode class makes it (2,2,0) — a win on specificity rather than on
    source order, which would break the first time these sections were reordered. */
 .ccp-editing #ccp-overlay-container.ccp-selected #ccp-sweep-spin,
-.ccp-editing #ccp-overlay-container.ccp-selected #ccp-bloom {
+.ccp-editing #ccp-overlay-container.ccp-selected #ccp-bloom,
+.ccp-editing #ccp-overlay-container.ccp-selected #ccp-border-box {
   display: none;
 }
-.ccp-editing #ccp-overlay-container.ccp-selected #ccp-border-box {
-  background: var(--ccp-accent);
+/* The box-model tints go with it. They are drawn on the element's own padding
+   and content areas, which is the interior the tether exists to keep clear. */
+.ccp-editing #ccp-overlay-container.ccp-selected #ccp-margin-box,
+.ccp-editing #ccp-overlay-container.ccp-selected #ccp-padding-box,
+.ccp-editing #ccp-overlay-container.ccp-selected #ccp-content-box {
+  display: none;
 }
 
 /* Measuring while editing hushes the panel exactly as it hushes the toolbar,
