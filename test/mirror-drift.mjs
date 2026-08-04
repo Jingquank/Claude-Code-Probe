@@ -55,7 +55,15 @@ const MIRRORS = [
   },
   {
     file: "edit-deltas.mjs",
-    names: ["EDIT_PROP_ORDER", "SHORTHAND_OF", "editPropRank", "formatEditSide", "buildEditLines"],
+    // parseCssColor and formatHex appear here as well as in edit-color.mjs:
+    // formatEditSide needs them, and a suite file cannot import a sibling that
+    // runs its own checks on load. Two copies of the same thing is exactly
+    // what this file exists to keep honest.
+    names: [
+      "EDIT_PROP_ORDER", "SHORTHAND_OF", "editPropRank",
+      "parseCssColor", "formatHex", "displayCss",
+      "formatEditSide", "buildEditLines",
+    ],
   },
 ];
 

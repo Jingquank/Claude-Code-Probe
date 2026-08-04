@@ -2612,11 +2612,15 @@
     identity.className = "ccp-edit-id";
     identity.innerHTML = editPanelIdentity(selectedElement);
 
+    const degraded = document.createElement("span");
+    degraded.className = "ccp-edit-degraded";
+    degraded.setAttribute("aria-hidden", "true");
+
     const copy = document.createElement("button");
     copy.className = "ccp-edit-act ccp-edit-copy";
     copy.innerHTML = `${ICONS.code}<i class="ccp-edit-count"></i>`;
-    copy.title = "Copy pointer and edits";
-    copy.setAttribute("aria-label", "Copy pointer and edits");
+    copy.title = "Copy every edit";
+    copy.setAttribute("aria-label", "Copy every edit");
     copy.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -2637,6 +2641,7 @@
 
     head.appendChild(back);
     head.appendChild(identity);
+    head.appendChild(degraded);
     head.appendChild(copy);
     head.appendChild(resetAll);
     head.addEventListener("pointerdown", onEditDragStart);
@@ -2662,8 +2667,84 @@
     editPanelEl.appendChild(body);
     document.documentElement.appendChild(editPanelEl);
 
+    seedSplitControls(selectedElement);
     renderEditControls();
+    paintDegradedMarker();
     placeEditPanel();
+  }
+
+  // A control whose four sides already disagree opens showing all four. The
+  // linked row reads one longhand and would otherwise display a number that is
+  // true of one side and false of three — and a single drag would then write
+  // that number to all four, flattening spacing nobody asked to flatten.
+  function seedSplitControls(el) {
+    editSplit.clear();
+    if (!el || !el.isConnected) return;
+    const style = getComputedStyle(el);
+    for (const group of EDIT_GROUPS) {
+      for (const control of group.controls) {
+        if (!control.sides) continue;
+        if (sidesDiffer(style, control)) editSplit.add(control.prop);
+      }
+    }
+  }
+
+  function sidesDiffer(style, control) {
+    const values = control.sides.map((prop) => style.getPropertyValue(prop).trim());
+    return new Set(values).size > 1;
+  }
+
+  // Collapse four sides onto the first one's value, as one undoable step. The
+  // first side is the one the linked row would have shown, so what the user
+  // gets is what the row was already claiming.
+  function mergeSides(control) {
+    const el = selectedElement;
+    if (!el || !el.isConnected) return;
+    const value = getComputedStyle(el).getPropertyValue(control.sides[0]).trim();
+    if (!value) return;
+    commitEditGesture();
+    beginEditGesture(el, control.prop);
+    // The sides were edited as longhands; they have to stop being edits, or
+    // the shorthand and its own longhands would both sit in the delta saying
+    // different things.
+    const record = editRegistry.get(el);
+    if (record) for (const side of control.sides) record.props.delete(side);
+    setEditValue(el, control.prop, {
+      css: value,
+      inline: value,
+      priority: neededPriority(el, control.prop),
+      cls: null,
+      token: null,
+    });
+    commitEditGesture();
+  }
+
+  // What the panel can say about why a scale is not on offer. Only failures —
+  // a page that simply has no design tokens is not a problem to report, and
+  // saying so on every ordinary page would train the marker into wallpaper.
+  function degradedReason() {
+    if (!editing || !tokenIndex) return null;
+    if (tokenIndex.disabled) {
+      return "This page has too many CSS rules to scan, so its design tokens aren't offered here.";
+    }
+    if (tokenIndex.suspect) {
+      return "This page's stylesheets could be read but nothing came back, so design tokens aren't offered here.";
+    }
+    if (tokenIndex.blocked > 0) {
+      const n = tokenIndex.blocked;
+      return `${n} stylesheet${n > 1 ? "s" : ""} on this page can't be read from a script ` +
+        `(they're served from another origin), so any design tokens they define aren't offered here.`;
+    }
+    return null;
+  }
+
+  function paintDegradedMarker() {
+    if (!editPanelEl) return;
+    const marker = editPanelEl.querySelector(".ccp-edit-degraded");
+    if (!marker) return;
+    const reason = degradedReason();
+    marker.classList.toggle("ccp-edit-on", Boolean(reason));
+    marker.title = reason || "";
   }
 
   // ===== Edit Controls =====
@@ -2779,18 +2860,29 @@
     // The link toggle turns one value into four and back. It sits before the
     // control so the row still lines up down the same edge either way.
     if (control.sides) {
-      const link = document.createElement("button");
       const split = editSplit.has(control.prop);
+      const differ = selectedElement && selectedElement.isConnected &&
+        sidesDiffer(getComputedStyle(selectedElement), control);
+      const link = document.createElement("button");
       link.className = "ccp-edit-link";
       link.textContent = split ? "⊟" : "⊞";
-      link.title = split ? "Link all sides" : "Edit each side";
+      // Going back to a single value when the sides disagree is not a change
+      // of view, it is an edit — it throws three of them away. The button says
+      // which one it is about to do.
+      link.title = !split ? "Edit each side"
+        : differ ? "Merge the four sides into one value"
+        : "Link all sides";
       link.setAttribute("aria-label", link.title);
       link.setAttribute("aria-pressed", String(split));
       link.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        if (split) editSplit.delete(control.prop);
-        else editSplit.add(control.prop);
+        if (!split) {
+          editSplit.add(control.prop);
+        } else {
+          if (differ) mergeSides(control);
+          editSplit.delete(control.prop);
+        }
         renderEditControls();
       });
       row.appendChild(link);
@@ -3470,21 +3562,34 @@
       }
     }
 
-    const count = editedPropCount(el);
+    // Both header actions are global, so the badge counts elements rather than
+    // properties: it answers "how much is this copy about to carry", which is
+    // the question you have when several elements have been tuned.
+    const touched = editedElements().length;
     const badge = editPanelEl.querySelector(".ccp-edit-count");
-    if (badge) badge.textContent = count ? String(count) : "";
+    if (badge) badge.textContent = touched ? String(touched) : "";
     const resetAll = editPanelEl.querySelector(".ccp-edit-resetall");
-    if (resetAll) resetAll.classList.toggle("ccp-edit-on", editRegistry.size > 0);
+    if (resetAll) resetAll.classList.toggle("ccp-edit-on", touched > 0);
+    paintDegradedMarker();
   }
 
   // ===== Copy the delta block =====
   function copyEdits(btnEl) {
-    const el = selectedElement;
-    if (!el) return;
     commitEditGesture();
-    const text = buildEditsBlock(el);
+    const text = buildEditsBlock();
+    if (!text) return;
+    const overwritten = editedElements().filter((el) => staleEdits(el).length > 0).length;
     navigator.clipboard.writeText(text).then(
-      () => setButtonSuccess(btnEl),
+      () => {
+        setButtonSuccess(btnEl);
+        // The block says so too, but a note buried in a payload the user is
+        // about to paste elsewhere is not the same as being told.
+        if (overwritten > 0) {
+          showToast(overwritten === 1
+            ? "Copied — but the page has overwritten one edit"
+            : `Copied — but the page has overwritten edits on ${overwritten} elements`);
+        }
+      },
       () => showToast("Clipboard blocked — check the page's permissions")
     );
   }
@@ -3872,11 +3977,6 @@
     return Boolean(record && record.props.has(prop));
   }
 
-  function editedPropCount(el) {
-    const record = editRegistry.get(el);
-    return record ? record.props.size : 0;
-  }
-
   // Two different "before"s, and conflating them is what makes an undo stack
   // wrong. `origin` is the value at first touch and belongs to the delta —
   // the block should report where the property started, however many times it
@@ -4074,12 +4174,23 @@
     return j === -1 ? EDIT_PROP_ORDER.length : j;
   }
 
+  // Colours are shown as hex on both sides of the arrow. getComputedStyle
+  // hands back rgb() and the picker hands back hex, so a delta would otherwise
+  // read "rgb(255, 255, 255) → #a94f30" and make the reader convert one of
+  // them in their head to see how far the colour moved. Anything that is not a
+  // colour passes through untouched.
+  function displayCss(css) {
+    const colour = parseCssColor(css);
+    return colour ? formatHex(colour) : css;
+  }
+
   // A token name is what the source contains, so it leads; the pixel value
   // follows in parentheses because it is what the eye was actually judging.
   function formatEditSide(value) {
     if (!value) return "";
-    if (value.token && value.token.name) return `${value.token.name} (${value.css})`;
-    return value.css;
+    const shown = displayCss(value.css);
+    if (value.token && value.token.name) return `${value.token.name} (${shown})`;
+    return shown;
   }
 
   // [{ prop, before, after }] → the "# edits:" lines. Pure — mirrored in
@@ -4102,12 +4213,66 @@
     return Array.from(record.props, ([prop, e]) => ({ prop, before: e.before, after: e.after }));
   }
 
-  function buildEditsBlock(el) {
+  // Elements that still carry an edit, in the order they appear on the page —
+  // so a block describing several of them reads top to bottom the way the page
+  // does, rather than in the order the user happened to click.
+  function editedElements() {
+    const live = [];
+    for (const [el, record] of editRegistry) {
+      if (record.props.size > 0) live.push(el);
+    }
+    return live.sort((a, b) => {
+      if (a === b) return 0;
+      const rel = a.compareDocumentPosition(b);
+      if (rel & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
+      if (rel & Node.DOCUMENT_POSITION_PRECEDING) return 1;
+      return 0;
+    });
+  }
+
+  // Has the page taken our edit back? A framework that re-renders the subtree
+  // replaces the node's attributes wholesale, and the registry would go on
+  // reporting a change that is no longer there. Checked at the only moment it
+  // matters: when the block is about to be handed to someone who will act on
+  // it.
+  function staleEdits(el) {
+    const record = editRegistry.get(el);
+    if (!record || !el.isConnected) return [];
+    const computed = getComputedStyle(el);
+    const stale = [];
+    for (const [prop, entry] of record.props) {
+      const now = computed.getPropertyValue(prop).trim();
+      // Compare what renders, not how it was written — the same test
+      // sameEditValue makes.
+      if (displayCss(now) !== displayCss(entry.after.css)) stale.push({ prop, now });
+    }
+    return stale;
+  }
+
+  function buildElementSection(el) {
     const { header, located } = buildPointerHeader(el);
     const lines = buildEditLines(editEntriesFor(el));
     const html = located ? buildRootTag(el) : buildSkeletonHTML(el);
-    const body = lines.length ? header + "\n" + lines.join("\n") : header;
-    return "```\n" + body + "\n" + html + "\n```";
+    const notes = [];
+    if (!el.isConnected) {
+      notes.push("# note: this element is no longer on the page — it was replaced or removed after being edited");
+    }
+    for (const { prop, now } of staleEdits(el)) {
+      notes.push(`# note: ${prop} now reads ${displayCss(now)} on the page — something overwrote this edit`);
+    }
+    return [header, ...notes, ...lines, html].filter(Boolean).join("\n");
+  }
+
+  // One block for everything edited this session. With a single element it is
+  // byte-identical to what a per-element copy produced; with none it is the
+  // selected element's pointer, which is exactly Copy Code — so the button
+  // always has something true to say.
+  function buildEditsBlock() {
+    const elements = editedElements();
+    if (elements.length === 0) {
+      return selectedElement ? "```\n" + buildElementSection(selectedElement) + "\n```" : "";
+    }
+    return "```\n" + elements.map(buildElementSection).join("\n\n") + "\n```";
   }
 
   // ===== Event Handlers =====

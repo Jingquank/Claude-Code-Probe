@@ -893,6 +893,24 @@
 
 #ccp-edit-panel .ccp-edit-count:empty { display: none; }
 
+/* Something about this page kept the token layer from reading it — usually a
+   cross-origin stylesheet. Deliberately not a warning: nothing is broken and
+   the user has done nothing wrong, so this is the same quiet dashed outline
+   the panel already uses for "off the scale", meaning "a thing that would
+   normally be here isn't". Hovering says why. */
+#ccp-edit-panel .ccp-edit-degraded {
+  all: initial;
+  box-sizing: border-box;
+  display: none;
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border: 1px dashed var(--ccp-text-faint);
+  border-radius: 50%;
+}
+
+#ccp-edit-panel .ccp-edit-degraded.ccp-edit-on { display: block; }
+
 #ccp-edit-panel .ccp-edit-body {
   all: initial;
   box-sizing: border-box;

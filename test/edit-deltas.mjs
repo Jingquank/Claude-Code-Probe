@@ -46,10 +46,60 @@ export function editPropRank(prop) {
   return j === -1 ? EDIT_PROP_ORDER.length : j;
 }
 
+// Mirrored from the Edit Color section of content.js — change both. They are
+// duplicated here as well as in edit-color.mjs because formatEditSide needs
+// them, and a suite file cannot import a sibling that runs its own checks and
+// calls process.exit on load. test/mirror-drift.mjs compares every copy.
+export function parseCssColor(str) {
+  if (typeof str !== "string") return null;
+  const s = str.trim().toLowerCase();
+
+  let m = s.match(/^#([0-9a-f]{3,8})$/);
+  if (m) {
+    const hex = m[1];
+    if (hex.length === 3 || hex.length === 4) {
+      const [r, g, b, a] = hex.split("").map((c) => parseInt(c + c, 16));
+      return { r, g, b, a: hex.length === 4 ? a / 255 : 1 };
+    }
+    if (hex.length === 6 || hex.length === 8) {
+      return {
+        r: parseInt(hex.slice(0, 2), 16),
+        g: parseInt(hex.slice(2, 4), 16),
+        b: parseInt(hex.slice(4, 6), 16),
+        a: hex.length === 8 ? parseInt(hex.slice(6, 8), 16) / 255 : 1,
+      };
+    }
+    return null;
+  }
+
+  m = s.match(/^rgba?\(\s*([\d.]+)\s*[, ]\s*([\d.]+)\s*[, ]\s*([\d.]+)\s*(?:[,/]\s*([\d.]+%?)\s*)?\)$/);
+  if (m) {
+    const clampByte = (n) => Math.min(255, Math.max(0, Math.round(parseFloat(n))));
+    const a = m[4] === undefined ? 1
+      : m[4].endsWith("%") ? parseFloat(m[4]) / 100
+      : parseFloat(m[4]);
+    return { r: clampByte(m[1]), g: clampByte(m[2]), b: clampByte(m[3]), a: Math.min(1, Math.max(0, a)) };
+  }
+
+  return null;
+}
+
+export function formatHex(c) {
+  const h = (n) => Math.round(n).toString(16).padStart(2, "0");
+  const base = "#" + h(c.r) + h(c.g) + h(c.b);
+  return c.a === undefined || c.a >= 1 ? base : base + h(c.a * 255);
+}
+
+export function displayCss(css) {
+  const colour = parseCssColor(css);
+  return colour ? formatHex(colour) : css;
+}
+
 export function formatEditSide(value) {
   if (!value) return "";
-  if (value.token && value.token.name) return `${value.token.name} (${value.css})`;
-  return value.css;
+  const shown = displayCss(value.css);
+  if (value.token && value.token.name) return `${value.token.name} (${shown})`;
+  return shown;
 }
 
 export function buildEditLines(entries) {
@@ -107,6 +157,33 @@ check("side · a token value names the token first", (fail) => {
   }
   if (formatEditSide(cssVar("28px", "--title-lg")) !== "--title-lg (28px)") {
     fail(`var → ${formatEditSide(cssVar("28px", "--title-lg"))}`);
+  }
+});
+
+// getComputedStyle hands back rgb() and the picker hands back hex, so without
+// normalising, a colour delta reads "rgb(255, 255, 255) → #a94f30" and the
+// reader has to convert one side in their head to see how far it moved.
+check("side · colours read as hex on both sides", (fail) => {
+  const cases = [
+    [raw("rgb(255, 255, 255)"), "#ffffff"],
+    [raw("rgb(169 79 48)"), "#a94f30"],
+    [raw("rgba(0, 0, 0, 0.5)"), "#00000080"],
+    [raw("#A94F30"), "#a94f30"],
+    [cssVar("rgb(169, 79, 48)", "--terra"), "--terra (#a94f30)"],
+  ];
+  for (const [value, want] of cases) {
+    const got = formatEditSide(value);
+    if (got !== want) fail(`${value.css} → ${got}, want ${want}`);
+  }
+});
+
+// Only colours. A length that happens to look colour-ish must pass through,
+// and so must a shadow, which contains a colour but is not one.
+check("side · non-colours pass through untouched", (fail) => {
+  const cases = ["18px", "1.5", "center", "0 2px 8px rgb(0 0 0 / 0.08)", "normal", "auto"];
+  for (const css of cases) {
+    const got = formatEditSide(raw(css));
+    if (got !== css) fail(`${css} → ${got}`);
   }
 });
 
