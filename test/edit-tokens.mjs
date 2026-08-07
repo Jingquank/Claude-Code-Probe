@@ -16,13 +16,6 @@
 
 // ===== Mirror of the Edit Tokens pure core (content.js) =====
 
-const SCALE_WORDS = [
-  "3xs", "2xs", "xs", "sm", "md", "base", "lg", "xl", "2xl", "3xl", "4xl",
-  "5xl", "6xl", "7xl", "8xl", "9xl",
-  "none", "full", "tight", "snug", "normal", "relaxed", "loose",
-  "thin", "light", "regular", "medium", "semibold", "bold", "extrabold", "black",
-];
-
 export function parseCssLength(value, remBase, emBase) {
   if (typeof value !== "string") return null;
   const s = value.trim().toLowerCase();
@@ -95,8 +88,6 @@ export function splitTokenName(name) {
   const step = name.slice(cut + 1);
   const prefix = name.slice(0, cut);
   if (!step) return null;
-  const numeric = /^\d+(\.\d+)?$/.test(step);
-  if (!numeric && !SCALE_WORDS.includes(step.toLowerCase())) return null;
   return { prefix, step };
 }
 
@@ -112,11 +103,13 @@ export function groupTokenFamilies(entries) {
 
   const families = [];
   for (const [prefix, members] of byPrefix) {
-    const seen = new Set();
-    const unique = members.filter((m) => (seen.has(m.name) ? false : seen.add(m.name)));
-    if (unique.length < 2) continue;
+    const seenName = new Set();
+    const unique = members.filter((m) => (seenName.has(m.name) ? false : seenName.add(m.name)));
     unique.sort((a, b) => a.resolved - b.resolved || a.name.localeCompare(b.name));
-    families.push({ prefix, members: unique });
+    const seenValue = new Set();
+    const rungs = unique.filter((m) => (seenValue.has(m.resolved) ? false : seenValue.add(m.resolved)));
+    if (rungs.length < 2) continue;
+    families.push({ prefix, members: rungs });
   }
   families.sort((a, b) => a.prefix.localeCompare(b.prefix));
   return families;
@@ -306,14 +299,74 @@ check("family · splitting names into prefix and step", (fail) => {
   }
 });
 
-check("family · names that are not scale positions", (fail) => {
+// Only names with nothing to split are rejected here. A step no longer has to
+// look like a scale position — "shadow-card" and "grid-cols" split cleanly and
+// are turned away later, by groupTokenFamilies, on the evidence of their values
+// rather than on the shape of their names. The vocabulary this used to check
+// against was a guess, and it was wrong about most real design systems.
+check("family · names with nothing to split", (fail) => {
   const rejects = [
-    "card", "flex", "--brand", "--accent", "shadow-card", "text-",
-    "-lg", "", "grid-cols", null, 42,
+    "card", "flex", "--brand", "--accent", "text-",
+    "-lg", "", null, 42,
   ];
   for (const name of rejects) {
     const got = splitTokenName(name);
     if (got !== null) fail(`${JSON.stringify(name)} → ${JSON.stringify(got)}, want null`);
+  }
+});
+
+// The names the old word list turned away. Each one is a real token from a real
+// system, and each was silently invisible: --gap-xxs and --space-small because
+// the step was not in the vocabulary, --sds-size-space-200 because only the
+// last segment is read and "200" had to survive on its own.
+check("family · steps outside the old vocabulary now group", (fail) => {
+  const cases = [
+    ["--gap-xxs", { prefix: "--gap", step: "xxs" }],
+    ["--space-small", { prefix: "--space", step: "small" }],
+    ["--radius-DEFAULT", { prefix: "--radius", step: "DEFAULT" }],
+    ["--font-size-body", { prefix: "--font-size", step: "body" }],
+    ["--sds-size-space-200", { prefix: "--sds-size-space", step: "200" }],
+  ];
+  for (const [name, want] of cases) {
+    const got = splitTokenName(name);
+    if (!eq(got, want)) fail(`${name} → ${JSON.stringify(got)}, want ${JSON.stringify(want)}`);
+  }
+
+  const fams = groupTokenFamilies([
+    { name: "--gap-xxs", resolved: 4 },
+    { name: "--gap-small", resolved: 8 },
+    { name: "--gap-huge", resolved: 32 },
+  ]);
+  if (fams.length !== 1) return fail(`want one family, got ${fams.length}`);
+  if (fams[0].prefix !== "--gap") fail(`prefix ${fams[0].prefix}`);
+  if (fams[0].members.map((m) => m.step).join(",") !== "xxs,small,huge") {
+    fail(`want value order xxs,small,huge — got ${fams[0].members.map((m) => m.step).join(",")}`);
+  }
+});
+
+// The other half of the new rule: splitting permissively only works because
+// the family gate is real. A prefix that never varies is not a scale.
+check("family · a prefix with one value is not a scale", (fail) => {
+  const oneName = groupTokenFamilies([{ name: "shadow-card", resolved: 4 }]);
+  if (oneName.length) fail(`a lone name formed a family: ${JSON.stringify(oneName)}`);
+
+  // Two names, one value — a stepper here would have nowhere to go.
+  const oneValue = groupTokenFamilies([
+    { name: "--gap-sm", resolved: 8 },
+    { name: "--gap-md", resolved: 8 },
+  ]);
+  if (oneValue.length) fail(`two aliases at one value formed a family: ${JSON.stringify(oneValue)}`);
+
+  // An alias alongside a real second rung collapses onto it rather than
+  // sitting on it twice, so one press of the stepper always moves the page.
+  const withAlias = groupTokenFamilies([
+    { name: "--gap-sm", resolved: 8 },
+    { name: "--gap-md", resolved: 8 },
+    { name: "--gap-lg", resolved: 16 },
+  ]);
+  if (withAlias.length !== 1) return fail(`want one family, got ${withAlias.length}`);
+  if (withAlias[0].members.length !== 2) {
+    fail(`want 2 rungs, got ${withAlias[0].members.map((m) => m.name).join(",")}`);
   }
 });
 

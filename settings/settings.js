@@ -41,9 +41,29 @@ const EDIT_PREFS = {
   editTokenControls: ["both", "token", "value"],
 };
 
+// Mirror of COPY_PREFS in content.js — change both.
+const COPY_PREFS = {
+  copySource: ["on", "off"],
+  copyComponent: ["on", "off"],
+  copyPage: ["on", "off"],
+  copyAnchor: ["on", "off"],
+  copyHandlers: ["on", "off"],
+  copySelector: ["on", "off"],
+  copyPosition: ["on", "off"],
+  copyRepeated: ["on", "off"],
+  copyText: ["on", "off"],
+  copyLayout: ["off", "on"],
+  copyStyles: ["off", "on"],
+  copyProps: ["off", "on"],
+  copyHtml: ["root", "shape", "full", "none"],
+  copyDepth: ["3", "2", "1"],
+  copyHtmlFallback: ["on", "off"],
+  copyFence: ["on", "off"],
+};
+
 // One roster for everything the sheet writes, so a new setting only has to be
 // added to the map above to get storage, keyboard, and live-sync for free.
-const ALL_PREFS = { ...REDLINE_PREFS, ...EDIT_PREFS };
+const ALL_PREFS = { ...REDLINE_PREFS, ...EDIT_PREFS, ...COPY_PREFS };
 
 const prefs = {};
 for (const key of Object.keys(ALL_PREFS)) prefs[key] = ALL_PREFS[key][0];
@@ -67,6 +87,135 @@ function formatRedlineValue(px, unit, precision, remBase) {
   return String(Math.round(px));
 }
 
+// ===== The copy payload =====
+// The rail assembles a real clipboard payload rather than drawing a picture of
+// one, which means two pieces of content.js have to live here as well: the
+// emission order and the comment dialect. Both are mirrored, both are checked
+// by test/mirror-drift.mjs. What is *not* mirrored is any of the extension's
+// logic for finding those values — the fixture below supplies them as literal
+// strings, the same seam the measuring vignette keeps with its hand-drawn
+// geometry.
+
+// Mirror of COPY_ORDER in content.js — change both.
+const COPY_ORDER = [
+  ["source", "copySource"],
+  ["component", "copyComponent"],
+  ["page", "copyPage"],
+  ["anchor", "copyAnchor"],
+  ["handlers", "copyHandlers"],
+  ["selector", "copySelector"],
+  ["position", "copyPosition"],
+  ["repeated", "copyRepeated"],
+  ["layout", "copyLayout"],
+  ["styles", "copyStyles"],
+  ["props", "copyProps"],
+  ["text", "copyText"],
+];
+
+// Mirror of renderCopyHeader in content.js — change both.
+function renderCopyHeader(fields) {
+  return fields
+    .map((f) => f.lines.map((l, i) => (i === 0 ? `# ${f.key}: ` : "#   ") + l).join("\n"))
+    .join("\n");
+}
+
+// Mirror of copyTrim in content.js — change both.
+function copyTrim(prefs, located) {
+  return (!located && prefs.copyHtmlFallback === "on") ? "full" : prefs.copyHtml;
+}
+
+// Mirror of fenceBlock in content.js — change both.
+function fenceBlock(prefs, body) {
+  if (!body) return "";
+  return prefs.copyFence === "on" ? "```\n" + body + "\n```" : body;
+}
+
+// Mirror of assemblePayload in content.js — change both.
+function assemblePayload(prefs, header, html) {
+  if (prefs.copyFence === "on") {
+    return fenceBlock(prefs, [header, html].filter(Boolean).join("\n"));
+  }
+  return [header, html && "```html\n" + html + "\n```"].filter(Boolean).join("\n\n");
+}
+
+// One element, as the extension would have found it: the fourth row of an
+// invoice table on a dev server. Every line is what the corresponding extractor
+// would return for it.
+const SAMPLE = {
+  source: ["src/components/InvoiceRow.tsx:18:4"],
+  component: ["InvoiceRow <- InvoiceTable <- BillingPage"],
+  page: ["localhost:5173/billing"],
+  anchor: ['data-testid="invoice-row" (12 matches - one per row)', 'text "INV-2043" (unique in page)'],
+  handlers: ["onClick=openInvoice"],
+  selector: ["main#app > table.invoices > tbody > tr:nth-child(4)"],
+  position: ["child 4 of 12 in InvoiceTable <tbody>", "after INV-2042, before INV-2044"],
+  repeated: [
+    "4 of 12 identical siblings - likely one template; change",
+    "the component or the data unless this instance alone is meant",
+  ],
+  layout: ["box 880x52 - display table-row", "parent display table-row-group"],
+  styles: ["invoices.css  tbody tr { border-bottom: 1px solid var(--line) }"],
+  props: ['id: "INV-2043" - amount: 124000 - status: "paid"'],
+  text: ["INV-2043 $1,240.00 View"],
+};
+
+const SAMPLE_HTML = {
+  open: '<tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors dark:border-slate-800" data-testid="invoice-row">',
+  close: "</tr>",
+  children: "3 children",
+  shape: [
+    '  td > div.flex.items-center.gap-2 > span.size-2.rounded-full.bg-emerald-500 + span.font-medium "INV-2043"',
+    '  td.px-4.py-3.text-right > span.tabular-nums "$1,240.00"',
+    '  td.px-4.py-3 > button.btn.btn-ghost "View" onClick={openInvoice}',
+  ],
+  full: {
+    3: [
+      '  <td class="px-4 py-3">',
+      '    <div class="flex items-center gap-2">',
+      '      <span class="size-2 rounded-full bg-emerald-500"></span>',
+      '      <span class="font-medium">INV-2043</span>',
+      "    </div>",
+      "  </td>",
+      '  <td class="px-4 py-3 text-right">',
+      '    <span class="tabular-nums">$1,240.00</span>',
+      "  </td>",
+      '  <td class="px-4 py-3">',
+      '    <button class="btn btn-ghost" onclick="openInvoice(id)">View</button>',
+      "  </td>",
+    ],
+    2: [
+      '  <td class="px-4 py-3">',
+      '    <div class="flex items-center gap-2"><!-- 2 children --></div>',
+      "  </td>",
+      '  <td class="px-4 py-3 text-right">',
+      '    <span class="tabular-nums">$1,240.00</span>',
+      "  </td>",
+      '  <td class="px-4 py-3">',
+      '    <button class="btn btn-ghost">View</button>',
+      "  </td>",
+    ],
+    1: [
+      '  <td class="px-4 py-3"><!-- 1 child --></td>',
+      '  <td class="px-4 py-3 text-right"><!-- 1 child --></td>',
+      '  <td class="px-4 py-3"><!-- 1 child --></td>',
+    ],
+  },
+};
+
+// Every field key, and the three bulk sets the preset row writes.
+//
+// "+ place" is deliberately the shipped default, so the row reads as a position
+// on a dial rather than three unrelated buttons. Props is in no preset: it is
+// the one field that can carry the page's own data into a prompt, and reaching
+// for a preset is not the same as choosing that.
+const FIELD_KEYS = COPY_ORDER.map(([, pref]) => pref);
+const PRESET_POINTER = ["copySource", "copyComponent", "copyPage", "copyAnchor", "copyHandlers", "copyText"];
+const PRESETS = {
+  pointer: PRESET_POINTER,
+  pointerplus: [...PRESET_POINTER, "copySelector", "copyPosition", "copyRepeated"],
+  all: [...PRESET_POINTER, "copySelector", "copyPosition", "copyRepeated", "copyLayout", "copyStyles"],
+};
+
 // Storage is only there when this page is loaded as the extension's options
 // page. Opened directly from disk it still renders and previews — it just can't
 // persist — which is what makes the page inspectable outside the extension.
@@ -88,16 +237,29 @@ const pillHost = document.getElementById("theme-pills");
 const savedAppearance = document.getElementById("saved-appearance");
 const savedMeasuring = document.getElementById("saved-measuring");
 const savedEditing = document.getElementById("saved-editing");
+const savedCopying = document.getElementById("saved-copying");
 const resetEl = document.getElementById("measure-reset");
+const copyResetEl = document.getElementById("copy-reset");
 const sheetEl = document.getElementById("measure-sheet");
 const editSheetEl = document.getElementById("edit-sheet");
+const copySheetEl = document.getElementById("copy-sheet");
 const editMockEl = document.getElementById("edit-mock");
+const payEl = document.getElementById("copy-pay");
+const payOutEl = document.getElementById("copy-out");
+const payCountEl = document.getElementById("copy-count");
+const payNoteEl = document.getElementById("copy-note");
+const depthRowEl = document.getElementById("row-depth");
 const railEl = document.getElementById("preview-rail");
 const vigEl = document.getElementById("measure-vig");
 const darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
 let current = DEFAULT_THEME;
 const savedTimers = new Map();
+
+// Whether the fixture's source pointer resolves. Page state, not a setting:
+// it is the one condition the payload cannot show on its own, and it decides
+// whether the HTML block falls back to the full subtree.
+let pointerResolves = true;
 
 // Same resolution the content script does, so the preview matches what the page
 // will actually render.
@@ -140,8 +302,118 @@ function paintTheme() {
   }
 }
 
-// Both sheets, so a control is painted wherever it lives.
-const controlHosts = [sheetEl, editSheetEl].filter(Boolean);
+// Which fields the fixture emits, in COPY_ORDER. A pointer that does not
+// resolve drops both of the fields that would have named it — that is what
+// "does not resolve" means, and it is what the HTML block reacts to.
+function payloadFields() {
+  const out = [];
+  for (const [key, pref] of COPY_ORDER) {
+    if (prefs[pref] !== "on") continue;
+    if (!pointerResolves && (key === "source" || key === "component")) continue;
+    out.push({ key, lines: SAMPLE[key] });
+  }
+  return out;
+}
+
+// The fixture's answer to buildCopyHtml, over literal strings rather than a
+// real subtree. The trim decision itself is the shared function, so the
+// fallback rule cannot be reproduced here slightly differently.
+function sampleHtml(located) {
+  const trim = copyTrim(prefs, located);
+  if (trim === "none") return "";
+  if (trim === "root") return `${SAMPLE_HTML.open} … ${SAMPLE_HTML.children} ${SAMPLE_HTML.close}`;
+  if (trim === "shape") return [SAMPLE_HTML.open, ...SAMPLE_HTML.shape, SAMPLE_HTML.close].join("\n");
+  return [SAMPLE_HTML.open, ...SAMPLE_HTML.full[prefs.copyDepth], SAMPLE_HTML.close].join("\n");
+}
+
+const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+const tint = (s) => s.replace(/(&lt;\/?[a-z][a-z0-9-]*)/g, '<span class="sp-pay-tag">$1</span>');
+// The wrapper fences are the only lines that are nothing but backticks, so
+// they can be found again after assembly rather than threaded through it.
+const markFences = (s) =>
+  s.replace(/^```(?:html)?$/gm, (m) => `<span data-field="fence" class="sp-pay-fence">${m}</span>`);
+
+// The payload, twice through the same assembly: once over plain strings, for
+// the text the clipboard would receive, and once over marked-up ones, so
+// hovering a row can light the line it writes. Running it twice rather than
+// deriving one from the other is what keeps the marked-up copy honest — both
+// are assemblePayload's output, so neither can drift into a different shape.
+function paintPayload() {
+  if (!payOutEl) return;
+  const fields = payloadFields();
+  const located = pointerResolves && (prefs.copySource === "on" || prefs.copyComponent === "on");
+  const html = sampleHtml(located);
+
+  const text = assemblePayload(prefs, renderCopyHeader(fields), html);
+  const marked = markFences(assemblePayload(
+    prefs,
+    fields.map((f) => `<span data-field="${f.key}">${esc(renderCopyHeader([f]))}</span>`).join("\n"),
+    html && `<span data-field="html">${tint(esc(html))}</span>`
+  ));
+
+  payOutEl.innerHTML = marked ||
+    '<span class="sp-pay-empty">Nothing to copy — every field is off, and the HTML block with them.</span>';
+  // innerHTML has just replaced the spans a spotlight was pointing at, so a
+  // switch flipped while hovering its own row keeps its line lit.
+  spotlightPayload(payHi);
+  payCountEl.textContent = text
+    ? `${text.length} chars · ~${Math.round(text.length / 3.7)} tokens`
+    : "";
+
+  // Two things the payload cannot say about itself.
+  if (!located && prefs.copyHtmlFallback === "on") {
+    payNoteEl.className = "sp-pay-note";
+    payNoteEl.innerHTML = "Nothing points at the source, so <b>the full subtree comes back</b>. " +
+      "With no file to open, it is the only concrete description of the element left in the payload.";
+  } else if (prefs.copyFence === "off" && !html) {
+    payNoteEl.className = "sp-pay-note sp-pay-warn";
+    payNoteEl.innerHTML = "Nothing delimits this block now — no fence, no code block. " +
+      "It will run straight into the sentence you wrote around it.";
+  } else {
+    payNoteEl.className = "sp-pay-note";
+    payNoteEl.textContent = "";
+  }
+}
+
+// Which line of the payload the pointer is currently over a control for.
+let payHi = null;
+
+function spotlightPayload(key) {
+  payHi = key;
+  if (!payOutEl) return;
+  for (const span of payOutEl.querySelectorAll("[data-field]")) {
+    span.classList.toggle("sp-pay-hi", Boolean(key) && span.dataset.field === key);
+  }
+}
+
+// Which preset the field switches currently spell, if any.
+function presetOf() {
+  for (const name of Object.keys(PRESETS)) {
+    const on = new Set(PRESETS[name]);
+    if (FIELD_KEYS.every((key) => (prefs[key] === "on") === on.has(key))) return name;
+  }
+  return null;
+}
+
+// One write and one announce for the whole set: twelve of each would be twelve
+// storage round trips and a note nobody could read.
+function applyPreset(name) {
+  const on = new Set(PRESETS[name]);
+  const payload = {};
+  for (const key of FIELD_KEYS) {
+    const value = on.has(key) ? "on" : "off";
+    if (prefs[key] === value) continue;
+    prefs[key] = value;
+    payload[key] = value;
+  }
+  paintPrefs();
+  if (Object.keys(payload).length > 0) store.set(payload);
+  const label = copySheetEl?.querySelector(`[data-preset="${name}"]`)?.textContent || name;
+  announce(savedCopying, `Fields · ${label}`);
+}
+
+// All three sheets, so a control is painted wherever it lives.
+const controlHosts = [sheetEl, editSheetEl, copySheetEl].filter(Boolean);
 const eachControl = (selector, fn) => {
   for (const host of controlHosts) for (const node of host.querySelectorAll(selector)) fn(node);
 };
@@ -164,9 +436,28 @@ function paintPrefs() {
     editMockEl.dataset.groups = prefs.editGroups;
     editMockEl.dataset.tokens = prefs.editTokenControls;
   }
+  // The preset row is not a stored setting — it reports which bulk set the
+  // field switches currently spell, and nothing at all once they spell none.
+  const preset = presetOf();
+  for (const btn of copySheetEl?.querySelectorAll("[data-preset]") || []) {
+    btn.setAttribute("aria-pressed", String(btn.dataset.preset === preset));
+  }
+  // Depth only means anything for the full subtree; the other three variants
+  // have no depth to choose. Hidden rather than disabled — there is no question
+  // being asked, so there is nothing to grey out.
+  if (depthRowEl) depthRowEl.hidden = prefs.copyHtml !== "full";
+  for (const btn of payEl?.querySelectorAll("[data-src]") || []) {
+    btn.setAttribute("aria-checked", String((btn.dataset.src === "1") === pointerResolves));
+  }
+
   // Nothing to reset when everything already sits at its default.
   resetEl.disabled = Object.keys(REDLINE_PREFS)
     .every((key) => prefs[key] === REDLINE_PREFS[key][0]);
+  if (copyResetEl) {
+    copyResetEl.disabled = Object.keys(COPY_PREFS)
+      .every((key) => prefs[key] === COPY_PREFS[key][0]);
+  }
+  paintPayload();
   vigEl.dataset.placement = prefs.redlinePillPlacement;
   vigEl.dataset.guides = prefs.redlineGuides;
   vigEl.dataset.quiet = prefs.redlineQuietOverlay;
@@ -220,13 +511,21 @@ function announceText(key, value) {
   return `${label} · ${valueText}`;
 }
 
+// Feedback belongs to the section the control lives in, so it is read where it
+// was clicked.
+function noteFor(key) {
+  if (key in EDIT_PREFS) return savedEditing;
+  if (key in COPY_PREFS) return savedCopying;
+  return savedMeasuring;
+}
+
 function setPref(key, value) {
   const roster = ALL_PREFS[key];
   if (!roster || !roster.includes(value)) return;
   prefs[key] = value;
   paintPrefs();
   store.set({ [key]: value });
-  announce(key in EDIT_PREFS ? savedEditing : savedMeasuring, announceText(key, value));
+  announce(noteFor(key), announceText(key, value));
 }
 
 renderPills();
@@ -248,8 +547,11 @@ pillHost.addEventListener("keydown", (e) => {
   pillHost.querySelector(`.sp-pill[data-theme="${next}"]`)?.focus();
 });
 
-// The measuring sheet: segmented radios write their value, switches toggle.
+// The sheets: presets write a whole set, segmented radios write their value,
+// switches toggle.
 for (const host of controlHosts) host.addEventListener("click", (e) => {
+  const preset = e.target.closest("[data-preset]");
+  if (preset) return applyPreset(preset.dataset.preset);
   const radio = e.target.closest("[data-set]");
   if (radio) return setPref(radio.dataset.set, radio.dataset.val);
   const sw = e.target.closest("[data-sw]");
@@ -259,15 +561,27 @@ for (const host of controlHosts) host.addEventListener("click", (e) => {
   }
 });
 
-resetEl.addEventListener("click", () => {
+function restore(roster, note) {
   const payload = {};
-  for (const key of Object.keys(REDLINE_PREFS)) {
-    prefs[key] = REDLINE_PREFS[key][0];
+  for (const key of Object.keys(roster)) {
+    prefs[key] = roster[key][0];
     payload[key] = prefs[key];
   }
   paintPrefs();
   store.set(payload);
-  announce(savedMeasuring, "defaults restored");
+  announce(note, "defaults restored");
+}
+
+resetEl.addEventListener("click", () => restore(REDLINE_PREFS, savedMeasuring));
+copyResetEl?.addEventListener("click", () => restore(COPY_PREFS, savedCopying));
+
+// The resolved chips are the preview's own state — nothing is stored, and the
+// note under the payload explains what flipping them proves.
+payEl?.addEventListener("click", (e) => {
+  const chip = e.target.closest("[data-src]");
+  if (!chip) return;
+  pointerResolves = chip.dataset.src === "1";
+  paintPrefs();
 });
 
 // Arrows walk the roster in the direction pressed and wrap at the ends — the
@@ -305,12 +619,17 @@ for (const zone of document.querySelectorAll("[data-focus]")) {
 // Hovering or focusing into a spec row spotlights the part of the vignette it
 // controls — keyboard users get the same lesson pointer users do.
 for (const row of document.querySelectorAll(".sp-spec")) {
-  // Each row spotlights inside whichever preview its section owns.
+  // Each row spotlights inside whichever preview its section owns. The copy
+  // payload is text rather than drawn geometry, so it lights up the line the
+  // row writes instead of taking a data-hi of its own.
+  const inCopy = Boolean(row.closest('[data-focus="copy"]'));
   const target = row.closest('[data-focus="edit"]') ? editMockEl : vigEl;
   const spotlight = () => {
+    if (inCopy) return spotlightPayload(row.dataset.hi || null);
     if (target) target.dataset.hi = row.dataset.hi;
   };
   const unspot = () => {
+    if (inCopy) return spotlightPayload(null);
     if (target) delete target.dataset.hi;
   };
   row.addEventListener("pointerenter", spotlight);

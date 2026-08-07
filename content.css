@@ -311,13 +311,35 @@
 
 /* Dashed via a border, not a background image: horizontal runs dash through
    border-top and vertical through border-left, which is exactly how the
-   redline guides do it and keeps the dash phase consistent between them. */
+   redline guides do it and keeps the dash phase consistent between them.
+
+   The weight is where the two part company. A redline guide is an aside — it
+   extends an edge so a measurement has something to measure against, and it
+   should stay quieter than the number it serves. The run is the only thing
+   saying which element this panel edits, and at 1px against 55% alpha it was
+   the faintest mark on screen while being the one carrying the meaning. At 2px
+   it matches the ticks it lands on, so the tether reads as one object at one
+   weight rather than as two solid stubs joined by a hairline.
+
+   2px is GEOMETRY.tetherThick, which the solver uses for the ticks. It cannot
+   be read from here — the tether geometry is pure and swept in
+   test/tether.mjs, with no DOM to ask — so this is a transcription. Change one,
+   change both, and the negative margin below with it.
+
+   The margin keeps the promise the geometry makes. A border grows inward from
+   the element's edge, so a run placed exactly on the tick's centre would paint
+   entirely to one side of it and land half its own weight low — the thicker the
+   stroke, the further off. Pulling back half the weight puts the stroke's
+   centreline back on the geometric path, which is what "the run lands on the
+   middle of the tick" has always meant. */
 #ccp-tether .ccp-tether-seg-h {
-  border-top: 1px dashed rgb(from var(--ccp-accent) r g b / 0.55);
+  border-top: 2px dashed rgb(from var(--ccp-accent) r g b / 0.55);
+  margin-top: -1px;
 }
 
 #ccp-tether .ccp-tether-seg-v {
-  border-left: 1px dashed rgb(from var(--ccp-accent) r g b / 0.55);
+  border-left: 2px dashed rgb(from var(--ccp-accent) r g b / 0.55);
+  margin-left: -1px;
 }
 
 /* Loud: a row is under the pointer, a gesture is open, or a value just landed.
@@ -1297,12 +1319,18 @@
    showing a hex — the token is what the source contains. */
 #ccp-edit-panel .ccp-edit-hex.ccp-edit-token { color: var(--ccp-accent); }
 
-/* ===== Edit Panel — colour picker ===== */
-#ccp-edit-panel .ccp-edit-pop {
+/* ===== Colour picker =====
+   Its own root, not a child of the panel. Inside it, it was clipped by the
+   panel's overflow, locked to the panel's width, and painted over the very rows
+   it was tuning. Viewport-fixed and placed beside the panel by
+   positionColorPicker(); it stacks above the panel by being appended after it,
+   since --ccp-z-chrome is already the highest z-index there is. */
+#ccp-color-picker {
   all: initial;
   box-sizing: border-box;
-  position: absolute;
-  z-index: 1;
+  position: fixed;
+  z-index: var(--ccp-z-chrome);
+  width: 216px;
   display: flex;
   flex-direction: column;
   gap: var(--ccp-gap-base);
@@ -1314,14 +1342,54 @@
   font-family: var(--ccp-font);
 }
 
-#ccp-edit-panel .ccp-edit-palette {
+/* The picker no longer sits under the row it edits, so it names its property
+   and carries the close affordance the nested version never had. */
+#ccp-color-picker .ccp-edit-pophead {
+  all: initial;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ccp-gap-base);
+}
+
+#ccp-color-picker .ccp-edit-poptitle {
+  all: initial;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ccp-text-dim);
+  font: var(--ccp-weight-medium) var(--ccp-text-sm)/1.4 var(--ccp-font);
+}
+
+#ccp-color-picker .ccp-edit-popclose {
+  all: initial;
+  box-sizing: border-box;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--ccp-radius-xs);
+  background: transparent;
+  color: var(--ccp-text-dim);
+  font: var(--ccp-text-base)/1 var(--ccp-font);
+  cursor: pointer;
+}
+
+#ccp-color-picker .ccp-edit-popclose:hover {
+  background: rgb(from var(--ccp-text) r g b / 0.08);
+  color: var(--ccp-text);
+}
+
+#ccp-color-picker .ccp-edit-palette {
   all: initial;
   display: flex;
   flex-wrap: wrap;
   gap: var(--ccp-gap-pair);
 }
 
-#ccp-edit-panel .ccp-edit-pal {
+#ccp-color-picker .ccp-edit-pal {
   all: initial;
   box-sizing: border-box;
   width: 14px;
@@ -1332,11 +1400,50 @@
   cursor: pointer;
 }
 
-#ccp-edit-panel .ccp-edit-pal:hover { border-color: var(--ccp-accent); }
+#ccp-color-picker .ccp-edit-pal:hover { border-color: var(--ccp-accent); }
+
+#ccp-color-picker .ccp-edit-pal:focus-visible {
+  outline: 1px solid var(--ccp-accent);
+  outline-offset: 1px;
+}
+
+/* Says what the swatch row is, and what the swatch under the pointer is called.
+   One line, always occupied — an empty-until-hovered caption would resize the
+   picker on approach and move the target away from the pointer. */
+#ccp-color-picker .ccp-edit-palcap {
+  all: initial;
+  display: flex;
+  align-items: baseline;
+  gap: var(--ccp-gap-pair);
+  min-width: 0;
+  /* The name is the part worth truncating; the value is short and fixed. */
+  overflow: hidden;
+  white-space: nowrap;
+  font: var(--ccp-text-sm)/1.4 var(--ccp-font);
+}
+
+#ccp-color-picker .ccp-edit-palcap b {
+  all: initial;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ccp-accent);
+  font: var(--ccp-weight-medium) var(--ccp-text-sm)/1.4 var(--ccp-font);
+}
+
+#ccp-color-picker .ccp-edit-palcap span {
+  all: initial;
+  flex: none;
+  color: var(--ccp-text-dim);
+  font: var(--ccp-text-sm)/1.4 var(--ccp-font);
+  font-variant-numeric: tabular-nums;
+}
 
 /* Saturation to the right, value downward, over the pure hue. The white and
    black stops are the colour space, not a theme choice — see tokens.css. */
-#ccp-edit-panel .ccp-edit-sat {
+#ccp-color-picker .ccp-edit-sat {
   all: initial;
   box-sizing: border-box;
   position: relative;
@@ -1351,15 +1458,15 @@
   touch-action: none;
 }
 
-#ccp-edit-panel .ccp-edit-rails {
+#ccp-color-picker .ccp-edit-rails {
   all: initial;
   display: flex;
   flex-direction: column;
   gap: var(--ccp-gap-base);
 }
 
-#ccp-edit-panel .ccp-edit-hue,
-#ccp-edit-panel .ccp-edit-alpha {
+#ccp-color-picker .ccp-edit-hue,
+#ccp-color-picker .ccp-edit-alpha {
   all: initial;
   box-sizing: border-box;
   position: relative;
@@ -1369,9 +1476,9 @@
   touch-action: none;
 }
 
-#ccp-edit-panel .ccp-edit-hue { background: var(--ccp-hue-ramp); }
+#ccp-color-picker .ccp-edit-hue { background: var(--ccp-hue-ramp); }
 
-#ccp-edit-panel .ccp-edit-alpha {
+#ccp-color-picker .ccp-edit-alpha {
   background-color: var(--ccp-checker);
   background-image:
     linear-gradient(45deg, var(--ccp-mask) 25%, transparent 25% 75%, var(--ccp-mask) 75%),
@@ -1381,7 +1488,7 @@
   overflow: hidden;
 }
 
-#ccp-edit-panel .ccp-edit-alpha span {
+#ccp-color-picker .ccp-edit-alpha span {
   all: initial;
   display: block;
   position: absolute;
@@ -1390,8 +1497,8 @@
   /* background-image is the ramp to the picked colour, written by paint() */
 }
 
-#ccp-edit-panel .ccp-edit-sat-dot,
-#ccp-edit-panel .ccp-edit-rail-dot {
+#ccp-color-picker .ccp-edit-sat-dot,
+#ccp-color-picker .ccp-edit-rail-dot {
   position: absolute;
   width: 10px;
   height: 10px;
@@ -1404,16 +1511,16 @@
 
 /* The square's dot is filled with the colour under it; the rail dots are rings
    over a ramp that already shows the value, so they stay hollow. */
-#ccp-edit-panel .ccp-edit-rail-dot { top: 50%; background: transparent; }
+#ccp-color-picker .ccp-edit-rail-dot { top: 50%; background: transparent; }
 
-#ccp-edit-panel .ccp-edit-popfoot {
+#ccp-color-picker .ccp-edit-popfoot {
   all: initial;
   display: flex;
   align-items: center;
   gap: var(--ccp-gap-base);
 }
 
-#ccp-edit-panel .ccp-edit-hexin {
+#ccp-color-picker .ccp-edit-hexin {
   all: initial;
   box-sizing: border-box;
   flex: 1;
@@ -1427,9 +1534,9 @@
   font-variant-numeric: tabular-nums;
 }
 
-#ccp-edit-panel .ccp-edit-hexin:focus { border-color: var(--ccp-accent); }
+#ccp-color-picker .ccp-edit-hexin:focus { border-color: var(--ccp-accent); }
 
-#ccp-edit-panel .ccp-edit-drop {
+#ccp-color-picker .ccp-edit-drop {
   all: initial;
   box-sizing: border-box;
   flex: none;
@@ -1446,7 +1553,7 @@
   cursor: pointer;
 }
 
-#ccp-edit-panel .ccp-edit-drop:hover { border-color: var(--ccp-accent); color: var(--ccp-accent); }
+#ccp-color-picker .ccp-edit-drop:hover { border-color: var(--ccp-accent); color: var(--ccp-accent); }
 
 /* ===== Settings Button =====
    Viewport chrome, not selection chrome: mounted by activate() and pinned to the
@@ -1572,6 +1679,14 @@
   cursor: grabbing !important;
 }
 
+/* The picker is chrome, so its inert parts — the title, the padding — read as
+   chrome rather than inheriting the page's crosshair. Everything below that is
+   actually operable overrides this on specificity. */
+#ccp-color-picker,
+#ccp-color-picker * {
+  cursor: default !important;
+}
+
 #ccp-edit-panel .ccp-edit-act,
 #ccp-edit-panel .ccp-edit-act *,
 #ccp-edit-panel .ccp-edit-auto,
@@ -1582,25 +1697,26 @@
 #ccp-edit-panel .ccp-edit-add,
 #ccp-edit-panel .ccp-edit-swatch,
 #ccp-edit-panel .ccp-edit-swatch *,
-#ccp-edit-panel .ccp-edit-pal,
-#ccp-edit-panel .ccp-edit-drop {
+#ccp-color-picker .ccp-edit-pal,
+#ccp-color-picker .ccp-edit-drop,
+#ccp-color-picker .ccp-edit-popclose {
   cursor: pointer !important;
 }
 
 /* The picker's surfaces are crosshair-and-drag, not click targets. */
-#ccp-edit-panel .ccp-edit-sat,
-#ccp-edit-panel .ccp-edit-sat * {
+#ccp-color-picker .ccp-edit-sat,
+#ccp-color-picker .ccp-edit-sat * {
   cursor: crosshair !important;
 }
 
-#ccp-edit-panel .ccp-edit-hue,
-#ccp-edit-panel .ccp-edit-hue *,
-#ccp-edit-panel .ccp-edit-alpha,
-#ccp-edit-panel .ccp-edit-alpha * {
+#ccp-color-picker .ccp-edit-hue,
+#ccp-color-picker .ccp-edit-hue *,
+#ccp-color-picker .ccp-edit-alpha,
+#ccp-color-picker .ccp-edit-alpha * {
   cursor: ew-resize !important;
 }
 
-#ccp-edit-panel .ccp-edit-hexin { cursor: text !important; }
+#ccp-color-picker .ccp-edit-hexin { cursor: text !important; }
 
 /* The value chip announces that it can be dragged; the field inside it stays
    a text cursor, because clicking it is how you type instead. */

@@ -38,14 +38,20 @@
   let editPanelEl = null;
   let editPanelPos = null;
   let editPopoverEl = null;
+  // Which control the open picker belongs to. The picker is its own root now, so
+  // it cannot be found by walking the panel — and the swatch that opened it is
+  // destroyed on every re-render of the rows, so the anchor has to be re-found
+  // by property rather than held onto.
+  let editPopoverProp = null;
   let editGesture = null;
   let editFlashTimer = null;
   let tokenIndex = null;
   let editTokenFamilies = null;
   // Strong element references, deliberately: the undo stack has to hold them
-  // anyway, edits outlive deselection, and a page reload is what clears the
-  // world. Every path that touches a record re-checks el.isConnected, since a
-  // framework can replace a node out from under us.
+  // anyway, and edits outlive deselection — they are cleared by switching the
+  // extension off, or by a page reload. Every path that touches a record
+  // re-checks el.isConnected, since a framework can replace a node out from
+  // under us.
   const editRegistry = new Map();
   const undoStack = [];
   const redoStack = [];
@@ -66,6 +72,8 @@
     "ccp-settings-btn",
     "ccp-toast",
     "ccp-edit-panel",
+    "ccp-color-picker",
+    "ccp-probe-cell",
   ];
   const OUR_CHROME = OUR_ROOTS.map((id) => `#${id}`).join(",");
   const OUR_PREFIX = "ccp-";
@@ -273,6 +281,66 @@
     if (touched && editing) renderEditControls();
   });
 
+  // ===== Copy Preferences =====
+  // Same shape again: flat keys, default first, unrecognised values fall back
+  // silently. What is different here is that the defaults are not a taste — they
+  // are the payload this tool shipped before the section existed, reproduced
+  // byte for byte. Nobody's clipboard changes until they open the settings page.
+  //
+  // Two axes. Which header fields ride along (the first twelve keys), and how
+  // much of the rendered subtree comes with them (copyHtml and its two
+  // qualifiers). The nine field keys default on because buildPointerHeader
+  // emitted all nine unconditionally; the three diagnosis fields default off
+  // because they did not exist.
+  //
+  // copyHtml: "root" plus copyHtmlFallback: "on" is exactly the rule the code
+  // used to hard-wire — the root tag when a source or component resolved, the
+  // full subtree when neither did. Splitting the fallback out of the choice is
+  // deliberate: with it welded on, turning `source` and `component` off to slim
+  // a payload would silently balloon the HTML block instead.
+  const COPY_PREFS = {
+    copySource: ["on", "off"],
+    copyComponent: ["on", "off"],
+    copyPage: ["on", "off"],
+    copyAnchor: ["on", "off"],
+    copyHandlers: ["on", "off"],
+    copySelector: ["on", "off"],
+    copyPosition: ["on", "off"],
+    copyRepeated: ["on", "off"],
+    copyText: ["on", "off"],
+    copyLayout: ["off", "on"],
+    copyStyles: ["off", "on"],
+    copyProps: ["off", "on"],
+    copyHtml: ["root", "shape", "full", "none"],
+    copyDepth: ["3", "2", "1"],
+    copyHtmlFallback: ["on", "off"],
+    copyFence: ["on", "off"],
+  };
+  const copyPrefs = {};
+  for (const key of Object.keys(COPY_PREFS)) copyPrefs[key] = COPY_PREFS[key][0];
+
+  function setCopyPref(key, value) {
+    const roster = COPY_PREFS[key];
+    if (roster) copyPrefs[key] = roster.includes(value) ? value : roster[0];
+  }
+
+  chrome.storage?.local.get(Object.keys(COPY_PREFS), (stored) => {
+    if (!stored) return;
+    for (const key of Object.keys(COPY_PREFS)) {
+      if (key in stored) setCopyPref(key, stored[key]);
+    }
+  });
+
+  // The simplest of the three listeners: nothing on screen is painted from these.
+  // They are read at the moment a copy button is pressed, so keeping the object
+  // current is the whole job — the next copy is already the new shape.
+  chrome.storage?.onChanged.addListener((changes, area) => {
+    if (area !== "local") return;
+    for (const key of Object.keys(COPY_PREFS)) {
+      if (changes[key]) setCopyPref(key, changes[key].newValue);
+    }
+  });
+
   // The quiet-overlay preference paints entirely from CSS; this class is its
   // only JS surface. Held low (removed) whenever redline itself is off.
   function applyRedlineQuiet() {
@@ -401,6 +469,11 @@
     return out.trim().replace(/\s+/g, " ");
   }
 
+  // The relevance rule for the typography controls that only make sense on the
+  // element the text actually lives on. Named so EDIT_GROUPS reads as a
+  // statement about the element rather than as a string-length check.
+  const ownsText = (el) => getDirectText(el).length > 0;
+
   // Read cursor without the probe-mode plain-arrow override.
   // Temporarily strips the override class for a synchronous style read; no paint occurs.
   function getRealCursor(el) {
@@ -443,9 +516,26 @@
 
   function deactivate() {
     probeActive = false;
-    stopRedline();
+
+    // Through deselectElement rather than nulling selectedElement here: that is
+    // the one place carrying the invariant that ending a selection also ends
+    // Edit Mode and redline. Taking the shortcut is exactly what used to strand
+    // the panel on screen with `editing` still true — and with it the five
+    // capture-phase pointer guards, which went on swallowing every click on the
+    // page until a reload, and made the next activation unable to select
+    // anything. It has to run before removeOverlay(): exitEditMode() finishes by
+    // repainting the overlay and the gear, and both want their nodes still there.
+    deselectElement();
+
+    // Switching off leaves the page as it was found, so nothing the panel wrote
+    // outlives the tool. The history goes with it — otherwise switching back on
+    // and pressing undo would reinstate the edits just reverted, resetAllEdits()
+    // having landed as one more undoable batch.
+    resetAllEdits();
+    undoStack.length = 0;
+    redoStack.length = 0;
+
     hoveredElement = null;
-    selectedElement = null;
     lastMouseX = -1;
     lastMouseY = -1;
     document.documentElement.classList.remove("ccp-probe-active");
@@ -467,6 +557,7 @@
     removeOverlay();
     removeToolbar();
     removeSettingsButton();
+    removeToast();
   }
 
   // ===== Settings Button =====
@@ -531,7 +622,8 @@
     const hushed = redlining || editing;
     settingsButtonEl.classList.toggle(
       "ccp-yielded",
-      (!hushed && (hit(labelEl) || hit(toolbarEl))) || (editing && hit(editPanelEl))
+      (!hushed && (hit(labelEl) || hit(toolbarEl))) ||
+        (editing && (hit(editPanelEl) || hit(editPopoverEl)))
     );
   }
 
@@ -1750,16 +1842,6 @@
   // scrub. The pure half is transcribed into test/edit-tokens.mjs — change it
   // there and change it here.
 
-  // Scale steps a family name can end in. Numeric tails (500, 1.5) are handled
-  // separately; these are the word-shaped ones, ordered longest-first so "2xl"
-  // is not read as the number 2.
-  const SCALE_WORDS = [
-    "3xs", "2xs", "xs", "sm", "md", "base", "lg", "xl", "2xl", "3xl", "4xl",
-    "5xl", "6xl", "7xl", "8xl", "9xl",
-    "none", "full", "tight", "snug", "normal", "relaxed", "loose",
-    "thin", "light", "regular", "medium", "semibold", "bold", "extrabold", "black",
-  ];
-
   // "16px" → 16. rem/em resolve against the roots the caller measured. Anything
   // whose value depends on layout (%, calc, nested var, auto) is null: it cannot
   // be compared against a computed pixel value, so it never becomes a token.
@@ -1841,9 +1923,16 @@
 
   // "text-lg" → { prefix: "text", step: "lg" }, "--space-4" → { prefix:
   // "--space", step: "4" }, "brand" → null. The step is the last dash-separated
-  // segment when it looks like a scale position; everything before it names the
-  // family. Tailwind's fractional steps (p-1.5) and numeric ramps (blue-500)
-  // both land in the numeric branch.
+  // segment; everything before it names the family.
+  //
+  // The step used to have to *look* like a scale position — numeric, or one of
+  // thirty-one words we had written down. That was a guess about naming, and it
+  // was wrong about most of the field: --radius, --color-primary, --space-small,
+  // --gap-xxs and --spacingHorizontalM were all invisible, and the guess failed
+  // silently, so a page full of tokens simply reported none. What makes a scale
+  // a scale is having steps you can walk, not being named in a vocabulary we
+  // anticipated — so the vocabulary is gone and groupTokenFamilies decides, by
+  // looking at the values.
   function splitTokenName(name) {
     if (typeof name !== "string") return null;
     const cut = name.lastIndexOf("-");
@@ -1852,14 +1941,19 @@
     const step = name.slice(cut + 1);
     const prefix = name.slice(0, cut);
     if (!step) return null;
-    const numeric = /^\d+(\.\d+)?$/.test(step);
-    if (!numeric && !SCALE_WORDS.includes(step.toLowerCase())) return null;
     return { prefix, step };
   }
 
   // [{ name, resolved }] → [{ prefix, members: [{ name, step, resolved }] }]
-  // sorted by resolved value. Families of one are dropped: a scale you cannot
-  // step along is not a scale, and offering a stepper for it would be a lie.
+  // sorted by resolved value.
+  //
+  // Two members at two different values is the whole bar. A family of one is
+  // dropped, because a scale you cannot step along is not a scale — and so is a
+  // family whose members all resolve to the same number, which is the same
+  // statement made in values rather than in names: --gap-sm and --gap-md both
+  // at 8px offer a stepper with nowhere to go. Aliases collapse onto the rung
+  // they share rather than sitting on it twice, so one press of the stepper
+  // always moves the page.
   function groupTokenFamilies(entries) {
     const byPrefix = new Map();
     for (const e of entries || []) {
@@ -1873,11 +1967,14 @@
     const families = [];
     for (const [prefix, members] of byPrefix) {
       // Same name twice (two sheets, same token) keeps the first resolution.
-      const seen = new Set();
-      const unique = members.filter((m) => (seen.has(m.name) ? false : seen.add(m.name)));
-      if (unique.length < 2) continue;
+      const seenName = new Set();
+      const unique = members.filter((m) => (seenName.has(m.name) ? false : seenName.add(m.name)));
       unique.sort((a, b) => a.resolved - b.resolved || a.name.localeCompare(b.name));
-      families.push({ prefix, members: unique });
+      // One rung per distinct value; the first name at that value wins it.
+      const seenValue = new Set();
+      const rungs = unique.filter((m) => (seenValue.has(m.resolved) ? false : seenValue.add(m.resolved)));
+      if (rungs.length < 2) continue;
+      families.push({ prefix, members: rungs });
     }
     families.sort((a, b) => a.prefix.localeCompare(b.prefix));
     return families;
@@ -1937,11 +2034,194 @@
     "row-gap": "gap", "column-gap": "gap",
   };
 
+  // The same relation read the other way, and it is not decoration.
+  //
+  // CSSOM lists `padding: 16px` as its four longhands, so a utility rule like
+  // `.p-4 { padding: 1rem }` is indexed under `padding-top` and never under
+  // `padding` — while the linked padding control asks about `padding`. The two
+  // could not meet, so no shorthand-setting utility class was ever detected or
+  // ever formed a family: every Tailwind spacing class, silently. `.text-lg`
+  // worked only because font-size is already a longhand, which is what made
+  // the gap look like partial support rather than a missing edge.
+  const FIRST_LONGHAND_OF = {
+    padding: "padding-top",
+    margin: "margin-top",
+    "border-radius": "border-top-left-radius",
+    "border-width": "border-top-width",
+    gap: "row-gap",
+  };
+
   // Walking every rule of a large site is the one genuinely expensive thing
   // Edit Mode does. Past this many rules the token layer switches itself off
   // rather than stalling the panel — raw scrubbing still works, so the cost of
   // giving up is small and the cost of jank is not.
   const TOKEN_RULE_BUDGET = 50000;
+
+  // One traversal of everything the page has to say about style, offered to a
+  // visitor. Two callers want it for different reasons — the token index, which
+  // reads every rule once per Edit Mode entry, and the copy payload's `styles:`
+  // field, which wants only the handful that match one element and is built
+  // outside Edit Mode, when tokenIndex is null. The walk itself is the same
+  // walk, and it is the part with the sharp edges: cross-origin sheets that
+  // throw, conditions that do not currently apply, nesting, constructed sheets.
+  //
+  // `visit(rule, order, sheet)` sees each style rule in document order. Return
+  // false to stop the whole traversal — how a caller that only needs a few
+  // matches avoids paying for a large site.
+  // Stylesheet text the service worker fetched for us, by href. Populated by
+  // topUpBlockedSheets() and consulted by the walk, so a sheet the page cannot
+  // read is walked from a constructed copy instead of counted as a loss.
+  const fetchedSheets = new Map();
+
+  function walkPageRules(visit, budget) {
+    const stats = {
+      disabled: false, stopped: false, blocked: 0, readable: 0, offered: 0,
+      blockedHrefs: [],
+    };
+
+    let order = 0;
+    const seenSheets = new Set();
+    const walk = (rules, sheet, layered) => {
+      for (const rule of rules) {
+        if (stats.stopped) return;
+        if (order > budget) { stats.disabled = true; return; }
+
+        // An @import is a door, not a group: CSSImportRule carries `.styleSheet`
+        // and no `.cssRules`, so the recursion below walks straight past it and
+        // the imported file is never read. A design system behind one entry
+        // stylesheet — an extremely ordinary arrangement — was therefore
+        // completely invisible to the class and winning-declaration halves.
+        if (isImportRule(rule)) {
+          let imported = null;
+          try { imported = rule.styleSheet; } catch { imported = null; }
+          if (!imported) { stats.blocked++; continue; }
+          // A sheet can be imported from more than one place; walking it twice
+          // would double every rule's weight in the source-order comparison.
+          if (seenSheets.has(imported)) continue;
+          seenSheets.add(imported);
+          if (isOurs.styleSheet(imported)) continue;
+          try {
+            if (imported.cssRules) {
+              stats.readable++;
+              stats.offered += imported.cssRules.length;
+              walk(imported.cssRules, imported, layered);
+            }
+          } catch { stats.blocked++; }
+          continue;
+        }
+
+        // Conditional groups: only descend into conditions that currently
+        // apply, so a token is never claimed from a media query that is not in
+        // effect. Detected by type rather than by "has cssRules" — see below.
+        if (isMediaRule(rule)) {
+          let matches = true;
+          try { matches = window.matchMedia(rule.conditionText).matches; } catch { matches = false; }
+          if (!matches) continue;
+        } else if (isSupportsRule(rule)) {
+          try { if (!CSS.supports(rule.conditionText)) continue; } catch { continue; }
+        } else if (isContainerRule(rule)) {
+          // A container query is a condition like the other two, but there is
+          // no way to ask whether it currently holds without knowing which
+          // element is being queried against. It used to be descended
+          // unconditionally, which indexed declarations that are not in effect
+          // as though they were. Skipping is the safer error: a token we did
+          // not offer is a stepper that is missing, and a token claimed from a
+          // rule that is not applying is a delta line that is wrong.
+          continue;
+        }
+
+        // Everything inside an @layer loses to everything outside one, at equal
+        // importance — so the flag travels down with the walk and settles ties
+        // in findWinningDeclaration. Ordering *between* named layers needs the
+        // @layer statement that declares them, which is not modelled: this
+        // distinguishes layered from unlayered and no finer.
+        if (isLayerBlockRule(rule)) {
+          if (rule.cssRules && rule.cssRules.length) walk(rule.cssRules, sheet, true);
+          continue;
+        }
+
+        // A style rule carries declarations, and — since CSS Nesting shipped —
+        // may carry child rules as well. So this is not an either/or, and it
+        // cannot be decided by testing `rule.cssRules` for truthiness: every
+        // CSSStyleRule now has a cssRules list, empty or not. Reading that as
+        // "this is a group" skips the rule's own declarations, which quietly
+        // empties the whole token index and takes the !important escalation
+        // down with it, since both read from index.rules.
+        if (rule.selectorText && rule.style) {
+          order++;
+          if (visit(rule, order, sheet, Boolean(layered)) === false) { stats.stopped = true; return; }
+        }
+
+        if (rule.cssRules && rule.cssRules.length) walk(rule.cssRules, sheet, layered);
+      }
+    };
+
+    // Shadow roots carry their own stylesheets, which are not in
+    // document.styleSheets and never were walked — so a page built out of web
+    // components offered nothing, and did not even count as blocked. Only open
+    // roots can be reached; a closed one is genuinely private.
+    const shadowSheets = [];
+    try {
+      const treeWalker = document.createTreeWalker(document.documentElement, NodeFilter.SHOW_ELEMENT);
+      for (let node = treeWalker.currentNode; node; node = treeWalker.nextNode()) {
+        const root = node.shadowRoot;
+        if (!root) continue;
+        for (const sheet of Array.from(root.styleSheets || [])) shadowSheets.push(sheet);
+        for (const sheet of Array.from(root.adoptedStyleSheets || [])) shadowSheets.push(sheet);
+      }
+    } catch { /* a hostile document is a reason to collect less, not to throw */ }
+
+    for (const sheet of Array.from(document.styleSheets)) {
+      // Our own stylesheets are injected into every page we run on, and their
+      // tokens are the tool's, not the page's. Offering --ccp-accent as a fill
+      // for someone's card would be inventing a design system they never had.
+      if (isOurs.styleSheet(sheet)) continue;
+      let rules = null;
+      // Cross-origin sheets without CORS throw on access. Nothing can be done
+      // about it, but it is worth counting: it is the difference between "this
+      // page has no design tokens" and "this page's design tokens are behind a
+      // door", and the panel says so.
+      try { rules = sheet.cssRules; } catch { rules = null; }
+      // Blocked, but perhaps not for long: if the worker has already fetched
+      // this href, walk the copy in its place. Substituting here rather than
+      // appending afterwards is what keeps source order intact — the rules land
+      // at the position the real sheet occupies, which is what the cascade
+      // comparison in findWinningDeclaration reads.
+      if (!rules) {
+        const substitute = sheet.href && fetchedSheets.get(sheet.href);
+        if (substitute) {
+          try { rules = substitute.cssRules; } catch { rules = null; }
+        }
+        if (!rules) {
+          stats.blocked++;
+          if (sheet.href) stats.blockedHrefs.push(sheet.href);
+          continue;
+        }
+      }
+      if (rules) {
+        stats.readable++;
+        stats.offered += rules.length;
+        walk(rules, sheet);
+      }
+      if (stats.disabled || stats.stopped) break;
+    }
+    // Constructed sheets (CSS-in-JS runtimes) live outside document.styleSheets,
+    // and so does everything inside an open shadow root.
+    for (const sheet of Array.from(document.adoptedStyleSheets || []).concat(shadowSheets)) {
+      if (isOurs.styleSheet(sheet) || seenSheets.has(sheet)) continue;
+      seenSheets.add(sheet);
+      try {
+        if (sheet.cssRules) {
+          stats.readable++;
+          stats.offered += sheet.cssRules.length;
+          walk(sheet.cssRules, sheet, false);
+        }
+      } catch { stats.blocked++; }
+      if (stats.disabled || stats.stopped) break;
+    }
+
+    return stats;
+  }
 
   function collectTokenSources() {
     const index = {
@@ -1955,68 +2235,16 @@
       rules: [],             // { selectorText, style, order } for the winner walk
     };
 
-    let order = 0;
-    const walk = (rules) => {
-      for (const rule of rules) {
-        if (order > TOKEN_RULE_BUDGET) { index.disabled = true; return; }
+    const stats = walkPageRules((rule, order, sheet, layered) => {
+      index.rules.push({ selectorText: rule.selectorText, style: rule.style, order, layered });
+      collectRule(rule, index);
+    }, TOKEN_RULE_BUDGET);
 
-        // Conditional groups: only descend into conditions that currently
-        // apply, so a token is never claimed from a media query that is not in
-        // effect. Detected by type rather than by "has cssRules" — see below.
-        if (isMediaRule(rule)) {
-          let matches = true;
-          try { matches = window.matchMedia(rule.conditionText).matches; } catch { matches = false; }
-          if (!matches) continue;
-        } else if (isSupportsRule(rule)) {
-          try { if (!CSS.supports(rule.conditionText)) continue; } catch { continue; }
-        }
-
-        // A style rule carries declarations, and — since CSS Nesting shipped —
-        // may carry child rules as well. So this is not an either/or, and it
-        // cannot be decided by testing `rule.cssRules` for truthiness: every
-        // CSSStyleRule now has a cssRules list, empty or not. Reading that as
-        // "this is a group" skips the rule's own declarations, which quietly
-        // empties the whole token index and takes the !important escalation
-        // down with it, since both read from index.rules.
-        if (rule.selectorText && rule.style) {
-          order++;
-          index.rules.push({ selectorText: rule.selectorText, style: rule.style, order });
-          collectRule(rule, index);
-        }
-
-        if (rule.cssRules && rule.cssRules.length) walk(rule.cssRules);
-      }
-    };
-
-    for (const sheet of Array.from(document.styleSheets)) {
-      // Our own stylesheets are injected into every page we run on, and their
-      // tokens are the tool's, not the page's. Offering --ccp-accent as a fill
-      // for someone's card would be inventing a design system they never had.
-      if (isOurs.styleSheet(sheet)) continue;
-      let rules = null;
-      // Cross-origin sheets without CORS throw on access. Nothing can be done
-      // about it, but it is worth counting: it is the difference between "this
-      // page has no design tokens" and "this page's design tokens are behind a
-      // door", and the panel says so.
-      try { rules = sheet.cssRules; } catch { index.blocked++; continue; }
-      if (rules) {
-        index.readable++;
-        index.offered += rules.length;
-        walk(rules);
-      }
-      if (index.disabled) break;
-    }
-    // Constructed sheets (CSS-in-JS runtimes) live outside document.styleSheets.
-    for (const sheet of Array.from(document.adoptedStyleSheets || [])) {
-      try {
-        if (sheet.cssRules) {
-          index.readable++;
-          index.offered += sheet.cssRules.length;
-          walk(sheet.cssRules);
-        }
-      } catch { index.blocked++; }
-      if (index.disabled) break;
-    }
+    index.disabled = stats.disabled;
+    index.blocked = stats.blocked;
+    index.readable = stats.readable;
+    index.offered = stats.offered;
+    index.blockedHrefs = stats.blockedHrefs;
 
     if (index.disabled) {
       index.classRules.clear();
@@ -2040,10 +2268,103 @@
     return index;
   }
 
+  // The blocked sheets, fetched through the service worker and folded back in.
+  //
+  // Deliberately after the fact rather than before it. The panel opens on what
+  // the page could read on its own, which is instant; this arrives a moment
+  // later and rebuilds. Waiting for the network instead would mean a slow CDN
+  // holding the panel shut, which is a worse trade than a stepper that appears
+  // a beat late.
+  let tokenTopUpToken = 0;
+  async function topUpBlockedSheets(el) {
+    if (!tokenIndex || !tokenIndex.blockedHrefs || tokenIndex.blockedHrefs.length === 0) return;
+    const wanted = tokenIndex.blockedHrefs.filter((href) => !fetchedSheets.has(href));
+    if (wanted.length === 0) return;
+
+    const ticket = ++tokenTopUpToken;
+    let reply = null;
+    try {
+      reply = await chrome.runtime.sendMessage({ type: "FETCH_STYLESHEETS", urls: wanted });
+    } catch {
+      return; // the worker is asleep or the context is gone; the panel is still usable
+    }
+    // Edit Mode ended, or moved to another element, while we were waiting.
+    if (ticket !== tokenTopUpToken || !editing || selectedElement !== el) return;
+    if (!reply || !Array.isArray(reply.sheets)) return;
+
+    let gained = 0;
+    for (const entry of reply.sheets) {
+      if (!entry || !entry.text) continue;
+      try {
+        const sheet = new CSSStyleSheet();
+        sheet.replaceSync(entry.text);
+        fetchedSheets.set(entry.url, sheet);
+        gained++;
+      } catch { /* not parseable as CSS; it stays counted as blocked */ }
+    }
+    if (!gained) return;
+
+    // Rebuild rather than merge: the walk puts the recovered rules back at the
+    // document position their sheet occupies, and source order is what the
+    // cascade comparison reads.
+    tokenIndex = collectTokenSources();
+    editTokenFamilies = buildTokenFamilies(el);
+    renderEditControls();
+    paintDegradedMarker();
+  }
+
+  // The walk's second caller: the authored rules that apply to one element,
+  // for the copy payload's `styles:` field (see getMatchedCss). It stops at the
+  // first handful, which is why it can afford to run on a click rather than
+  // once per Edit Mode entry — the interesting rules are the specific ones and
+  // they are rarely deep in a framework's reset.
+  //
+  // A nested rule's selectorText is relative to its parent (`&:hover`, or a
+  // bare `.foo` under `.bar`), so matches() throws on it. Those are skipped
+  // rather than guessed at: reporting a rule that does not actually apply is
+  // worse than reporting one fewer that does.
+  const MATCH_RULE_BUDGET = 20000;
+  const MATCH_RULE_LIMIT = 6;
+
+  function collectMatchedRules(el) {
+    const found = [];
+    walkPageRules((rule, order, sheet) => {
+      let hit = false;
+      try { hit = el.matches(rule.selectorText); } catch { return; }
+      if (!hit) return;
+      found.push({
+        selectorText: rule.selectorText,
+        declarations: rule.style.cssText,
+        origin: sheetOrigin(sheet),
+      });
+      if (found.length >= MATCH_RULE_LIMIT) return false;
+    }, MATCH_RULE_BUDGET);
+    return found;
+  }
+
+  // Where a rule came from, in the shortest form that still identifies it: the
+  // file name for a linked sheet, and an honest label for the two kinds that
+  // have no file.
+  function sheetOrigin(sheet) {
+    if (!sheet) return "";
+    if (sheet.href) {
+      try { return new URL(sheet.href).pathname.split("/").pop() || sheet.href; }
+      catch { return sheet.href; }
+    }
+    if (sheet.ownerNode && sheet.ownerNode.tagName === "STYLE") return "<style>";
+    return "constructed sheet";
+  }
+
   const isMediaRule = (rule) =>
     typeof CSSMediaRule !== "undefined" && rule instanceof CSSMediaRule;
   const isSupportsRule = (rule) =>
     typeof CSSSupportsRule !== "undefined" && rule instanceof CSSSupportsRule;
+  const isContainerRule = (rule) =>
+    typeof CSSContainerRule !== "undefined" && rule instanceof CSSContainerRule;
+  const isImportRule = (rule) =>
+    typeof CSSImportRule !== "undefined" && rule instanceof CSSImportRule;
+  const isLayerBlockRule = (rule) =>
+    typeof CSSLayerBlockRule !== "undefined" && rule instanceof CSSLayerBlockRule;
 
   // One rule's contribution: every custom property it declares, and — when the
   // selector is a single bare class — the utility values it defines.
@@ -2053,20 +2374,26 @@
       if (prop.startsWith("--") && !isOurs.name(prop)) index.varNames.add(prop);
     }
 
-    const m = rule.selectorText.match(SINGLE_CLASS_RE);
-    if (!m) return;
-    // The captured text is CSS-escaped ("p-1\.5"); the DOM class is not.
-    const className = m[1].replace(/\\(.)/g, "$1");
-    if (isOurs.name(className)) return;
-    for (let i = 0; i < rule.style.length; i++) {
-      const prop = rule.style[i];
-      if (prop.startsWith("--")) continue;
-      if (!index.classRules.has(prop)) index.classRules.set(prop, []);
-      index.classRules.get(prop).push({
-        className,
-        value: rule.style.getPropertyValue(prop),
-        order: index.rules.length,
-      });
+    // A grouped selector is still a list of utility rules — `.lead-snug,
+    // .leading-snug { … }` defines two of them. Matching the whole selector
+    // against a single-class pattern rejected the lot, and minifiers group
+    // aggressively, so a build step alone could hide a page's whole scale.
+    for (const part of rule.selectorText.split(",")) {
+      const m = part.trim().match(SINGLE_CLASS_RE);
+      if (!m) continue;
+      // The captured text is CSS-escaped ("p-1\.5"); the DOM class is not.
+      const className = m[1].replace(/\\(.)/g, "$1");
+      if (isOurs.name(className)) continue;
+      for (let i = 0; i < rule.style.length; i++) {
+        const prop = rule.style[i];
+        if (prop.startsWith("--")) continue;
+        if (!index.classRules.has(prop)) index.classRules.set(prop, []);
+        index.classRules.get(prop).push({
+          className,
+          value: rule.style.getPropertyValue(prop),
+          order: index.rules.length,
+        });
+      }
     }
   }
 
@@ -2095,9 +2422,18 @@
       if (!value) continue;
       const important = rule.style.getPropertyPriority(prop) === "important";
       const spec = computeSpecificity(rule.selectorText);
-      const cand = { value, important, spec, order: rule.order, selectorText: rule.selectorText };
+      const cand = {
+        value, important, spec, order: rule.order,
+        layered: Boolean(rule.layered), selectorText: rule.selectorText,
+      };
       if (!best) { best = cand; continue; }
       if (cand.important !== best.important) { if (cand.important) best = cand; continue; }
+      // Layer order sits above specificity in the cascade, not below it: an
+      // unlayered declaration beats a layered one however specific the layered
+      // one is. Ignoring this picked the wrong winner on any Tailwind v4 or
+      // shadcn page — and a wrong winner means the var() read out of it names
+      // the wrong token, which is worse than naming none.
+      if (cand.layered !== best.layered) { if (!cand.layered) best = cand; continue; }
       const bySpec = compareSpecificity(cand.spec, best.spec);
       if (bySpec > 0 || (bySpec === 0 && cand.order >= best.order)) best = cand;
     }
@@ -2114,19 +2450,28 @@
   // being claimed.
   function detectPropertyToken(el, prop, computedValue, index) {
     if (!el || !index || index.disabled) return null;
-    const target = parseCssLength(computedValue, tokenRemBase(), tokenEmBase(el));
-    if (target === null) return null;
+    const target = resolveLength(computedValue, tokenRemBase(), tokenEmBase(el));
+    // Not a length. It may still be a colour, and a colour is a token as much
+    // as a spacing step is — this used to be where every colour gave up, which
+    // is why the before side of a colour edit always read as a bare hex.
+    if (target === null) return detectColorToken(el, prop, computedValue, index);
 
+    // Up to the shorthand for a side control, and down to a representative
+    // longhand for a linked one — CSSOM indexes a shorthand declaration under
+    // its longhands, so asking only for "padding" finds nothing.
     const props = [prop];
     if (SHORTHAND_OF[prop]) props.push(SHORTHAND_OF[prop]);
+    if (FIRST_LONGHAND_OF[prop]) props.push(FIRST_LONGHAND_OF[prop]);
 
     for (const p of props) {
       for (const cls of Array.from(el.classList)) {
         const candidates = index.classRules.get(p);
         if (!candidates) continue;
-        const hit = candidates.find((c) => c.className === cls);
+        // Last, not first: two sheets declaring .p-4 differently is the
+        // cascade choosing the later one, and `find` chose the earlier.
+        const hit = lastClassRule(candidates, cls);
         if (!hit) continue;
-        const resolved = parseCssLength(hit.value, tokenRemBase(), tokenEmBase(el));
+        const resolved = resolveLength(hit.value, tokenRemBase(), tokenEmBase(el));
         if (resolved !== null && Math.abs(resolved - target) <= 0.5) {
           return { kind: "class", name: cls, resolved };
         }
@@ -2136,11 +2481,59 @@
     const winner = findWinningDeclaration(el, prop, index);
     const varMatch = winner && winner.value.match(/var\(\s*(--[\w-]+)/);
     if (varMatch) {
-      const resolved = parseCssLength(
+      const resolved = resolveLength(
         getComputedStyle(el).getPropertyValue(varMatch[1]), tokenRemBase(), tokenEmBase(el));
       if (resolved !== null && Math.abs(resolved - target) <= 0.5) {
         return { kind: "var", name: varMatch[1], resolved };
       }
+    }
+    return null;
+  }
+
+  // The declaration for this class that the cascade would actually use: the
+  // last one indexed, since equal-specificity single-class rules are settled by
+  // source order and the walk records them in it.
+  function lastClassRule(candidates, cls) {
+    for (let i = candidates.length - 1; i >= 0; i--) {
+      if (candidates[i].className === cls) return candidates[i];
+    }
+    return null;
+  }
+
+  // Two colours are the same colour. A byte of slack per channel because the
+  // wide-gamut syntaxes arrive through a rasteriser, and a value that has been
+  // through sRGB once can land a unit off where the arithmetic would put it.
+  function sameColor(a, b) {
+    if (!a || !b) return false;
+    return Math.abs(a.r - b.r) <= 1 && Math.abs(a.g - b.g) <= 1 &&
+      Math.abs(a.b - b.b) <= 1 && Math.abs(a.a - b.a) <= 0.01;
+  }
+
+  // The colour half of detection, and deliberately the same shape as the length
+  // half: a token is claimed only when the declaration that won actually names
+  // one. A colour that merely *equals* --ink is not written as --ink in the
+  // source, and reporting it as though it were would send the agent to change a
+  // token this element never referenced. Matching by value alone would find far
+  // more tokens and be wrong about most of them.
+  function detectColorToken(el, prop, computedValue, index) {
+    const target = resolveColor(computedValue);
+    if (!target) return null;
+
+    const candidates = index.classRules.get(prop);
+    if (candidates) {
+      for (const cls of Array.from(el.classList)) {
+        const hit = lastClassRule(candidates, cls);
+        if (hit && sameColor(resolveColor(hit.value), target)) {
+          return { kind: "class", name: cls };
+        }
+      }
+    }
+
+    const winner = findWinningDeclaration(el, prop, index);
+    const varMatch = winner && winner.value.match(/var\(\s*(--[\w-]+)/);
+    if (varMatch) {
+      const resolved = resolveColor(getComputedStyle(el).getPropertyValue(varMatch[1]));
+      if (sameColor(resolved, target)) return { kind: "var", name: varMatch[1] };
     }
     return null;
   }
@@ -2153,6 +2546,120 @@
   function tokenEmBase(el) {
     const v = parseFloat(getComputedStyle(el).fontSize);
     return isFinite(v) ? v : tokenRemBase();
+  }
+
+  // ===== Resolving values the pure parsers cannot =====
+  // parseCssLength and parseCssColor are pure, mirrored into the test suites,
+  // and swept there — so they stay pure. What they cannot do is evaluate CSS,
+  // and modern token systems are full of CSS that needs evaluating: Tailwind v4
+  // alone declares its spacing as calc(var(--spacing) * 4) and its palette in
+  // oklch(). Both were read as "not a length" and "not a colour", which is why
+  // a fully-tokenised v4 site reported nothing at all.
+  //
+  // So the browser is asked instead. These two wrappers try the pure parser
+  // first — it is exact, and it covers the common case — and fall back to
+  // making the engine do the work only when it cannot.
+
+  let probeCell = null;
+
+  // A cell that participates in layout but paints nothing, so a length can be
+  // assigned to it and read back in pixels. visibility:hidden rather than
+  // display:none on purpose: a display:none box has no computed width to read.
+  function tokenProbeCell() {
+    if (probeCell && probeCell.isConnected) return probeCell;
+    probeCell = document.createElement("div");
+    probeCell.id = "ccp-probe-cell";
+    probeCell.style.position = "fixed";
+    probeCell.style.top = "-9999px";
+    probeCell.style.left = "-9999px";
+    probeCell.style.height = "0";
+    probeCell.style.visibility = "hidden";
+    probeCell.style.pointerEvents = "none";
+    probeCell.setAttribute("aria-hidden", "true");
+    document.documentElement.appendChild(probeCell);
+    return probeCell;
+  }
+
+  function releaseTokenProbes() {
+    if (probeCell) {
+      probeCell.remove();
+      probeCell = null;
+    }
+    probeCanvas = null;
+  }
+
+  // "calc(0.25rem * 4)" → 16. Percentages are refused rather than guessed at:
+  // they resolve against a containing block this cell does not share with the
+  // element, so a number derived here would be confidently wrong. An
+  // unsubstituted var() is refused for the same reason — it has no value yet.
+  function resolveLength(value, remBase, emBase) {
+    const pure = parseCssLength(value, remBase, emBase);
+    if (pure !== null) return pure;
+    if (typeof value !== "string") return null;
+    const s = value.trim();
+    if (!s || s.includes("%") || s.includes("var(")) return null;
+    // Nothing else is worth a reflow: a bare keyword ("auto", "inherit") has no
+    // pixel value, and only these produce one the engine has to compute.
+    if (!/^-?[\d.]|^(calc|clamp|min|max|round)\(/i.test(s)) return null;
+
+    const cell = tokenProbeCell();
+    // em inside the value has to resolve against the element being edited, not
+    // against whatever this cell inherited from <html>.
+    cell.style.fontSize = typeof emBase === "number" ? `${emBase}px` : "";
+    cell.style.width = "";
+    cell.style.width = s;
+    // An unparseable value leaves width at its cleared state rather than throwing.
+    if (!cell.style.width) return null;
+    const px = parseFloat(getComputedStyle(cell).width);
+    return isFinite(px) ? px : null;
+  }
+
+  let probeCanvas = null;
+
+  // Every colour syntax the browser can paint, reduced to sRGB bytes.
+  //
+  // Neither computed style nor canvas fillStyle converts the CSS Color 4
+  // functions — Chrome round-trips `oklch(0.7 0.15 200)` back out unchanged
+  // through both — so the only thing that actually resolves one is painting it
+  // and reading the pixel. That is what this does, and it is why the picker can
+  // now offer an oklch palette at all.
+  function resolveColor(value) {
+    const pure = parseCssColor(value);
+    if (pure) return pure;
+    if (typeof value !== "string" || !value.trim()) return null;
+
+    if (!probeCanvas) {
+      const cv = document.createElement("canvas");
+      cv.width = 1;
+      cv.height = 1;
+      probeCanvas = cv.getContext("2d", { willReadFrequently: true });
+    }
+    const ctx = probeCanvas;
+    if (!ctx) return null;
+
+    // An invalid fillStyle is *ignored*, leaving the previous one in place — so
+    // assigning it over two different sentinels is what tells the difference
+    // between "this is black" and "this is not a colour". Without this, every
+    // unparseable value reports as opaque black.
+    try {
+      ctx.fillStyle = "#000000";
+      ctx.fillStyle = value;
+      const overBlack = ctx.fillStyle;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillStyle = value;
+      if (ctx.fillStyle !== overBlack) return null;
+
+      // copy, so the alpha written is the alpha read rather than the result of
+      // compositing onto whatever the cell held before.
+      ctx.globalCompositeOperation = "copy";
+      ctx.fillRect(0, 0, 1, 1);
+      const d = ctx.getImageData(0, 0, 1, 1).data;
+      return { r: d[0], g: d[1], b: d[2], a: d[3] / 255 };
+    } catch {
+      // A tainted or unavailable canvas is a reason to claim no colour, not to
+      // take the page down.
+      return null;
+    }
   }
 
   // ===== Edit Color =====
@@ -2260,6 +2767,9 @@
     // that no longer exist.
     tokenIndex = collectTokenSources();
     editTokenFamilies = buildTokenFamilies(selectedElement);
+    // Anything the page was not allowed to read is chased through the service
+    // worker and folded in when it lands. Not awaited: the panel opens now.
+    topUpBlockedSheets(selectedElement);
 
     // Capture phase, on document, so the page never sees these at all.
     document.addEventListener("pointerdown", onEditPointerGuard, true);
@@ -2293,6 +2803,9 @@
     clearTether();
     tokenIndex = null;
     editTokenFamilies = null;
+    // The measuring cell is scaffolding for the index, so it leaves with it
+    // rather than sitting in the page for the rest of the session.
+    releaseTokenProbes();
 
     // The label's readout is built from computed styles, so it would otherwise
     // still be quoting the values the element had before it was tuned.
@@ -2311,6 +2824,10 @@
   function isOwnEditChrome(node) {
     return Boolean(
       (editPanelEl && editPanelEl.contains(node)) ||
+      // Not a descendant of the panel any more, so it has to be named here in
+      // its own right — without this the guard below preventDefaults every
+      // pointerdown on the picker and all three drag surfaces go dead.
+      (editPopoverEl && editPopoverEl.contains(node)) ||
       (settingsButtonEl && settingsButtonEl.contains(node)) ||
       (toastEl && toastEl.contains(node))
     );
@@ -2341,24 +2858,33 @@
     {
       key: "typography",
       label: "Typography",
-      when: (el) => getDirectText(el).length > 0,
+      // The text guard sits on the controls rather than the group, because the
+      // five metric controls and `color` want different answers. Setting a size
+      // on a wrapper that holds no text of its own is a mistake; setting a
+      // colour on one is how an inherited colour is normally written, and the
+      // wrapper is usually where the source edit belongs. groupsFor() already
+      // hides a group whose controls all filter out, so the five behave exactly
+      // as they did when the guard was one level up.
       controls: [
-        { prop: "font-size", label: "size", unit: "px", step: 1, min: 1, max: 400 },
-        { prop: "font-weight", label: "weight", unit: "", step: 100, min: 100, max: 900 },
+        { prop: "font-size", label: "size", unit: "px", step: 1, min: 1, max: 400, when: ownsText },
+        { prop: "font-weight", label: "weight", unit: "", step: 100, min: 100, max: 900, when: ownsText },
         // line-height's "normal" has no fixed numeric equivalent — it depends
         // on the font's own metrics — so returning to the displayed number is
         // a real declaration and gets reported as one. letter-spacing's does:
         // "normal" is exactly 0, so landing back on 0 writes the keyword and
         // leaves no edit behind.
-        { prop: "line-height", label: "leading", unit: "px", step: 1, min: 0, max: 400, autoWord: "normal" },
-        { prop: "letter-spacing", label: "tracking", unit: "px", step: 0.1, decimals: 2, min: -20, max: 40, autoWord: "normal", autoEquals: 0 },
+        { prop: "line-height", label: "leading", unit: "px", step: 1, min: 0, max: 400, autoWord: "normal", when: ownsText },
+        { prop: "letter-spacing", label: "tracking", unit: "px", step: 0.1, decimals: 2, min: -20, max: 40, autoWord: "normal", autoEquals: 0, when: ownsText },
         {
           prop: "text-align", label: "align", kind: "segment", options: ["left", "center", "right"],
           // Unset text-align computes to "start", which is "left" in every
           // left-to-right document — without this the row reads as though
           // nothing were selected at all.
           equivalents: { start: "left", end: "right" },
+          when: ownsText,
         },
+        // No guard: every element has a computed colour, and it inherits.
+        { prop: "color", label: "colour", kind: "color" },
       ],
     },
     {
@@ -2528,23 +3054,85 @@
   // A property gets a stepper only when its own value sits on a scale with
   // somewhere to step to, which is why families of one are dropped upstream.
 
+  // Every custom property in scope on this element, with the value it resolves
+  // to *there*.
+  //
+  // This is the inversion the whole token layer turns on. The first design
+  // asked the stylesheets which names existed and then hoped each one reached
+  // the element; a name that did not — because it was declared on `.dark`, or
+  // on a component root, or in a sheet we were not allowed to read — resolved
+  // to "" and was dropped, so which tokens the panel could see depended on
+  // what you happened to have clicked.
+  //
+  // The element already knows. Custom properties inherit, so asking it directly
+  // costs nothing and answers correctly regardless of where the declaration
+  // came from: a cross-origin sheet, an @import we never followed, a shadow
+  // root, a theme scope. A name that survives this has a value here, which is
+  // the only kind worth offering.
+  function collectElementTokens(el) {
+    if (!el || !el.isConnected) return [];
+    const style = getComputedStyle(el);
+    const names = [];
+    const seen = new Set();
+    const take = (name) => {
+      if (typeof name !== "string" || !name.startsWith("--")) return;
+      // Our own tokens ride along on every page as content scripts. They are
+      // the tool's, not the page's — see the regression in test/cdp.mjs.
+      if (seen.has(name) || isOurs.name(name)) return;
+      seen.add(name);
+      names.push(name);
+    };
+
+    // computedStyleMap has enumerated custom properties since Chrome 66;
+    // getComputedStyle only since 141. Trying it first is what keeps this
+    // working on the older half. test/cdp.mjs asserts both, so a browser that
+    // changes its mind reports it there rather than as silence here.
+    if (el.computedStyleMap) {
+      try {
+        for (const [name] of el.computedStyleMap()) take(name);
+      } catch { /* fall through to the declaration list */ }
+    }
+    if (names.length === 0) {
+      try {
+        for (const name of style) take(name);
+      } catch { /* neither enumerates: the walk below is the floor */ }
+    }
+    // Older still. The stylesheet-derived names are what this used to be, so a
+    // browser that enumerates nothing degrades to the previous behaviour
+    // rather than to no tokens at all.
+    if (names.length === 0 && tokenIndex) {
+      for (const name of tokenIndex.varNames) take(name);
+    }
+
+    const out = [];
+    for (const name of names) {
+      const value = style.getPropertyValue(name).trim();
+      if (value) out.push({ name, value });
+    }
+    return out;
+  }
+
   function buildTokenFamilies(el) {
     if (!tokenIndex || tokenIndex.disabled) return [];
     const rem = tokenRemBase();
     const em = tokenEmBase(el);
-    const style = getComputedStyle(el);
     const entries = [];
 
-    for (const name of tokenIndex.varNames) {
-      const resolved = parseCssLength(style.getPropertyValue(name), rem, em);
+    for (const { name, value } of collectElementTokens(el)) {
+      const resolved = resolveLength(value, rem, em);
       if (resolved !== null) entries.push({ name, resolved });
     }
     // Utility classes are scales too — text-sm and text-lg are rungs whether
     // or not the page also declares a custom property for them.
     for (const [prop, candidates] of tokenIndex.classRules) {
-      if (!TOKEN_SCALE_PROPS.has(prop)) continue;
+      // Either the property itself is a scale, or it is one side of one — the
+      // side is how a shorthand utility actually arrives (see FIRST_LONGHAND_OF).
+      // The four sides of a .p-4 all carry the same class name and value, and
+      // groupTokenFamilies de-duplicates by name, so this adds rungs rather
+      // than repeats.
+      if (!TOKEN_SCALE_PROPS.has(prop) && !TOKEN_SCALE_PROPS.has(SHORTHAND_OF[prop])) continue;
       for (const candidate of candidates) {
-        const resolved = parseCssLength(candidate.value, rem, em);
+        const resolved = resolveLength(candidate.value, rem, em);
         if (resolved !== null) entries.push({ name: candidate.className, resolved, kind: "class" });
       }
     }
@@ -2572,17 +3160,18 @@
     return null;
   }
 
-  // Colour tokens the page declares, for the picker's palette. Only names that
-  // resolve to a colour are offered — a --space-4 has no business in a swatch
-  // row — and only when the stylesheet walk actually found something.
+  // Colour tokens in scope on this element, for the picker's palette. Only
+  // names that resolve to a colour are offered — a --space-4 has no business in
+  // a swatch row.
+  //
+  // In scope on *this element*, not declared somewhere on the page: selecting
+  // inside a themed subtree offers that theme's colours, because those are the
+  // ones the element would actually get.
   function paletteTokens(el) {
-    if (!tokenIndex || tokenIndex.disabled) return [];
-    const style = getComputedStyle(el);
     const out = [];
-    for (const name of tokenIndex.varNames) {
-      const raw = style.getPropertyValue(name).trim();
-      const parsed = parseCssColor(raw);
-      if (parsed) out.push({ name, css: raw, hex: formatHex(parsed) });
+    for (const { name, value } of collectElementTokens(el)) {
+      const parsed = resolveColor(value);
+      if (parsed) out.push({ name, css: value, hex: formatHex(parsed) });
       if (out.length >= 24) break;
     }
     return out;
@@ -2618,7 +3207,13 @@
 
     const copy = document.createElement("button");
     copy.className = "ccp-edit-act ccp-edit-copy";
-    copy.innerHTML = `${ICONS.code}<i class="ccp-edit-count"></i>`;
+    // origHtml is what setButtonSuccess puts back, and without it the button
+    // never came back at all: it stayed disabled, wearing its success state,
+    // for as long as the panel was open. The count badge lives inside the
+    // markup being saved, and paintEditCounts writes to whichever <i> is on
+    // screen, so the restored copy picks the number up again.
+    copy.dataset.origHtml = `${ICONS.code}<i class="ccp-edit-count"></i>`;
+    copy.innerHTML = copy.dataset.origHtml;
     copy.title = "Copy every edit";
     copy.setAttribute("aria-label", "Copy every edit");
     copy.addEventListener("click", (e) => {
@@ -2662,6 +3257,11 @@
       if (!row || row.contains(e.relatedTarget)) return;
       if (!editGesture) setTetherLoud(false);
     });
+
+    // The rows scroll inside the panel while the picker is anchored in viewport
+    // coordinates, so without this the swatch slides out from under its own
+    // picker.
+    body.addEventListener("scroll", repositionColorPicker, { passive: true });
 
     editPanelEl.appendChild(head);
     editPanelEl.appendChild(body);
@@ -2732,8 +3332,15 @@
     }
     if (tokenIndex.blocked > 0) {
       const n = tokenIndex.blocked;
-      return `${n} stylesheet${n > 1 ? "s" : ""} on this page can't be read from a script ` +
-        `(they're served from another origin), so any design tokens they define aren't offered here.`;
+      const pending = (tokenIndex.blockedHrefs || []).some((href) => !fetchedSheets.has(href));
+      // Blocked to the page is no longer the same as lost: the worker fetches
+      // what it can, so this says which of the two states we are actually in.
+      return pending
+        ? `${n} stylesheet${n > 1 ? "s" : ""} on this page can't be read from a script ` +
+          `(they're served from another origin). Fetching ${n > 1 ? "them" : "it"} separately — ` +
+          `any design tokens ${n > 1 ? "they define" : "it defines"} will appear once ${n > 1 ? "they arrive" : "it arrives"}.`
+        : `${n} stylesheet${n > 1 ? "s" : ""} on this page couldn't be read or fetched, ` +
+          `so any design tokens ${n > 1 ? "they define" : "it defines"} aren't offered here.`;
     }
     return null;
   }
@@ -2789,6 +3396,10 @@
       body.appendChild(section);
     }
     refreshEditControls();
+    // This render just destroyed every swatch, the open picker's anchor among
+    // them — reachable from a theme change, the reset dot, a split link, or an
+    // undo taken mid-pick. Re-find the anchor, or close if its row is gone.
+    repositionColorPicker();
   }
 
   // Each side of a linked control is a full control in its own right, so it
@@ -2919,6 +3530,13 @@
     swatch.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
+      // Clicking the open swatch shuts the picker. It used to reopen it: the
+      // first thing openColorPicker does is close, so the picker was torn down
+      // and rebuilt identically and the gesture looked like it did nothing.
+      if (editPopoverEl && editPopoverProp === control.prop) {
+        closeColorPicker();
+        return;
+      }
       openColorPicker(control, swatch);
     });
 
@@ -3021,7 +3639,7 @@
     const el = selectedElement;
     if (!el || !el.isConnected) return;
     const prop = control.reads || control.prop;
-    const current = parseCssLength(
+    const current = resolveLength(
       getComputedStyle(el).getPropertyValue(prop).trim(), tokenRemBase(), tokenEmBase(el));
     if (current === null) return;
     const next = stepToken(family.members, current, dir);
@@ -3056,7 +3674,7 @@
         css: `${next.resolved}px`, inline: null, priority: "",
         cls: next.name, token: { kind: "class", name: next.name },
       });
-      const got = parseCssLength(
+      const got = resolveLength(
         getComputedStyle(el).getPropertyValue(prop).trim(), tokenRemBase(), tokenEmBase(el));
       if (got === null || Math.abs(got - next.resolved) > 0.5) {
         // The page outranks its own utility class — `.card p` beats `.text-lg`
@@ -3112,13 +3730,25 @@
     const el = selectedElement;
     if (!el || !el.isConnected) return;
 
-    const parsed = parseCssColor(readColorValue(el, control)) || { r: 0, g: 0, b: 0, a: 1 };
+    // resolveColor, not parseCssColor: an element whose colour is authored in
+    // oklch() would otherwise open the picker on black and lose the value the
+    // moment anything was dragged.
+    const parsed = resolveColor(readColorValue(el, control)) || { r: 0, g: 0, b: 0, a: 1 };
     let hsv = rgbToHsv(parsed.r, parsed.g, parsed.b);
     let alpha = parsed.a;
 
     const pop = document.createElement("div");
+    // Its own root, so it is no longer clipped by the panel's overflow, no
+    // longer width-locked to it, and no longer painted over the rows it is
+    // meant to be tuning. The class stays for the styling and for the tests
+    // that find it by class.
+    pop.id = "ccp-color-picker";
     pop.className = "ccp-edit-pop";
     pop.innerHTML = `
+      <div class="ccp-edit-pophead">
+        <span class="ccp-edit-poptitle"></span>
+        <button class="ccp-edit-popclose" title="Close" aria-label="Close colour picker">×</button>
+      </div>
       <div class="ccp-edit-sat"><i class="ccp-edit-sat-dot"></i></div>
       <div class="ccp-edit-rails">
         <div class="ccp-edit-hue"><i class="ccp-edit-rail-dot"></i></div>
@@ -3139,15 +3769,58 @@
     const hexIn = pop.querySelector(".ccp-edit-hexin");
     const drop = pop.querySelector(".ccp-edit-drop");
 
+    // The picker no longer sits under the row it belongs to, so it has to say
+    // which property it is editing.
+    pop.querySelector(".ccp-edit-poptitle").textContent = control.label;
+    pop.querySelector(".ccp-edit-popclose").addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      closeColorPicker();
+    });
+
     const tokens = paletteTokens(el);
     if (tokens.length) {
       const palette = document.createElement("div");
       palette.className = "ccp-edit-palette";
+
+      // The swatches are 14px of colour and nothing else: without this the row
+      // neither says what it is nor which token any square stands for. The
+      // title attribute carried the name, but a native tooltip takes about a
+      // second and the target is smaller than the cursor — a name you have to
+      // wait for is a name most people never see. The caption is always
+      // present, so naming a swatch costs no layout and the row cannot jump
+      // under the pointer.
+      const caption = document.createElement("div");
+      caption.className = "ccp-edit-palcap";
+      const capName = document.createElement("b");
+      const capValue = document.createElement("span");
+      caption.appendChild(capName);
+      caption.appendChild(capValue);
+
+      const idleCaption = () => {
+        capName.textContent = "";
+        capValue.textContent = "page tokens";
+      };
+      const nameCaption = (token) => {
+        capName.textContent = token.name;
+        capValue.textContent = token.hex;
+      };
+      idleCaption();
+
       for (const token of tokens) {
         const swatch = document.createElement("button");
         swatch.className = "ccp-edit-pal";
         swatch.style.backgroundColor = token.hex;
+        // Kept as well as the caption: it is what a screen reader reads, and
+        // what survives if the pointer never enters at all.
         swatch.title = `${token.name} — ${token.hex}`;
+        swatch.setAttribute("aria-label", `${token.name}, ${token.hex}`);
+        swatch.addEventListener("pointerenter", () => nameCaption(token));
+        swatch.addEventListener("pointerleave", idleCaption);
+        // Keyboard reaches these too, and a caption that only answers to the
+        // mouse would leave tabbing through the row silent.
+        swatch.addEventListener("focus", () => nameCaption(token));
+        swatch.addEventListener("blur", idleCaption);
         swatch.addEventListener("click", (ev) => {
           ev.preventDefault();
           ev.stopPropagation();
@@ -3160,7 +3833,11 @@
         });
         palette.appendChild(swatch);
       }
-      pop.insertBefore(palette, pop.firstChild);
+      // Still first offer, but below the title bar rather than above it: the
+      // header names what is being edited and carries the way out, so it stays
+      // the top edge of the surface.
+      pop.querySelector(".ccp-edit-pophead").after(palette);
+      palette.after(caption);
     }
 
     const currentCss = () => {
@@ -3186,7 +3863,12 @@
       alphaDot.style.left = `${alpha * 100}%`;
       alphaFill.style.backgroundImage = `linear-gradient(to right, transparent, ${hex})`;
       if (document.activeElement !== hexIn) hexIn.value = hex;
-      const swatchFill = anchor.querySelector("i");
+      // Re-found rather than held: the swatch this picker opened from is
+      // destroyed by every re-render of the rows, and the captured node would
+      // then take the live preview with it into a detached tree.
+      const swatchFill = editPanelEl && editPanelEl.querySelector(
+        `.ccp-edit-row[data-control="${control.prop}"] .ccp-edit-swatch i`
+      );
       if (swatchFill) swatchFill.style.background = currentCss();
     }
 
@@ -3274,27 +3956,65 @@
       drop.remove();
     }
 
-    editPanelEl.appendChild(pop);
+    // Appended to the root, after the panel. --ccp-z-chrome is already
+    // 2147483647, so the picker cannot outrank the panel by z-index — being
+    // later in the document is what puts it on top, and is why this append
+    // cannot become an insertBefore.
+    document.documentElement.appendChild(pop);
     editPopoverEl = pop;
+    editPopoverProp = control.prop;
     positionColorPicker(pop, anchor);
     paint();
   }
 
+  // Beside the panel rather than over it: the picker's whole reason for moving
+  // out was that the rows it edits have to stay visible while it is open. Right
+  // of the panel by preference, left when the panel is parked against the right
+  // edge, and clamped into the viewport either way.
   function positionColorPicker(pop, anchor) {
-    const panelRect = editPanelEl.getBoundingClientRect();
-    const anchorRect = anchor.getBoundingClientRect();
-    const top = anchorRect.bottom - panelRect.top + GEOMETRY.gap;
-    pop.style.top = `${Math.max(0, top)}px`;
-    // Kept inside the panel's own width so it can never hang off the side of a
-    // panel that is itself parked against the viewport edge.
-    pop.style.left = `${GEOMETRY.margin}px`;
-    pop.style.right = `${GEOMETRY.margin}px`;
+    if (!editPanelEl) return;
+    const panel = editPanelEl.getBoundingClientRect();
+    const rect = pop.getBoundingClientRect();
+    const vw = document.documentElement.clientWidth;
+    const vh = document.documentElement.clientHeight;
+
+    const right = panel.right + GEOMETRY.gap;
+    const left = right + rect.width + GEOMETRY.margin <= vw
+      ? right
+      : Math.max(GEOMETRY.margin, panel.left - GEOMETRY.gap - rect.width);
+
+    // Level with the swatch that opened it, so the eye can pair the two even
+    // once they are no longer nested.
+    const wanted = anchor.getBoundingClientRect().top;
+    const top = Math.min(
+      Math.max(GEOMETRY.margin, wanted),
+      Math.max(GEOMETRY.margin, vh - rect.height - GEOMETRY.margin)
+    );
+
+    pop.style.left = `${Math.round(left)}px`;
+    pop.style.top = `${Math.round(top)}px`;
+  }
+
+  // The anchor swatch is rebuilt on every render of the rows, so the picker
+  // cannot hold a reference to it. Re-find it by property; if the row it edits
+  // has gone, the picker has nothing left to point at.
+  function repositionColorPicker() {
+    if (!editPopoverEl) return;
+    const anchor = editPanelEl && editPanelEl.querySelector(
+      `.ccp-edit-row[data-control="${editPopoverProp}"] .ccp-edit-swatch`
+    );
+    if (!anchor) {
+      closeColorPicker();
+      return;
+    }
+    positionColorPicker(editPopoverEl, anchor);
   }
 
   function closeColorPicker() {
     if (!editPopoverEl) return;
     editPopoverEl.remove();
     editPopoverEl = null;
+    editPopoverProp = null;
     commitEditGesture();
   }
 
@@ -3509,7 +4229,7 @@
 
         if (control.kind === "color") {
           const raw = readColorValue(el, control);
-          const parsed = parseCssColor(raw);
+          const parsed = resolveColor(raw);
           const fill = row.querySelector(".ccp-edit-swatch i");
           if (fill) fill.style.background = raw || "transparent";
           const hex = row.querySelector(".ccp-edit-hex");
@@ -3577,11 +4297,19 @@
   function copyEdits(btnEl) {
     commitEditGesture();
     const text = buildEditsBlock();
-    if (!text) return;
+    // Empty with nothing selected is the button having nothing to say. Empty
+    // with something selected can only mean the payload was configured down to
+    // nothing, and a button that silently does nothing is a bug report.
+    if (!text) {
+      if (selectedElement) showToast(EMPTY_PAYLOAD_NOTE, true);
+      return;
+    }
     const overwritten = editedElements().filter((el) => staleEdits(el).length > 0).length;
     navigator.clipboard.writeText(text).then(
       () => {
-        setButtonSuccess(btnEl);
+        // A tick, not "Copied!": this button is a 20px square beside the
+        // panel's title, and the toolbar's word would stretch the header.
+        setButtonSuccess(btnEl, "✓");
         // The block says so too, but a note buried in a payload the user is
         // about to paste elsewhere is not the same as being told.
         if (overwritten > 0) {
@@ -3679,6 +4407,9 @@
       // The panel deliberately has no positional transition, so the run must
       // not glide either or it would trail behind the drag.
       renderTether({ instant: true });
+      // The picker is placed against the panel's edge, so it has to travel with
+      // it rather than being left behind at the old coordinates.
+      repositionColorPicker();
     };
     const up = () => {
       head.removeEventListener("pointermove", move);
@@ -4252,7 +4983,7 @@
   function buildElementSection(el) {
     const { header, located } = buildPointerHeader(el);
     const lines = buildEditLines(editEntriesFor(el));
-    const html = located ? buildRootTag(el) : buildSkeletonHTML(el);
+    const html = buildCopyHtml(el, located);
     const notes = [];
     if (!el.isConnected) {
       notes.push("# note: this element is no longer on the page — it was replaced or removed after being edited");
@@ -4267,12 +4998,17 @@
   // byte-identical to what a per-element copy produced; with none it is the
   // selected element's pointer, which is exactly Copy Code — so the button
   // always has something true to say.
+  //
+  // The delta block obeys the fence preference but not the HTML-block one's
+  // unfenced spelling: with several sections, each carrying its own notes, edit
+  // lines and markup, there is no single HTML block to lift into a ```html
+  // block of its own. Fence off means no wrapper, and that is all it means here.
   function buildEditsBlock() {
     const elements = editedElements();
     if (elements.length === 0) {
-      return selectedElement ? "```\n" + buildElementSection(selectedElement) + "\n```" : "";
+      return selectedElement ? fenceBlock(copyPrefs, buildElementSection(selectedElement)) : "";
     }
-    return "```\n" + elements.map(buildElementSection).join("\n\n") + "\n```";
+    return fenceBlock(copyPrefs, elements.map(buildElementSection).join("\n\n"));
   }
 
   // ===== Event Handlers =====
@@ -4329,6 +5065,7 @@
       if (editing) {
         placeEditPanel();
         renderTether({ instant: true });
+        repositionColorPicker();
       }
     });
   }
@@ -4344,6 +5081,7 @@
     if (settingsButtonEl && settingsButtonEl.contains(e.target)) return;
     if (toastEl && toastEl.contains(e.target)) return;
     if (editPanelEl && editPanelEl.contains(e.target)) return;
+    if (editPopoverEl && editPopoverEl.contains(e.target)) return;
 
     e.preventDefault();
     e.stopImmediatePropagation();
@@ -4932,6 +5670,131 @@
     ];
   }
 
+  // ===== The diagnosis fields =====
+  // Three optional header fields, all off by default. Unlike everything above
+  // them they do not point at a construct — they describe what the browser
+  // ended up doing with it, which is what you want when the question is "why
+  // does this look wrong" rather than "change this".
+
+  // Lengths here go through the same formatter the measuring pills use, and read
+  // the same two preferences: a tool that writes "24px" in one place and "1.5rem"
+  // in another is describing two different pages.
+  function copyLength(px) {
+    return formatRedlineValue(px, redlinePrefs.redlineUnit, redlinePrefs.redlinePrecision, tokenRemBase());
+  }
+
+  // Box, display, and the spacing that is actually set — plus the parent's
+  // layout context, because half of "why is this here" is answered one level up.
+  function getLayout(el) {
+    const cs = getComputedStyle(el);
+    const rect = el.getBoundingClientRect();
+
+    const bits = [`box ${copyLength(rect.width)}x${copyLength(rect.height)}`, `display ${displayOf(cs)}`];
+    if (cs.position !== "static") bits.push(`position ${cs.position}`);
+
+    const pad = edgeSummary(cs, "padding");
+    if (pad) bits.push(`padding ${pad}`);
+    const margin = edgeSummary(cs, "margin");
+    if (margin) bits.push(`margin ${margin}`);
+    if (cs.display.includes("flex") || cs.display.includes("grid")) {
+      const gap = parseFloat(cs.rowGap) || parseFloat(cs.columnGap) || 0;
+      if (gap > 0) bits.push(`gap ${copyLength(gap)}`);
+    }
+
+    const lines = [bits.join(" - ")];
+
+    const parent = el.parentElement;
+    if (parent && parent !== document.documentElement) {
+      const ps = getComputedStyle(parent);
+      let context = `parent display ${displayOf(ps)}`;
+      if (ps.display.includes("grid")) {
+        const cols = ps.gridTemplateColumns.split(" ").filter(Boolean).length;
+        if (cols > 0) context += `, ${cols} col${cols > 1 ? "s" : ""}`;
+      } else if (ps.display.includes("flex")) {
+        context += `, ${ps.flexDirection}`;
+      }
+      lines.push(context);
+    }
+
+    return lines;
+  }
+
+  // "flex column" reads better than "flex" plus a separate line nobody joins up.
+  function displayOf(cs) {
+    if (cs.display.includes("flex") && cs.flexDirection === "column") return `${cs.display} column`;
+    return cs.display;
+  }
+
+  // One value when all four edges agree, "16px 24px" when the axes do, all four
+  // otherwise, and nothing at all when every edge is zero.
+  function edgeSummary(cs, prop) {
+    const [top, right, bottom, left] = ["Top", "Right", "Bottom", "Left"]
+      .map((side) => parseFloat(cs[prop + side]) || 0);
+    if (!top && !right && !bottom && !left) return "";
+    if (top === right && right === bottom && bottom === left) return copyLength(top);
+    if (top === bottom && right === left) return `${copyLength(top)} ${copyLength(right)}`;
+    return [top, right, bottom, left].map(copyLength).join(" ");
+  }
+
+  // The authored rules that apply, and where each came from. Not computed
+  // values: those are what the element ended up with, and this field exists to
+  // say which line of which stylesheet decided it.
+  function getMatchedCss(el) {
+    const rules = collectMatchedRules(el);
+    if (rules.length === 0) return null;
+    return rules.map((r) => {
+      const decls = r.declarations.replace(/;\s*$/, "");
+      const body = decls.length > 110 ? decls.slice(0, 107) + "…" : decls;
+      const origin = r.origin ? r.origin + "  " : "";
+      return `${origin}${r.selectorText} { ${body} }`;
+    });
+  }
+
+  // The one field in this tool that can carry the page's own data out of it.
+  // Everything else names things — files, components, functions, selectors —
+  // and getHandlers goes out of its way to report a handler's name and never
+  // its value. This reports values, which is the entire point of it and also
+  // the reason it is off by default and absent from every preset.
+  //
+  // Shallow only: a nested object is a shape, not a value, and printing it
+  // would be the fastest way to paste a whole API response into a prompt.
+  const PROPS_LIMIT = 8;
+
+  function getProps(el) {
+    const props = readFrameworkProps(el);
+    if (!props) return null;
+
+    const out = [];
+    for (const key of Object.keys(props)) {
+      if (out.length >= PROPS_LIMIT) break;
+      if (key === "children" || /^on[A-Z]/.test(key)) continue;
+      const value = props[key];
+      const shown = showProp(value);
+      if (shown === null) continue;
+      out.push(`${key}: ${shown}`);
+    }
+    return out.length > 0 ? out.join(" - ") : null;
+  }
+
+  function readFrameworkProps(el) {
+    const propsKey = Object.keys(el).find((k) => k.startsWith("__reactProps$"));
+    if (propsKey && el[propsKey]) return el[propsKey];
+    const vue = el.__vueParentComponent;
+    if (vue && vue.props) return vue.props;
+    return null;
+  }
+
+  function showProp(value) {
+    if (value === null) return "null";
+    if (typeof value === "string") {
+      return `"${value.length > 40 ? value.slice(0, 37) + "…" : value}"`;
+    }
+    if (typeof value === "number" || typeof value === "boolean") return String(value);
+    if (Array.isArray(value)) return `[${value.length}]`;
+    if (typeof value === "object") return "{…}";
+    return null; // functions and undefined: nothing worth a line
+  }
+
   // The element's own tag, whole, with its children summarised rather than reproduced.
   function buildRootTag(el) {
     const tag = el.tagName.toLowerCase();
@@ -4946,48 +5809,195 @@
     return `<${tag}${attrs}>${inner}</${tag}>`;
   }
 
+  // ===== The child shape =====
+  // The root tag, then one condensed line per child, then the close. Between
+  // the root tag alone (which does not say what is inside) and the full subtree
+  // (which repeats what the agent is about to read in the real source): enough
+  // to know which data instance and which conditional branch was pointed at.
+  function buildChildShape(el) {
+    const tag = el.tagName.toLowerCase();
+    const attrs = formatAttrs(el);
+    if (SELF_CLOSING.includes(tag)) return `<${tag}${attrs} />`;
+
+    const lines = [];
+    for (const node of el.childNodes) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        const text = node.textContent.trim();
+        if (text) lines.push(shapeText(text));
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        lines.push(shapeLine(node));
+      }
+    }
+
+    // Nothing inside worth a line of its own — the root tag already says that,
+    // and better, because it carries the text.
+    if (lines.length === 0) return buildRootTag(el);
+
+    return [`<${tag}${attrs}>`, ...lines.map((l) => "  " + l), `</${tag}>`].join("\n");
+  }
+
+  // One child as a path. Single-child wrappers are walked through, so the line
+  // names the node that actually carries the content rather than the div around
+  // it; a short row of leaves at the end is spelled out, because "the icon or
+  // the label" is exactly the distinction that gets lost otherwise.
+  function shapeLine(child) {
+    const parts = [shapeSegment(child)];
+    let node = child;
+    while (node.children.length === 1) {
+      node = node.children[0];
+      parts.push(shapeSegment(node));
+    }
+
+    const leaves = Array.from(node.children);
+    if (leaves.length > 1 && leaves.length <= 3 && leaves.every((c) => c.children.length === 0)) {
+      parts.push(leaves.map(shapeSegment).join(" + "));
+    }
+
+    let line = parts.join(" > ");
+    const text = getDirectText(child) || getVisibleText(child);
+    if (text) line += " " + shapeText(text);
+    const handler = firstHandler(node) || firstHandler(child);
+    if (handler) line += " " + handler;
+    return line;
+  }
+
+  // Tag and classes, no :nth-child — the shape describes, it does not locate.
+  // Locating is what the selector field is for.
+  function shapeSegment(el) {
+    const tag = el.tagName.toLowerCase();
+    const classes = Array.from(el.classList).filter((c) => !isOurs.name(c)).slice(0, 3);
+    return tag + classes.map((c) => "." + c).join("");
+  }
+
+  function shapeText(text) {
+    const flat = text.replace(/\s+/g, " ").trim();
+    return `"${flat.length > 40 ? flat.slice(0, 37) + "…" : flat}"`;
+  }
+
+  // getHandlers writes "onClick=openInvoice" for the header's own field; inside
+  // an HTML block the JSX spelling is the one that reads as markup.
+  function firstHandler(el) {
+    const all = getHandlers(el);
+    if (!all) return null;
+    const first = all.split(", ")[0];
+    const eq = first.indexOf("=");
+    return eq > 0 ? `${first.slice(0, eq)}={${first.slice(eq + 1)}}` : null;
+  }
+
   // ===== Build Structured Element Info =====
+  // Emission order, and the preference gating each field. Fixed here rather
+  // than at the call sites so the payload's shape is one list to read, and so
+  // turning fields on cannot reorder the ones already there.
+  // Mirrored in settings/settings.js for the preview rail; change both.
+  const COPY_ORDER = [
+    ["source", "copySource"],
+    ["component", "copyComponent"],
+    ["page", "copyPage"],
+    ["anchor", "copyAnchor"],
+    ["handlers", "copyHandlers"],
+    ["selector", "copySelector"],
+    ["position", "copyPosition"],
+    ["repeated", "copyRepeated"],
+    ["layout", "copyLayout"],
+    ["styles", "copyStyles"],
+    ["props", "copyProps"],
+    ["text", "copyText"],
+  ];
+
+  // The comment dialect itself: "# key: " opens a field, "#   " continues it.
+  // Mirrored in settings/settings.js for the preview rail; change both.
+  function renderCopyHeader(fields) {
+    return fields
+      .map((f) => f.lines.map((l, i) => (i === 0 ? `# ${f.key}: ` : "#   ") + l).join("\n"))
+      .join("\n");
+  }
+
   // The pointer header alone, shared by Copy Code and the Edit Mode delta block so
   // both name an element in exactly the same dialect. `located` reports whether a
   // source file or component chain was found — the caller's cue for how much of
   // the rendered subtree the payload still needs to carry.
+  //
+  // A field that is switched off is never even computed: `styles` walks every
+  // stylesheet on the page, and it is off by default precisely because most
+  // copies should not pay for that.
   function buildPointerHeader(el) {
-    const source = getSourceLocation(el);
-    const component = getComponentChain(el);
+    const source = copyPrefs.copySource === "on" ? getSourceLocation(el) : null;
+    const component = copyPrefs.copyComponent === "on" ? getComponentChain(el) : null;
 
-    const fields = [];
-    const push = (key, value) => {
-      if (!value || (Array.isArray(value) && value.length === 0)) return;
-      fields.push({ key, lines: Array.isArray(value) ? value : [value] });
+    const value = {
+      source: () => source,
+      component: () => component,
+      page: () => getPageString(),
+      anchor: () => getAnchor(el),
+      handlers: () => getHandlers(el),
+      selector: () => buildSelectorPath(el),
+      position: () => getPosition(el),
+      repeated: () => getRepetition(el),
+      layout: () => getLayout(el),
+      styles: () => getMatchedCss(el),
+      props: () => getProps(el),
+      text: () => getVisibleText(el),
     };
 
-    push("source", source);
-    push("component", component);
-    push("page", getPageString());
-    push("anchor", getAnchor(el));
-    push("handlers", getHandlers(el));
-    push("selector", buildSelectorPath(el));
-    push("position", getPosition(el));
-    push("repeated", getRepetition(el));
-    push("text", getVisibleText(el));
+    const fields = [];
+    for (const [key, pref] of COPY_ORDER) {
+      if (copyPrefs[pref] !== "on") continue;
+      const v = value[key]();
+      if (!v || (Array.isArray(v) && v.length === 0)) continue;
+      fields.push({ key, lines: Array.isArray(v) ? v : [v] });
+    }
 
-    const header = fields
-      .map((f) => f.lines.map((l, i) => (i === 0 ? `# ${f.key}: ` : "#   ") + l).join("\n"))
-      .join("\n");
-
-    return { header, located: Boolean(source || component) };
+    // Found *and* emitted. The rule the fallback below enforces is about the
+    // payload the agent reads, not about what this function happened to find.
+    return { header: renderCopyHeader(fields), located: Boolean(source || component) };
   }
 
-  // A fenced comment header: no per-field tags, and the fence both delimits the block
-  // from the surrounding prompt and stops "#" from rendering as a markdown heading.
+  // ===== Payload assembly =====
+  // These three take the preference object rather than reading the module's,
+  // for the reason computeRedline takes its opts: it makes them pure, so the
+  // shape of the payload can be swept in a test and previewed on the settings
+  // page without either one having to reproduce the rule.
+  // All three are mirrored in test/copy-format.mjs and settings/settings.js.
+
+  // Which HTML block the settings ask for, once the fallback has had its say.
+  // With a file or component to open, the agent reads the real source and a
+  // rendered subtree is a lossy copy of it; with neither, that subtree is the
+  // only concrete description the payload has — which is what the fallback
+  // restores, whatever was chosen.
+  function copyTrim(prefs, located) {
+    return (!located && prefs.copyHtmlFallback === "on") ? "full" : prefs.copyHtml;
+  }
+
+  // The fence does two jobs: it delimits the block from the sentence the user
+  // wrote around it, and it stops "#" from rendering as a markdown heading
+  // anywhere the prompt is rendered rather than shown raw. Eight characters.
+  function fenceBlock(prefs, body) {
+    if (!body) return "";
+    return prefs.copyFence === "on" ? "```\n" + body + "\n```" : body;
+  }
+
+  // Unfenced, the HTML takes a block of its own: with the outer fence gone it
+  // is the only thing left telling a renderer this part is markup, not prose.
+  function assemblePayload(prefs, header, html) {
+    if (prefs.copyFence === "on") {
+      return fenceBlock(prefs, [header, html].filter(Boolean).join("\n"));
+    }
+    return [header, html && "```html\n" + html + "\n```"].filter(Boolean).join("\n\n");
+  }
+
+  const EMPTY_PAYLOAD_NOTE = "Nothing to copy — every field is off in Settings → Copying";
+
+  function buildCopyHtml(el, located) {
+    const trim = copyTrim(copyPrefs, located);
+    if (trim === "none") return "";
+    if (trim === "root") return buildRootTag(el);
+    if (trim === "shape") return buildChildShape(el);
+    return buildSkeletonHTML(el, 0, Number(copyPrefs.copyDepth));
+  }
+
   function buildElementInfo(el) {
     const { header, located } = buildPointerHeader(el);
-
-    // With a file or component to open, the agent reads the real source and a rendered
-    // subtree is a lossy copy of it. With neither, the subtree is all the payload has.
-    const html = located ? buildRootTag(el) : buildSkeletonHTML(el);
-
-    return "```\n" + header + "\n" + html + "\n```";
+    return assemblePayload(copyPrefs, header, buildCopyHtml(el, located));
   }
 
   // ===== Screenshot Capture =====
@@ -5032,8 +6042,11 @@
     btnEl.style.opacity = token("--ccp-opacity-loading", "0.7");
   }
 
+  // The restore is guarded on origHtml, so a caller that never recorded one
+  // leaves its button disabled and wearing this state permanently. Every caller
+  // records one; this refuses rather than trusting that to stay true.
   function setButtonSuccess(btnEl, message) {
-    if (!btnEl) return;
+    if (!btnEl || !btnEl.dataset.origHtml) return;
     btnEl.innerHTML = `<span>${message}</span>`;
     btnEl.disabled = true;
     setTimeout(() => {
@@ -5058,6 +6071,11 @@
   async function copyElement(el, btnEl) {
     try {
       const info = buildElementInfo(el);
+      if (!info) {
+        resetButton(btnEl);
+        showToast(EMPTY_PAYLOAD_NOTE, true);
+        return;
+      }
       await navigator.clipboard.writeText(info);
       setButtonSuccess(btnEl, "Copied!");
     } catch (err) {
@@ -5131,5 +6149,19 @@
         }, 300);
       }
     }, 2000);
+  }
+
+  // A toast fades on its own after ~2.3s, which is longer than the extension
+  // exists once it is switched off. Takes the pending timer with it, so the
+  // fade-out cannot resurrect a node the teardown already removed.
+  function removeToast() {
+    if (toastTimer) {
+      clearTimeout(toastTimer);
+      toastTimer = null;
+    }
+    if (toastEl) {
+      toastEl.remove();
+      toastEl = null;
+    }
   }
 })();

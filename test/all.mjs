@@ -28,6 +28,7 @@ const SUITES = [
   ["edit-tokens.mjs", "design-token reverse lookup over three real corpora"],
   ["edit-color.mjs", "picker round trips, bounded by 8-bit quantisation"],
   ["edit-deltas.mjs", "the shape of the block the panel copies"],
+  ["copy-format.mjs", "every copy setting still produces a true payload"],
   ["cdp.mjs", "the real content.js, in a real browser", { browser: true }],
 ];
 

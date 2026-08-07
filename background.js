@@ -86,7 +86,61 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === "OPEN_SETTINGS") {
     chrome.runtime.openOptionsPage();
   }
+
+  // A stylesheet the page itself is not allowed to read.
+  //
+  // A cross-origin <link> without CORS headers throws on .cssRules, so a design
+  // system served from a CDN — an entirely ordinary arrangement — was invisible
+  // to the token layer. A content script cannot get around that: its fetches
+  // carry the page's origin and are refused the same way. The service worker
+  // can, because host_permissions applies to it.
+  //
+  // The text is handed straight back to the content script that asked and is
+  // never stored, forwarded, or read here. See PRIVACY.md.
+  if (msg.type === "FETCH_STYLESHEETS") {
+    const urls = Array.isArray(msg.urls) ? msg.urls.slice(0, MAX_SHEET_FETCH) : [];
+    Promise.all(urls.map(fetchStylesheet)).then(
+      (sheets) => sendResponse({ sheets }),
+      () => sendResponse({ sheets: [] })
+    );
+    return true; // keeps the message channel open for the async reply
+  }
 });
+
+// Enough for a design system split across a few files, far short of enough to
+// walk a site with. A page that links more than this loses the tail, and the
+// panel's degraded marker still reports what could not be read.
+const MAX_SHEET_FETCH = 12;
+const SHEET_FETCH_TIMEOUT = 4000;
+const MAX_SHEET_BYTES = 4 * 1024 * 1024;
+
+async function fetchStylesheet(url) {
+  try {
+    const parsed = new URL(url);
+    // Only what a stylesheet can actually be. Anything else is a URL we were
+    // handed, not one we should be dereferencing with host permissions.
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+      return { url, error: "unsupported scheme" };
+    }
+    const res = await fetch(parsed.href, {
+      // No cookies. Reading a page's stylesheet must not become a way of
+      // making an authenticated request on the user's behalf.
+      credentials: "omit",
+      redirect: "follow",
+      signal: AbortSignal.timeout(SHEET_FETCH_TIMEOUT),
+    });
+    if (!res.ok) return { url, error: `HTTP ${res.status}` };
+    const type = res.headers.get("content-type") || "";
+    if (type && !/text\/css|text\/plain|application\/octet-stream/i.test(type)) {
+      return { url, error: `not a stylesheet (${type.split(";")[0]})` };
+    }
+    const text = await res.text();
+    if (text.length > MAX_SHEET_BYTES) return { url, error: "too large" };
+    return { url, text };
+  } catch (err) {
+    return { url, error: String((err && err.message) || err) };
+  }
+}
 
 // Repaint every active tab's badge when the theme changes, so the badge doesn't
 // keep advertising the previous accent until the next toggle.

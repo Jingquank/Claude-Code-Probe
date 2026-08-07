@@ -39,7 +39,6 @@ const MIRRORS = [
   {
     file: "edit-tokens.mjs",
     names: [
-      "SCALE_WORDS",
       "parseCssLength",
       "computeSpecificity",
       "compareSpecificity",
@@ -63,6 +62,27 @@ const MIRRORS = [
       "EDIT_PROP_ORDER", "SHORTHAND_OF", "editPropRank",
       "parseCssColor", "formatHex", "displayCss",
       "formatEditSide", "buildEditLines",
+    ],
+  },
+  {
+    file: "copy-format.mjs",
+    names: [
+      "COPY_PREFS", "COPY_ORDER", "renderCopyHeader",
+      "copyTrim", "fenceBlock", "assemblePayload",
+    ],
+  },
+  // Not a test file. The settings page previews the copy payload by assembling
+  // a real one, which means the emission order, the comment dialect and the
+  // wrapper rules live there too — and a preview that has drifted from what
+  // gets copied is worse than no preview, because it is believed. The path is
+  // relative because the roster is joined against test/; nothing else about
+  // this entry is special.
+  {
+    file: "../settings/settings.js",
+    names: [
+      "COPY_PREFS", "COPY_ORDER", "renderCopyHeader",
+      "copyTrim", "fenceBlock", "assemblePayload",
+      "formatRedlineValue",
     ],
   },
 ];

@@ -56,6 +56,20 @@ tether asserts a relationship between chrome and an element and carries no
 value. A run that is longer means the panel was dragged further away, nothing
 more.
 
+They share the dash and not the weight. A redline guide is an aside at 1px — it
+extends an edge so a measurement has something to measure against, and should
+stay quieter than the number it serves. The run is the only thing saying which
+element the panel edits, so it is drawn at the ticks' own 2px: the tether reads
+as one object at one weight, rather than two solid stubs joined by a hairline.
+
+**Colour picker** — its own root, not part of the panel. It began as a child of
+the panel and that was the bug: it was clipped by the panel's overflow, locked to
+the panel's width, and painted over the very rows it was tuning, with no exit but
+an Escape nothing advertised. It is now a surface in its own right — named beside
+the panel in `OUR_ROOTS`, in `isOwnEditChrome`, and in the click allowlist — which
+is what lets it be dismissed the three ways anything else is: its close button,
+the swatch that opened it, or Escape.
+
 **Delta block** — what the panel copies: the same source pointer Copy Code
 emits, plus one line per edit. This is the product. The panel is how you produce
 it.
@@ -70,12 +84,37 @@ undo entry, so one ⌘Z gives back one change rather than the whole session.
 one undo entry: a scrub, a held arrow key, a drag in the colour picker.
 
 **Token family** — a name-prefixed scale a stepper can walk (`--title-sm/md/lg`,
-`text-xs…text-2xl`, `p-0…p-96`). A family of one is not a family: a scale you
-cannot step along is not a scale.
+`text-xs…text-2xl`, `p-0…p-96`). Membership is decided by the *values*, not by
+the names: any shared prefix with two rungs at two different numbers is a
+family, whatever its steps are called.
 
-**Rung** — one member of a family. A value is *on* a rung when its resolved
-value matches within half a pixel; anything else is *off-scale*, and off-scale
-claims no token.
+The names were tried first — a step had to be numeric or one of thirty-one words
+we had written down — and that was a guess about how other people name things.
+It was wrong about most of the field (`--radius`, `--color-primary`,
+`--space-small`, `--gap-xxs`), and it failed silently, so a page full of tokens
+reported none. What survives from that design is the only part that was load
+bearing: a family of one is not a family, because a scale you cannot step along
+is not a scale. Two names at the same number are the same statement in values,
+and are not a family either.
+
+**Rung** — one distinct value in a family, and the first name that claims it. A
+value is *on* a rung when its resolved value matches within half a pixel;
+anything else is *off-scale*, and off-scale claims no token. Aliases collapse
+onto the rung they share rather than sitting on it twice, so one press of the
+stepper always moves the page.
+
+**In scope** — the tokens a *particular element* can see, which is the only set
+worth offering. Found by asking the element what custom properties resolve on
+it, rather than by reading the stylesheets for names and hoping they reach it.
+Custom properties inherit, so the element is the authority — and asking it works
+regardless of where the declaration came from, including sheets this extension
+is not allowed to read.
+
+That last part is why the stylesheet walk still exists but no longer leads. Two
+things an element genuinely cannot report: which *class* means which value
+(`.p-4` is 1rem), and the *text of the declaration* that won — the only place a
+`var()` can be seen, and so the only way to know a value is a token rather than
+merely equal to one.
 
 **Own chrome** — the DOM this extension injects, all `ccp-`-prefixed. Kept
 distinct from the page's own DOM everywhere: in hit-testing, in what the info
@@ -91,3 +130,18 @@ block, so both name an element in the same dialect.
 **Skeleton** — the depth-limited HTML fallback, used only when no source file
 and no component name could be found. With a pointer, the agent should read the
 real source rather than a rendered copy of it.
+
+**Shape** — the middle HTML block: the root tag, then one condensed line per
+child (`td > button.btn-ghost "View" onClick={openInvoice}`), then the close. It
+describes rather than locates, which is why its segments carry no `:nth-child` —
+locating is the selector field's job.
+
+**Located** — whether the payload names a source file or a component. Not
+"whether one was found": a field switched off is a field the agent never sees,
+so it does not count. This is what decides whether the HTML block falls back to
+the full subtree.
+
+**Diagnosis fields** — `layout`, `styles`, `props`. The three that describe what
+the browser did rather than naming a construct, off by default, and the only ones
+that cost anything to compute. `props` is the sole field in the tool that reports
+values rather than names — see DESIGN.md.

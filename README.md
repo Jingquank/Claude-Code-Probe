@@ -67,6 +67,19 @@ way, and when a class would lose the cascade (a page rule outranking
 `.text-lg`, which is ordinary) it changes the value instead and says so, rather
 than claiming a swap that would do nothing in your source either.
 
+It finds them by asking the element what it can actually see, so where they were
+declared does not matter: a theme scope, a shadow root, an `@import`, or a
+stylesheet on a CDN your page is not allowed to read. Values are read the way
+the browser reads them, so a Tailwind v4 scale in `calc()` and a palette in
+`oklch()` are tokens like any other. A scale is anything with two rungs at two
+different values — `--gap-xxs`, `--space-small` and `--radius-DEFAULT` count,
+because the names were never the point.
+
+Colours are named too, on both sides of the arrow: an element whose colour comes
+from `var(--ink)` reports `--ink`, not the hex it happened to resolve to. A
+colour that merely *equals* a token still reports the hex — your source does not
+say `--ink` there, and the block should not either.
+
 Nothing is applied blind:
 
 - Each edited property gets a dot — click it to take that one property back.
@@ -96,8 +109,13 @@ mid-drag. **Esc** steps back out one layer at a time: picker, then panel, then
 selection, then Probe Mode. Measuring still works throughout — hold **Option**
 and the panel steps aside exactly as the toolbar does.
 
-Edits live in the page until you undo them, reset them, or reload. Nothing is
-written to your files; the copied block is the instruction to make them real.
+The colour picker opens beside the panel rather than over it, so the rows it is
+tuning stay readable. Close it with its **×**, by clicking the same swatch again,
+or with **Esc**.
+
+Edits live in the page until you undo them, reset them, switch the extension off,
+or reload — switching off puts every element back the way it was found. Nothing
+is written to your files; the copied block is the instruction to make them real.
 
 ### What the outline tells you
 
@@ -136,8 +154,9 @@ anything is selected. It opens the settings page in a tab.
 
 The page is a spec sheet — dotted-leader rows in collapsible sections, with a preview
 rail that answers whichever section you're in: the probe chrome while you pick a theme,
-a measuring vignette while you tune redlines, the edit panel while you tune editing.
-Hovering a row spotlights the part of the preview that row controls.
+a measuring vignette while you tune redlines, the edit panel while you tune editing, the
+clipboard payload itself while you tune copying. Hovering a row spotlights the part of
+the preview that row controls.
 
 **Appearance** — the theme. Eight of them.
 
@@ -164,6 +183,32 @@ every group it can edit or only the ones this element already has, and whether a
 value sitting on a design token offers its scale, its raw number, or both. The
 preview here is the panel itself, at its real scale, so both settings act on it
 exactly as they act on the live one.
+
+**Copying** — what both copy buttons put on the clipboard, along two axes.
+
+*Which fields ride along.* Nine switches over the pointer header — source, component,
+page, anchor, handlers, selector, position, repetition, text — all on, which is what
+shipped before there was a switch. Three more are off: **layout diagnosis** (the box,
+display, spacing, and the parent's flex or grid context), **matched CSS** (the authored
+rules that apply and the stylesheet each came from), and **props snapshot**. Three
+presets write a set at once; the field order in the payload never changes, whichever
+are on.
+
+Props is the one field that reports *values*. Everything else in this tool names
+things — files, components, function names — and it goes out of its way to report a
+handler's name and never what it does. Props is the exception, so it is off by default,
+it is in no preset, and the row says so.
+
+*How much of the element rides along.* Four HTML blocks — the root tag alone, one
+condensed line per child, the full subtree (at depth 3, 2, or 1), or nothing — plus the
+rule that puts the full subtree back when nothing in the payload points at the source.
+That rule is itself a switch, so slimming the header can't quietly fatten the markup.
+Last, the fence: `#` starts a markdown heading, so anywhere a prompt is rendered rather
+than shown raw, an unfenced header turns every line of the pointer into an H1.
+
+The preview is the payload — a real one, for a real element, reassembled on every
+change, with its character and token count. The **pointer resolves** chips flip the one
+thing the payload can't demonstrate about itself.
 
 Everything is stored on this device with `chrome.storage.local` and never leaves it.
 Changes repaint tabs that are already open — including a measurement you're holding
@@ -205,6 +250,11 @@ Notes on the fields:
   pointer the agent should read the real JSX rather than a rendered copy of it. When neither
   a source location nor a component name resolves, the full skeleton comes back instead —
   it's the only concrete description left.
+
+That is the default. Every field above can be switched off, three more can be switched on,
+and the HTML block has four sizes — see **Copying** in the settings. The block the edit
+panel copies is the same payload with the edits spliced in, so both speak one dialect and
+one section configures them.
 
 ## Development
 

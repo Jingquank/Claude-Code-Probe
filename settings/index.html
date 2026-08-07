@@ -160,6 +160,165 @@
         </div>
       </details>
 
+      <hr class="sp-hr">
+
+      <!-- The copy sheet. Two axes: which fields ride along in the comment
+           header, and how much of the rendered subtree comes with them. The
+           rail assembles the real payload from these, so every row's effect is
+           legible before anything is copied. -->
+      <details class="sp-section" open data-focus="copy">
+        <summary class="sp-summary">
+          <i class="sp-caret" aria-hidden="true"></i>
+          <h2 class="sp-legend" id="copying-legend">Copying</h2>
+        </summary>
+        <div class="sp-section-body">
+          <p class="sp-sub">
+            What <strong>Copy Code</strong> and the edit panel's copy button put
+            on the clipboard. The payload is a pointer — it names the construct
+            you mean and then gets out of the way, so your own instruction stays
+            the loudest thing in the prompt. Defaults are what the extension
+            copied before this section existed.
+          </p>
+
+          <div class="sp-sheet" id="copy-sheet">
+            <div class="sp-sheet-group">
+              <div class="sp-spec">
+                <span class="sp-spec-label" id="lbl-preset">Fields</span>
+                <i class="sp-spec-leader" aria-hidden="true"></i>
+                <span class="sp-seg sp-seg-act" role="group" aria-labelledby="lbl-preset">
+                  <button type="button" data-preset="pointer">pointer</button>
+                  <button type="button" data-preset="pointerplus">+ place</button>
+                  <button type="button" data-preset="all">everything</button>
+                </span>
+              </div>
+            </div>
+
+            <div class="sp-sheet-group">
+              <p class="sp-sheet-cat" aria-hidden="true">Names the construct</p>
+              <div class="sp-spec" data-hi="source">
+                <span class="sp-spec-label" id="lbl-c-source">Source location</span>
+                <i class="sp-spec-leader" aria-hidden="true"></i>
+                <button type="button" class="sp-switch" role="switch" data-sw="copySource" aria-labelledby="lbl-c-source"></button>
+              </div>
+              <div class="sp-spec" data-hi="component">
+                <span class="sp-spec-label" id="lbl-c-component">Component chain</span>
+                <i class="sp-spec-leader" aria-hidden="true"></i>
+                <button type="button" class="sp-switch" role="switch" data-sw="copyComponent" aria-labelledby="lbl-c-component"></button>
+              </div>
+              <div class="sp-spec" data-hi="anchor">
+                <span class="sp-spec-label" id="lbl-c-anchor">Greppable anchor</span>
+                <i class="sp-spec-leader" aria-hidden="true"></i>
+                <button type="button" class="sp-switch" role="switch" data-sw="copyAnchor" aria-labelledby="lbl-c-anchor"></button>
+              </div>
+              <div class="sp-spec" data-hi="handlers">
+                <span class="sp-spec-label" id="lbl-c-handlers">Handler names</span>
+                <i class="sp-spec-leader" aria-hidden="true"></i>
+                <button type="button" class="sp-switch" role="switch" data-sw="copyHandlers" aria-labelledby="lbl-c-handlers"></button>
+              </div>
+            </div>
+
+            <div class="sp-sheet-group">
+              <p class="sp-sheet-cat" aria-hidden="true">Places it</p>
+              <div class="sp-spec" data-hi="page">
+                <span class="sp-spec-label" id="lbl-c-page">Page</span>
+                <i class="sp-spec-leader" aria-hidden="true"></i>
+                <button type="button" class="sp-switch" role="switch" data-sw="copyPage" aria-labelledby="lbl-c-page"></button>
+              </div>
+              <div class="sp-spec" data-hi="selector">
+                <span class="sp-spec-label" id="lbl-c-selector">CSS selector path</span>
+                <i class="sp-spec-leader" aria-hidden="true"></i>
+                <button type="button" class="sp-switch" role="switch" data-sw="copySelector" aria-labelledby="lbl-c-selector"></button>
+              </div>
+              <div class="sp-spec" data-hi="position">
+                <span class="sp-spec-label" id="lbl-c-position">Position &amp; neighbours</span>
+                <i class="sp-spec-leader" aria-hidden="true"></i>
+                <button type="button" class="sp-switch" role="switch" data-sw="copyPosition" aria-labelledby="lbl-c-position"></button>
+              </div>
+              <div class="sp-spec" data-hi="repeated">
+                <span class="sp-spec-label" id="lbl-c-repeated">Repetition warning</span>
+                <i class="sp-spec-leader" aria-hidden="true"></i>
+                <button type="button" class="sp-switch" role="switch" data-sw="copyRepeated" aria-labelledby="lbl-c-repeated"></button>
+              </div>
+              <div class="sp-spec" data-hi="text">
+                <span class="sp-spec-label" id="lbl-c-text">Visible text</span>
+                <i class="sp-spec-leader" aria-hidden="true"></i>
+                <button type="button" class="sp-switch" role="switch" data-sw="copyText" aria-labelledby="lbl-c-text"></button>
+              </div>
+            </div>
+
+            <div class="sp-sheet-group">
+              <p class="sp-sheet-cat" aria-hidden="true">Diagnosis — off by default</p>
+              <div class="sp-spec" data-hi="layout">
+                <span class="sp-spec-label" id="lbl-c-layout">Layout diagnosis</span>
+                <i class="sp-spec-leader" aria-hidden="true"></i>
+                <button type="button" class="sp-switch" role="switch" data-sw="copyLayout" aria-labelledby="lbl-c-layout"></button>
+              </div>
+              <div class="sp-spec" data-hi="styles">
+                <span class="sp-spec-label" id="lbl-c-styles">Matched CSS &amp; origin</span>
+                <i class="sp-spec-leader" aria-hidden="true"></i>
+                <button type="button" class="sp-switch" role="switch" data-sw="copyStyles" aria-labelledby="lbl-c-styles"></button>
+              </div>
+              <div class="sp-spec" data-hi="props">
+                <span class="sp-spec-label" id="lbl-c-props">Props snapshot</span>
+                <i class="sp-spec-leader" aria-hidden="true"></i>
+                <button type="button" class="sp-switch" role="switch" data-sw="copyProps" aria-labelledby="lbl-c-props"></button>
+              </div>
+              <p class="sp-note">
+                Every other field names things — files, components, functions.
+                <strong>Props snapshot</strong> is the one that reports values,
+                so it is the one that can carry the page's own data into a
+                prompt. It is never included in a preset.
+              </p>
+            </div>
+
+            <div class="sp-sheet-group">
+              <p class="sp-sheet-cat" aria-hidden="true">The HTML block</p>
+              <div class="sp-spec" data-hi="html">
+                <span class="sp-spec-label" id="lbl-c-html">How much rides along</span>
+                <i class="sp-spec-leader" aria-hidden="true"></i>
+                <span class="sp-seg" role="radiogroup" aria-labelledby="lbl-c-html">
+                  <button type="button" role="radio" data-set="copyHtml" data-val="root">root</button>
+                  <button type="button" role="radio" data-set="copyHtml" data-val="shape">shape</button>
+                  <button type="button" role="radio" data-set="copyHtml" data-val="full">full</button>
+                  <button type="button" role="radio" data-set="copyHtml" data-val="none">none</button>
+                </span>
+              </div>
+              <div class="sp-spec" data-hi="html" id="row-depth">
+                <span class="sp-spec-label" id="lbl-c-depth">Depth of the subtree</span>
+                <i class="sp-spec-leader" aria-hidden="true"></i>
+                <span class="sp-seg" role="radiogroup" aria-labelledby="lbl-c-depth">
+                  <button type="button" role="radio" data-set="copyDepth" data-val="3">3</button>
+                  <button type="button" role="radio" data-set="copyDepth" data-val="2">2</button>
+                  <button type="button" role="radio" data-set="copyDepth" data-val="1">1</button>
+                </span>
+              </div>
+              <div class="sp-spec" data-hi="html">
+                <span class="sp-spec-label" id="lbl-c-fallback">Full subtree when nothing points at source</span>
+                <i class="sp-spec-leader" aria-hidden="true"></i>
+                <button type="button" class="sp-switch" role="switch" data-sw="copyHtmlFallback" aria-labelledby="lbl-c-fallback"></button>
+              </div>
+            </div>
+
+            <div class="sp-sheet-group">
+              <p class="sp-sheet-cat" aria-hidden="true">Wrapper</p>
+              <div class="sp-spec" data-hi="fence">
+                <span class="sp-spec-label" id="lbl-c-fence">Fence the block</span>
+                <i class="sp-spec-leader" aria-hidden="true"></i>
+                <button type="button" class="sp-switch" role="switch" data-sw="copyFence" aria-labelledby="lbl-c-fence"></button>
+              </div>
+              <p class="sp-note">
+                <code>#</code> starts a markdown heading. Anywhere a prompt is
+                rendered rather than shown raw, an unfenced header turns every
+                line of the pointer into an H1 — louder than the sentence you
+                wrote. The fence costs eight characters.
+              </p>
+            </div>
+          </div>
+          <button type="button" class="sp-reset" id="copy-reset">Reset to defaults</button>
+          <p class="sp-saved" id="saved-copying" role="status" aria-live="polite"></p>
+        </div>
+      </details>
+
       <!--
         These point at the repository rather than at ../PRIVACY.md and
         ../DESIGN.md: build.sh ships no markdown, so relative links would 404 in
@@ -196,6 +355,7 @@
           <span class="sp-tag" data-pv="theme">appearance</span>
           <span class="sp-tag" data-pv="measure">measuring</span>
           <span class="sp-tag" data-pv="edit">editing</span>
+          <span class="sp-tag" data-pv="copy">copying</span>
         </span>
       </h2>
       <!-- Both subs share one grid cell so the crossfade swaps them in place
@@ -213,6 +373,11 @@
           The panel that opens on the pencil, at its real scale — a group of
           rows, a value that types, arrows and scrubs, and the token stepper
           beside it.
+        </p>
+        <p class="sp-sub" data-pv="copy">
+          The clipboard payload for one real element — a row in an invoice
+          table — assembled from the settings on the left, exactly as the
+          extension assembles it.
         </p>
       </div>
 
@@ -398,7 +563,7 @@
                 </div>
                 <div class="ccp-edit-row">
                   <button type="button" class="ccp-edit-dot" tabindex="-1"></button>
-                  <span class="ccp-edit-label">color</span>
+                  <span class="ccp-edit-label">colour</span>
                   <span class="ccp-edit-color">
                     <button type="button" class="ccp-edit-swatch" tabindex="-1"><i></i></button>
                     <span class="ccp-edit-hex ccp-edit-token">--ink</span>
@@ -413,6 +578,32 @@
               </div>
             </div>
           </div>
+        </div>
+
+        <!--
+          The copy payload, rendered as the clipboard would receive it. Unlike
+          the two specimens above, this one is text, so it is assembled rather
+          than drawn: settings.js mirrors COPY_ORDER, renderCopyHeader and the
+          fence shapes from content.js (change both — test/mirror-drift.mjs
+          checks it), and feeds them one fixture element's literal lines. The
+          page still learns none of the extension's logic; it formats strings
+          it was handed, which is the same seam the vignette keeps.
+
+          The resolved chips are page state, not a setting: they flip the one
+          condition the payload cannot demonstrate on its own, which is what
+          happens to the HTML block when nothing points at the source.
+        -->
+        <div class="sp-pay" id="copy-pay">
+          <div class="sp-pay-bar">
+            <span class="sp-pay-q" id="lbl-src">pointer resolves</span>
+            <span class="sp-seg sp-seg-sm" role="radiogroup" aria-labelledby="lbl-src">
+              <button type="button" role="radio" data-src="1">yes</button>
+              <button type="button" role="radio" data-src="0">no</button>
+            </span>
+            <span class="sp-pay-count" id="copy-count"></span>
+          </div>
+          <pre class="sp-pay-out" id="copy-out" aria-live="polite"></pre>
+          <p class="sp-pay-note" id="copy-note"></p>
         </div>
       </div>
       </div>

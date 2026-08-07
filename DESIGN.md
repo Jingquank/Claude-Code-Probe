@@ -264,9 +264,12 @@ The measuring preferences set the pattern; a new setting is four sites, all flat
    the user is holding at that moment (`scheduleRedline()` on change), and an
    edit setting re-renders an open panel (`renderEditControls()`).
 
-Everything that spans both sheets — storage reads, painting, keyboard, live sync
+Everything that spans the sheets — storage reads, painting, keyboard, live sync
 — runs off `ALL_PREFS`, so a new setting gets all four for free once its roster
-is in the map.
+is in the map. There are three rosters now: `REDLINE_PREFS`, `EDIT_PREFS` and
+`COPY_PREFS`. Only the last needs no repaint on change — copy preferences are
+read at the moment a button is pressed, so keeping the object current is the
+whole of its listener.
 
 The settings page never learns the extension's logic. The measuring vignette is
 hand-drawn geometry and the only shared code is `formatRedlineValue`, mirrored
@@ -275,6 +278,45 @@ goes one step further and *is* the panel — the real markup rendered through
 `content.css` — so the two settings act on it exactly as they act on the live
 one, and it cannot drift into showing chrome that no longer exists.
 
+The Copying preview is the third answer to the same problem, for a preview made
+of text rather than pixels. It assembles a real payload, which means the parts
+that decide a payload's *shape* — `COPY_ORDER`, `renderCopyHeader`, `copyTrim`,
+`fenceBlock`, `assemblePayload` — live there too, mirrored and checked by
+`test/mirror-drift.mjs` (its roster reaches `settings/settings.js` as well as
+`test/`). What is *not* mirrored is any of the code that finds those values: the
+fixture hands over literal strings, the same seam the vignette keeps.
+
+Those five are pure because they take the preference object rather than reading
+the module's own, exactly as `computeRedline` takes its `opts` (§5). That is
+what lets `test/copy-format.mjs` sweep all 96 combinations of the shape settings
+and lets the settings page preview them without either one reproducing the rule.
+A new copy setting that changes the payload's shape belongs in one of those five,
+or it will have to be written three times.
+
+---
+
+## The payload is a pointer, and props is the one exception
+
+Everything the copy payload reports **names** something: a file and line, a
+component chain, a greppable anchor, a selector, a position among siblings.
+`getHandlers` is the sharpest case — it reports `onClick=handleUpgrade`, the
+function's *name*, and never the expression bound to it. That is not squeamishness
+about size. A pointer that names constructs can be pasted anywhere; a payload
+carrying values is carrying whatever happened to be on the page.
+
+The props snapshot breaks that rule on purpose, because sometimes the value is
+the question — which of twelve identical rows, and what is actually in it. So it
+exists, and it is fenced off accordingly: **off by default, in none of the three
+presets, never computed unless asked for, and shallow** — a nested object prints
+as `{…}` rather than as its contents, which is the difference between a shape and
+an API response. The settings row says all of this in the sheet, where the
+decision is being made, rather than in a document nobody reads first.
+
+The same restraint decides `page:`, which has always reported a full URL only on
+a dev origin and a bare path everywhere else (`isDevOrigin`). Switching a field
+on is consent for that field; it is not consent for the tool to get looser about
+everything else.
+
 ---
 
 ## Edit Mode writes to the page, and that changes the contract
@@ -282,7 +324,7 @@ one, and it cannot drift into showing chrome that no longer exists.
 Everything else this extension does is additive: it appends its own chrome and
 reads the page. Edit Mode is the first feature that reaches in and changes the
 user's DOM, which is a different kind of risk — a stray write that nothing
-restores leaves the page altered after the tool is gone. Four rules hold it.
+restores leaves the page altered after the tool is gone. Five rules hold it.
 
 **One door.** Every host-page write goes through the `Edit Apply` section of
 `content.js`, and `test/edit-audit.mjs` parses the file's own section banners to
@@ -304,6 +346,21 @@ inline block has been written through CSSOM, Chrome's first removal empties it
 but leaves the attribute node, and an element the tool had finished with would
 still carry a visible `style=""`.
 
+**Switching off puts the page back.** Edits outlive deselection and outlive
+leaving Edit Mode — that is the point, since the panel is a tuning surface and
+the delta block is what you take away from it. They do not outlive the tool.
+`deactivate()` runs `resetAllEdits()` and empties the undo and redo stacks, so
+the tool leaves nothing behind but the page it found. Note this makes the last
+rung of the Escape ladder destructive: Escape steps picker → panel → selection →
+off, and that final step reverts. Copy the block before taking it.
+
+`deactivate()` reaches Edit Mode's teardown by calling `deselectElement()` rather
+than nulling `selectedElement` itself. That is not tidiness — `deselectElement()`
+is the only place carrying "a selection ending ends Edit Mode and redline", and
+the shortcut is what once left the panel on screen with `editing` still true, the
+five capture-phase pointer guards still attached, and the user's page inert until
+they reloaded it.
+
 **Never claim a token that isn't there.** The resolver reports a design token
 only when its resolved value equals the computed value; a length that depends on
 layout is `null` rather than a guess, a family of one is dropped because a scale
@@ -317,7 +374,53 @@ does nothing in the source either.
 **The extension's own tokens are not the page's.** `tokens.css` and
 `content.css` ride along on every page as content scripts, so the stylesheet
 walk skips them by URL, with the `ccp-` namespace filtered as a backstop.
-Without that, `--ccp-accent` gets offered as a fill for someone's card.
+Without that, `--ccp-accent` gets offered as a fill for someone's card. The
+namespace filter carries more weight now than it did: token discovery asks the
+element, and the element cannot tell our custom properties from the page's.
+
+**Ask the element, not the stylesheets.** Discovery used to walk
+`document.styleSheets` for `--` names and then resolve each against whatever was
+selected. That made the token layer only as good as its read access, and it was
+worse than that in practice: a design system behind an `@import`, in a shadow
+root, or on a CDN produced nothing at all, silently. Custom properties inherit,
+so the element already knows its own token universe — including everything
+declared in a sheet no script may read, because the browser applies it
+regardless. `collectElementTokens` enumerates that, and the walk is left holding
+only the two things an element genuinely cannot report: which class means which
+value, and the text of the winning declaration, which is the only place a
+`var()` can be seen.
+
+That distinction is what decides how much the fetch below is really worth.
+
+**A blocked stylesheet is fetched, not mourned.** A cross-origin sheet without
+CORS throws on `.cssRules`, and a content script's own fetch is refused the same
+way, so the service worker's `host_permissions` is the only route. It runs after
+the panel has already opened, on what the page could read by itself, and folds
+the result in when it lands — a slow CDN costs a stepper that appears a beat
+late, not a panel that will not open. The recovered rules are re-walked in place
+rather than appended, because source order is what the cascade comparison reads.
+
+What it buys is narrower than it looks, and worth stating so nobody widens the
+permission expecting more: the sheet's *custom properties already reached the
+element* and needed no fetch. Only class rules and declaration text are actually
+recovered. `PRIVACY.md` describes exactly what is requested and what is not.
+
+**The cascade has more than three levels.** `findWinningDeclaration` ranked by
+importance, then specificity, then source order. Layers sit above specificity —
+an unlayered declaration beats a layered one however specific the layered one is
+— and every Tailwind v4 or shadcn page is built out of layers, so the wrong
+declaration won and the `var()` read out of it named the wrong token. A wrong
+token is worse than no token. Ordering *between* named layers needs the `@layer`
+statement that declares them and is not modelled; layered-versus-unlayered is.
+
+**A shorthand utility is indexed under its longhands.** CSSOM lists
+`padding: 1rem` as four `padding-*` declarations, so `.p-4` is stored under
+`padding-top` and never under `padding` — while the linked padding control asks
+about `padding`. The two could not meet, so no shorthand-setting utility class
+was ever detected or ever formed a family. That is every Tailwind spacing class.
+`.text-lg` worked the whole time because `font-size` is already a longhand, and
+that is what made a missing edge look like partial support. `FIRST_LONGHAND_OF`
+is the other half of `SHORTHAND_OF`, and the lookup now goes both ways.
 
 One trap worth naming, because it silently disabled the whole token layer once:
 CSS Nesting gave every `CSSStyleRule` a `cssRules` list, so `if (rule.cssRules)`
@@ -334,7 +437,19 @@ node test/edit-audit.mjs   # host-page writes still live in one section
 node test/edit-tokens.mjs  # the token resolver, over three real corpora
 node test/edit-color.mjs   # picker round trips, bounded by 8-bit quantisation
 node test/edit-deltas.mjs  # the shape of the block the panel copies
+node test/cdp.mjs          # everything DOM-bound, in a real browser
 ```
+
+`cdp.mjs` is where the token layer is actually tested, because every interesting
+failure it has ever had was a browser behaviour rather than a logic error. The
+fixture (`test/edit-harness.html`) is deliberately built out of the shapes that
+used to report nothing — a `calc()` scale, an `oklch()` palette, a theme scope,
+an `@import`, a grouped selector, a cross-origin sheet — because for a long time
+it contained only the one shape that worked, and a fixture like that cannot fail.
+
+When adding to it, check the new case fails before the fix as well as passing
+after it. Several of these were written, seen green, and only then discovered to
+be asserting something that was already true.
 
 Then, in the browser — a `content.js` or `content.css` edit needs an *extension*
 reload, not just a page reload:
