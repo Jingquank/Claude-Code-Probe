@@ -1,6 +1,6 @@
 # Privacy Policy — Claude Code Probe
 
-**Last updated:** July 29, 2026
+**Last updated:** August 7, 2026
 
 ## Overview
 
@@ -16,7 +16,7 @@ Claude Code Probe does **not** collect, store, transmit, or share any data. Spec
 - **No analytics or tracking** of any kind is used
 - **No cookies** are set or read by the extension
 - **No accounts or sign-ups** are required
-- **No page content, URLs, or element data** is ever stored — the only thing saved is your theme choice (see *Data Storage*)
+- **No page content, URLs, or element data** is ever stored — the only things saved are your own settings (see *Data Storage*)
 
 ## How the Extension Works
 
@@ -39,7 +39,7 @@ The extension requests the following permissions, used solely for its core funct
 
 - **activeTab** — to read element information on the current page when you activate Probe Mode
 - **clipboardWrite** — to copy element information and screenshots to your clipboard
-- **storage** — to remember your theme choice on this device. This is the only thing the extension stores, and it never leaves your browser. See *Data Storage* below.
+- **storage** — to remember your settings on this device: the theme and your measuring, editing and copying preferences. Nothing else is stored, and none of it ever leaves your browser. See *Data Storage* below.
 - **scripting** — to inject the inspector into tabs that were already open when the extension was installed or updated. Without it, those tabs need a reload before Probe Mode works.
 - **Content script matches (`<all_urls>`)** — to allow the inspector to run on any webpage you choose to inspect
 - **host_permissions (`<all_urls>`)** — to re-request stylesheets the page itself is not allowed to read, so the Edit panel can name the design tokens they define. Only ever used for that. See *Stylesheet fetching* below.
@@ -107,16 +107,23 @@ no telemetry and has no backend.
 
 ## Data Storage
 
-Claude Code Probe stores exactly one thing: **your chosen theme**, saved with `chrome.storage.local` under the key `theme`. Its value is a short identifier such as `terracotta-dark` or `dracula`.
+Claude Code Probe stores exactly one kind of thing: **your own settings**, saved with `chrome.storage.local` as a handful of short preference values:
 
-- It is stored **locally on this device only**. `chrome.storage.local` does not sync to your Google account or to your other browsers.
-- It is **never transmitted anywhere**. The extension makes no network requests with it.
-- It contains **no information about you, the pages you visit, or anything you inspect** — only which colour scheme you picked.
-- You can remove it by uninstalling the extension, or by clearing the extension's data from `chrome://extensions`.
+- **`theme`** — which colour scheme you picked, e.g. `terracotta-dark`.
+- **Measuring preferences** — the `redline*` keys from Settings → Measuring: unit, precision, pill placement, guides, overlay quieting, zero pills.
+- **Editing preferences** — the `edit*` keys from Settings → Editing: which groups the panel shows, how design tokens are displayed, and the off-by-default deep shader capture toggle.
+- **Copying preferences** — the `copy*` keys from Settings → Copying: which header fields ride along in a copied payload, and how much HTML comes with them.
 
-Nothing else is stored: no localStorage, no IndexedDB, no cookies, and no record of the pages you inspect or the elements you copy.
+Every value is a short option identifier such as `on`, `off`, `px` or `adaptive`, and all of them together are:
 
-*Changed in version 1.3.0.* Earlier versions used no storage at all. The theme preference is the only addition.
+- Stored **locally on this device only**. `chrome.storage.local` does not sync to your Google account or to your other browsers.
+- **Never transmitted anywhere**. The extension makes no network requests with them.
+- **Free of information about you, the pages you visit, or anything you inspect or edit** — they record only which options you picked on the settings page.
+- Removable by uninstalling the extension, or by clearing the extension's data from `chrome://extensions`.
+
+Nothing else is stored: no localStorage, no IndexedDB, no cookies, and no record of the pages you inspect, the elements you copy, or the edits you make.
+
+*History:* versions before 1.3.0 used no storage at all; 1.3.0 added the theme; later releases added the settings-page preferences described above.
 
 ## Changes to This Policy
 
