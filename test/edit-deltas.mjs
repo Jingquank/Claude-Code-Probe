@@ -102,16 +102,88 @@ export function formatEditSide(value) {
   return shown;
 }
 
-export function buildEditLines(entries) {
-  const sorted = (entries || [])
-    .filter((e) => e && e.prop)
+export function buildEditLines(entries, shaderMeta) {
+  const all = (entries || []).filter((e) => e && e.prop);
+  const texts = all.filter((e) => e.prop === "text");
+  const typeStyles = all.filter((e) => e.prop === "type-style");
+  const styles = all.filter((e) =>
+    e.prop !== "text" && e.prop !== "type-style" && !e.prop.startsWith("uniform:"));
+  const uniforms = all.filter((e) => e.prop.startsWith("uniform:"));
+  const sorted = styles
     .slice()
     .sort((a, b) => editPropRank(a.prop) - editPropRank(b.prop) || a.prop.localeCompare(b.prop));
-  if (sorted.length === 0) return [];
-  return [
-    "# edits: apply these style changes to this element in the source",
-    ...sorted.map((e) => `#   ${e.prop}: ${formatEditSide(e.before)} → ${formatEditSide(e.after)}`),
+  const lines = [];
+  for (const e of texts) {
+    lines.push(`# text: ${formatTextSide(e.before, 80)} → ${formatTextSide(e.after)}`);
+  }
+  lines.push(...buildTypeStyleLines(typeStyles));
+  if (sorted.length > 0) {
+    lines.push(
+      "# edits: apply these style changes to this element in the source",
+      ...sorted.map((e) => `#   ${e.prop}: ${formatEditSide(e.before)} → ${formatEditSide(e.after)}`)
+    );
+  }
+  if (uniforms.length > 0) lines.push(...buildShaderLines(uniforms, shaderMeta || null));
+  return lines;
+}
+
+// Mirrored from the Edit Deltas section of content.js — change both.
+export function typeStyleEcho(before, after) {
+  const LABELS = [
+    ["font-size", "size"], ["font-weight", "weight"],
+    ["line-height", "leading"], ["letter-spacing", "tracking"],
   ];
+  const a = (before && before.style && before.style.values) || {};
+  const b = (after && after.style && after.style.values) || {};
+  const parts = [];
+  for (const [prop, label] of LABELS) {
+    const x = a[prop];
+    const y = b[prop];
+    if (typeof x !== "number" || typeof y !== "number") continue;
+    if (Math.abs(x - y) <= 0.001) continue;
+    const f = (n) => String(Math.round(n * 100) / 100);
+    parts.push(`${label} ${f(x)}→${f(y)}`);
+  }
+  return parts.length ? ` (${parts.join(", ")})` : "";
+}
+
+// Mirrored from the Edit Deltas section of content.js — change both.
+export function buildTypeStyleLines(entries) {
+  return (entries || [])
+    .filter((e) => e && e.prop === "type-style")
+    .map((e) => `# type style: ${e.before && e.before.css ? e.before.css : ""} → ` +
+      `${e.after && e.after.css ? e.after.css : ""}${typeStyleEcho(e.before, e.after)}`);
+}
+
+// Mirrored from the Edit Deltas section of content.js — change both.
+export function formatTextSide(value, cap) {
+  const s = value && typeof value.css === "string" ? value.css : "";
+  const shown = cap && s.length > cap ? s.slice(0, cap - 1) + "…" : s;
+  return JSON.stringify(shown);
+}
+
+// Mirrored from the Edit Deltas section of content.js — change both.
+export function buildShaderLines(entries, meta) {
+  const sorted = (entries || [])
+    .filter((e) => e && e.prop && e.prop.startsWith("uniform:"))
+    .slice()
+    .sort((a, b) => a.prop.localeCompare(b.prop));
+  if (sorted.length === 0) return [];
+  const kind = meta && meta.contextType === "webgl2" ? "WebGL2" : "WebGL";
+  const lines = [
+    `# shader edits: this canvas is drawn by a ${kind} program — set these uniforms where the page uploads them`,
+  ];
+  for (const e of sorted) {
+    const name = e.prop.slice(8);
+    const driven = Boolean(e.before && e.before.driven);
+    const before = driven ? "page-driven" : e.before ? e.before.css : "";
+    const after = driven ? `held at ${e.after ? e.after.css : ""}` : e.after ? e.after.css : "";
+    lines.push(`#   ${name}: ${before} → ${after}`);
+  }
+  if (meta && meta.probedFrom) {
+    lines.push(`# note: this canvas was probed as a descendant of the selected ${meta.probedFrom}`);
+  }
+  return lines;
 }
 
 // ===== Harness =====
@@ -321,6 +393,165 @@ check("lines · the canonical block", (fail) => {
     "#   padding: --space-2 (8px) → --space-3 (12px)",
   ];
   if (!eq(lines, want)) fail(`\n got: ${lines.join("\n      ")}\nwant: ${want.join("\n      ")}`);
+});
+
+// ===== 3a. Text lines =====
+// The words are not a style change, so they get their own line, ahead of the
+// style block. Quoted so the edges show; the before side is a finder and may
+// truncate, the after side is the instruction and never does.
+
+const txt = (s) => ({ css: s, inline: null, priority: "", cls: null, token: null, text: s });
+
+check("text · reads quoted, before styles, without a style header", (fail) => {
+  const lines = buildEditLines([
+    { prop: "font-size", before: raw("14px"), after: raw("18px") },
+    { prop: "text", before: txt("Hello world"), after: txt("Hello, probe") },
+  ]);
+  if (lines[0] !== '# text: "Hello world" → "Hello, probe"') fail(lines[0]);
+  if (!lines[1].startsWith("# edits:")) fail(`styles should follow: ${lines[1]}`);
+});
+
+check("text · a text-only edit produces no style header", (fail) => {
+  const lines = buildEditLines([{ prop: "text", before: txt("a"), after: txt("b") }]);
+  if (lines.length !== 1) fail(JSON.stringify(lines));
+  if (lines.some((l) => l.startsWith("# edits:"))) fail("an empty style header is a lie");
+});
+
+check("text · the before side truncates, the after side never", (fail) => {
+  const long = "x".repeat(200);
+  const [line] = buildEditLines([{ prop: "text", before: txt(long), after: txt(long + "!") }]);
+  const [beforeSide, afterSide] = line.slice("# text: ".length).split(" → ");
+  if (!beforeSide.includes("…")) fail("long before side did not truncate");
+  if (beforeSide.length > 90) fail(`before side too long: ${beforeSide.length}`);
+  if (afterSide.includes("…")) fail("the instruction side must never truncate");
+  if (JSON.parse(afterSide) !== long + "!") fail("after side does not round-trip");
+});
+
+check("text · quotes inside the words cannot fake the format", (fail) => {
+  const [line] = buildEditLines([{ prop: "text", before: txt('say "hi"'), after: txt("done") }]);
+  if (line !== '# text: "say \\"hi\\"" → "done"') fail(line);
+});
+
+// ===== 3aa. Type style lines =====
+// One composite action, one line: the name leads (the source edit is that
+// name), the parenthetical echoes only the constituents that moved.
+
+const styleVal = (css, values, cls) => ({
+  css, inline: null, priority: "", cls: cls || null,
+  token: null, styleDecls: {}, style: { name: null, values },
+});
+
+check("type style · a step echoes only what moved", (fail) => {
+  const lines = buildTypeStyleLines([{
+    prop: "type-style",
+    before: styleVal("text-lg", { "font-size": 18, "line-height": 28 }, "text-lg"),
+    after: styleVal("text-xl", { "font-size": 20, "line-height": 28 }, "text-xl"),
+  }]);
+  if (!eq(lines, ["# type style: text-lg → text-xl (size 18→20)"])) {
+    fail(JSON.stringify(lines));
+  }
+});
+
+check("type style · a conform names the drift it healed", (fail) => {
+  const lines = buildTypeStyleLines([{
+    prop: "type-style",
+    before: styleVal("text-lg (modified)", { "font-size": 18, "line-height": 32 }, "text-lg"),
+    after: styleVal("text-lg", { "font-size": 18, "line-height": 28 }, "text-lg"),
+  }]);
+  if (!eq(lines, ["# type style: text-lg (modified) → text-lg (leading 32→28)"])) {
+    fail(JSON.stringify(lines));
+  }
+});
+
+check("type style · rides buildEditLines between text and styles", (fail) => {
+  const lines = buildEditLines([
+    { prop: "color", before: raw("#000"), after: raw("#333") },
+    {
+      prop: "type-style",
+      before: styleVal("--heading-md", { "font-size": 24, "font-weight": 650 }),
+      after: styleVal("--heading-lg", { "font-size": 32, "font-weight": 700 }),
+    },
+    { prop: "text", before: txt("a"), after: txt("b") },
+  ]);
+  if (!lines[0].startsWith("# text:")) fail(`text should lead: ${lines[0]}`);
+  if (lines[1] !== "# type style: --heading-md → --heading-lg (size 24→32, weight 650→700)") {
+    fail(lines[1]);
+  }
+  if (!lines[2].startsWith("# edits:")) fail(`styles should follow: ${lines[2]}`);
+});
+
+check("type style · a constituent absent on either side stays silent", (fail) => {
+  // The element could not answer for leading (line-height: normal): no
+  // number on the before side means no echo, never a NaN.
+  const lines = buildTypeStyleLines([{
+    prop: "type-style",
+    before: styleVal("text-lg (modified)", { "font-size": 18 }),
+    after: styleVal("text-lg", { "font-size": 18, "line-height": 28 }),
+  }]);
+  if (!eq(lines, ["# type style: text-lg (modified) → text-lg"])) {
+    fail(JSON.stringify(lines));
+  }
+});
+
+// ===== 3b. Shader lines =====
+// Uniform entries — registry keys starting "uniform:" — report in their own
+// block: "set this uniform" is a different instruction from "apply this
+// declaration", and the uniform name is the greppable anchor.
+
+// A uniform EditValue as the panel builds them: css carries the GLSL-shaped
+// display string, `uniform` the raw components, `driven` the sentinel state.
+const uni = (css, vec) => ({ css, inline: null, priority: "", cls: null, token: null, uniform: vec });
+const pageDriven = () => ({ css: "page-driven", inline: null, priority: "", cls: null, token: null, uniform: null, driven: true });
+
+check("shader · the canonical block", (fail) => {
+  const lines = buildEditLines([
+    { prop: "uniform:u_amplitude", before: uni("0.20", [0.2]), after: uni("0.35", [0.35]) },
+    { prop: "uniform:u_color", before: uni("vec3(0.86, 0.47, 0.34)", [0.86, 0.47, 0.34]), after: uni("vec3(0.90, 0.20, 0.10)", [0.9, 0.2, 0.1]) },
+    { prop: "uniform:u_time", before: pageDriven(), after: uni("12.40", [12.4]) },
+  ], { contextType: "webgl2" });
+  const want = [
+    "# shader edits: this canvas is drawn by a WebGL2 program — set these uniforms where the page uploads them",
+    "#   u_amplitude: 0.20 → 0.35",
+    "#   u_color: vec3(0.86, 0.47, 0.34) → vec3(0.90, 0.20, 0.10)",
+    "#   u_time: page-driven → held at 12.40",
+  ];
+  if (!eq(lines, want)) fail(`\n got: ${lines.join("\n      ")}\nwant: ${want.join("\n      ")}`);
+});
+
+check("shader · style lines lead, shader lines follow", (fail) => {
+  const lines = buildEditLines([
+    { prop: "uniform:u_speed", before: uni("1.00", [1]), after: uni("2.00", [2]) },
+    { prop: "font-size", before: raw("14px"), after: raw("18px") },
+  ]);
+  if (lines.length !== 4) return fail(`expected 4 lines, got ${lines.length}`);
+  if (!lines[0].startsWith("# edits:")) fail(`styles should lead: ${lines[0]}`);
+  if (!lines[2].startsWith("# shader edits:")) fail(`shader header misplaced: ${lines[2]}`);
+  if (lines[2].includes("WebGL2")) fail("no meta must read as plain WebGL");
+  if (lines[3] !== "#   u_speed: 1.00 → 2.00") fail(lines[3]);
+});
+
+check("shader · uniform-only edits produce no style header", (fail) => {
+  const lines = buildEditLines([
+    { prop: "uniform:u_speed", before: uni("1.00", [1]), after: uni("2.00", [2]) },
+  ]);
+  if (lines.some((l) => l.startsWith("# edits:"))) fail("an empty style header is a lie");
+  if (!lines[0].startsWith("# shader edits:")) fail(lines[0]);
+});
+
+check("shader · the descendant-probe note rides last", (fail) => {
+  const lines = buildShaderLines(
+    [{ prop: "uniform:u_glow", before: uni("0.50", [0.5]), after: uni("0.80", [0.8]) }],
+    { contextType: "webgl", probedFrom: '<div class="hero">' }
+  );
+  if (lines[lines.length - 1] !==
+      '# note: this canvas was probed as a descendant of the selected <div class="hero">') {
+    fail(lines[lines.length - 1]);
+  }
+});
+
+check("shader · buildShaderLines refuses non-uniform entries", (fail) => {
+  const lines = buildShaderLines([{ prop: "font-size", before: raw("14px"), after: raw("18px") }], null);
+  if (lines.length !== 0) fail(JSON.stringify(lines));
 });
 
 // ===== 4. Empty and malformed input =====

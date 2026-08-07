@@ -1733,3 +1733,476 @@
 #ccp-edit-panel .ccp-edit-num.ccp-edit-scrubbing * {
   cursor: ew-resize !important;
 }
+
+/* ===== Edit Panel — Advanced =====
+   The collapsible section at the panel's foot: shader uniforms and the custom
+   properties driving this element's visual mechanism. A native <details>, the
+   same pattern the settings page ships — free keyboard support, free
+   semantics, no JS — adapted to the panel's all:initial fencing, which resets
+   display and list-style and would otherwise leave the summary an inert
+   block. */
+
+/* The height glide needs interpolate-size, which inherits — so it is granted
+   to the panel's own subtree and never to the page's root, which is not ours
+   to change. */
+#ccp-edit-panel { interpolate-size: allow-keywords; }
+
+#ccp-edit-panel .ccp-adv {
+  all: initial;
+  box-sizing: border-box;
+  display: block;
+  font-family: var(--ccp-font);
+}
+
+#ccp-edit-panel .ccp-adv-summary {
+  all: initial;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--ccp-gap-base);
+  font-family: var(--ccp-font);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+#ccp-edit-panel .ccp-adv-summary::-webkit-details-marker { display: none; }
+
+#ccp-edit-panel .ccp-adv-summary:focus-visible {
+  outline: 2px solid var(--ccp-accent);
+  outline-offset: 2px;
+  border-radius: var(--ccp-radius-xs);
+}
+
+#ccp-edit-panel .ccp-adv-summary:hover .ccp-adv-legend { color: var(--ccp-text-dim); }
+
+/* Drawn caret, not a glyph — the settings page's, at panel scale. Points
+   right closed, down open. */
+#ccp-edit-panel .ccp-adv-caret {
+  all: initial;
+  box-sizing: border-box;
+  flex: none;
+  width: 5px;
+  height: 5px;
+  margin-top: -3px;
+  border-right: 1.5px solid var(--ccp-text-muted);
+  border-bottom: 1.5px solid var(--ccp-text-muted);
+  transform: rotate(45deg);
+  transition: transform var(--ccp-duration);
+}
+
+#ccp-edit-panel .ccp-adv:not([open]) .ccp-adv-caret {
+  transform: rotate(-45deg);
+  margin-top: 0;
+}
+
+/* The legend class carries the register; inside a flex summary its block
+   margin has no work to do. */
+#ccp-edit-panel .ccp-adv-legend { margin-bottom: 0; }
+
+/* What the section holds, said before it is opened — the same courtesy as
+   the copy button's count. */
+#ccp-edit-panel .ccp-adv-count {
+  all: initial;
+  font: var(--ccp-text-sm)/1.4 var(--ccp-font);
+  font-variant-numeric: tabular-nums;
+  color: var(--ccp-text-faint);
+  margin-left: auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The collapse glides where the browser can interpolate to auto; older
+   Chrome ignores ::details-content and snaps, which is the settings page's
+   accepted fallback too. */
+#ccp-edit-panel .ccp-adv::details-content {
+  height: 0;
+  overflow: clip;
+  transition: height var(--ccp-duration-slow) var(--ccp-ease),
+              content-visibility var(--ccp-duration-slow) allow-discrete;
+}
+
+#ccp-edit-panel .ccp-adv[open]::details-content { height: auto; }
+
+#ccp-edit-panel .ccp-adv-body {
+  all: initial;
+  box-sizing: border-box;
+  display: block;
+  font-family: var(--ccp-font);
+  padding-top: var(--ccp-gap-base);
+}
+
+/* Which canvas got probed, or why the rows are inert — quiet, because none
+   of it is a fault. */
+#ccp-edit-panel .ccp-adv-note {
+  all: initial;
+  display: block;
+  font: var(--ccp-text-sm)/1.5 var(--ccp-font);
+  color: var(--ccp-text-faint);
+  margin: 2px 0 var(--ccp-gap-base);
+}
+
+#ccp-edit-panel .ccp-adv-note .ccp-edit-id-tag { color: var(--ccp-accent); }
+#ccp-edit-panel .ccp-adv-note .ccp-edit-id-id { color: var(--ccp-syntax-id); }
+#ccp-edit-panel .ccp-adv-note .ccp-edit-id-class { color: var(--ccp-syntax-class); }
+
+/* Values the page rewrites every frame. A shade apart from the parameters
+   above them: these read out the page's own loop until a row is touched, and
+   the dimming lifts with the dirty state — an overridden value is yours. */
+#ccp-edit-panel .ccp-adv-driven {
+  all: initial;
+  box-sizing: border-box;
+  display: block;
+  font-family: var(--ccp-font);
+  margin-top: var(--ccp-gap-base);
+}
+
+#ccp-edit-panel .ccp-adv-driven-legend {
+  all: initial;
+  display: block;
+  font: var(--ccp-weight-medium) 9px/1 var(--ccp-font);
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ccp-text-faint);
+  margin: var(--ccp-gap-base) 0;
+}
+
+#ccp-edit-panel .ccp-adv-driven .ccp-edit-row:not(.ccp-edit-dirty) .ccp-edit-input {
+  color: var(--ccp-text-dim);
+}
+
+/* A shader that drew once and stopped, or one the page rebuilt out from
+   under us: the rows stay to say what the values are, and nothing pretends
+   they can be moved. The inputs are disabled from script; this is the face. */
+#ccp-edit-panel .ccp-adv-readonly { opacity: 0.65; }
+#ccp-edit-panel .ccp-adv-readonly .ccp-edit-num,
+#ccp-edit-panel .ccp-adv-readonly .ccp-edit-num *,
+#ccp-edit-panel .ccp-adv-readonly .ccp-edit-dot,
+#ccp-edit-panel .ccp-adv-readonly .ccp-edit-swatch {
+  cursor: default !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #ccp-edit-panel .ccp-adv-caret { transition: none; }
+  #ccp-edit-panel .ccp-adv::details-content { transition: none; }
+}
+
+/* ===== Edit Panel — text field =====
+   The words themselves, in the register of the value chips: a quiet field
+   that looks like the numbers beside it, wide because words are wider. */
+#ccp-edit-panel .ccp-edit-textwrap {
+  all: initial;
+  box-sizing: border-box;
+  display: inline-flex;
+  flex: none;
+  width: 132px;
+  padding: 2px var(--ccp-xs);
+  border: 1px solid var(--ccp-sep);
+  border-radius: var(--ccp-radius-xs);
+  background: rgb(from var(--ccp-text) r g b / 0.06);
+  font-family: var(--ccp-font);
+  transition: border-color var(--ccp-duration), background var(--ccp-duration);
+}
+
+#ccp-edit-panel .ccp-edit-textwrap:focus-within {
+  border-color: var(--ccp-accent);
+  background: rgb(from var(--ccp-accent) r g b / 0.12);
+}
+
+#ccp-edit-panel .ccp-edit-textin {
+  all: initial;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  font: var(--ccp-weight-medium) var(--ccp-text-sm)/1.4 var(--ccp-font);
+  color: var(--ccp-text);
+  background: transparent;
+  border: 0;
+  padding: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: text !important;
+}
+
+#ccp-edit-panel .ccp-edit-textin::selection {
+  background: rgb(from var(--ccp-accent) r g b / 0.35);
+}
+
+/* ===== Edit Panel — typography grid =====
+   The round-three design: micro-labelled cells three-up, the style row for
+   the composite, ticks saying who owns each value, a caption that narrates.
+   Only the typography group wears this; the other groups keep their rows. */
+#ccp-edit-panel .ccp-type-grid {
+  all: initial;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px 6px;
+  margin-top: 4px;
+  font-family: var(--ccp-font);
+}
+
+#ccp-edit-panel .ccp-type-cell {
+  all: initial;
+  box-sizing: border-box;
+  position: relative;
+  display: block;
+  font-family: var(--ccp-font);
+  min-width: 0;
+}
+
+/* The micro-label doubles as the reset: quiet caps at rest, accent and
+   clickable once its property carries an edit. */
+#ccp-edit-panel .ccp-type-k {
+  all: initial;
+  box-sizing: border-box;
+  display: block;
+  font: var(--ccp-weight-medium) 7.5px/1 var(--ccp-font);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ccp-text-faint);
+  margin-bottom: 2px;
+  cursor: default;
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
+#ccp-edit-panel .ccp-type-cell.ccp-edit-dirty .ccp-type-k {
+  color: var(--ccp-accent);
+  cursor: pointer;
+}
+
+#ccp-edit-panel .ccp-type-cell .ccp-edit-num { width: 100%; }
+#ccp-edit-panel .ccp-type-cell .ccp-edit-seg { width: 100%; display: flex; }
+#ccp-edit-panel .ccp-type-cell .ccp-edit-seg button { flex: 1; }
+#ccp-edit-panel .ccp-type-cell .ccp-edit-color {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--ccp-sep);
+  border-radius: var(--ccp-radius-xs);
+  background: rgb(from var(--ccp-text) r g b / 0.06);
+  padding: 2px 4px;
+  min-width: 0;
+}
+#ccp-edit-panel .ccp-type-cell .ccp-edit-swatch { width: 11px; height: 11px; }
+#ccp-edit-panel .ccp-type-cell .ccp-edit-hex {
+  font-size: 9px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* The tick vocabulary. Filled: the style owns this value. Hollow: the cell
+   sits on its own single-prop token. Dashed border: covered but drifted. */
+#ccp-edit-panel .ccp-type-fromstyle .ccp-edit-num::after,
+#ccp-edit-panel .ccp-type-fromstyle .ccp-edit-color::after {
+  content: "";
+  position: absolute;
+  top: 8px;
+  right: -1px;
+  width: 5px;
+  height: 5px;
+  border-radius: 0 3px 0 3px;
+  background: var(--ccp-accent);
+}
+
+#ccp-edit-panel .ccp-type-owntok .ccp-edit-num::after {
+  content: "";
+  position: absolute;
+  top: 8px;
+  right: -1px;
+  width: 5px;
+  height: 5px;
+  border-radius: 0 3px 0 3px;
+  border: 1px solid var(--ccp-accent);
+  background: var(--ccp-surface);
+}
+
+#ccp-edit-panel .ccp-type-drift .ccp-edit-num {
+  border-style: dashed;
+  border-color: rgb(from var(--ccp-accent) r g b / 0.6);
+}
+
+/* The style row: the composite's seat, above the grid. */
+#ccp-edit-panel .ccp-type-stylerow {
+  all: initial;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--ccp-gap-base);
+  padding: 3px 0 4px;
+  font-family: var(--ccp-font);
+}
+
+#ccp-edit-panel .ccp-type-chip {
+  all: initial;
+  box-sizing: border-box;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 1px solid rgb(from var(--ccp-accent) r g b / 0.55);
+  border-radius: var(--ccp-radius-xs);
+  padding: 2px 6px;
+  background: rgb(from var(--ccp-accent) r g b / 0.10);
+  font-family: var(--ccp-font);
+}
+
+#ccp-edit-panel .ccp-type-name {
+  all: initial;
+  font: var(--ccp-weight-medium) var(--ccp-text-sm)/1.4 var(--ccp-font);
+  color: var(--ccp-accent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+#ccp-edit-panel .ccp-type-mod {
+  all: initial;
+  font: 8px/1.4 var(--ccp-font);
+  font-style: normal;
+  color: var(--ccp-text-dim);
+  white-space: nowrap;
+}
+
+#ccp-edit-panel .ccp-type-st {
+  all: initial;
+  box-sizing: border-box;
+  font: var(--ccp-text-sm)/1 var(--ccp-font);
+  color: var(--ccp-text-faint);
+  cursor: pointer;
+  padding: 2px 3px;
+}
+
+#ccp-edit-panel .ccp-type-st:hover { color: var(--ccp-accent); }
+
+/* Drift makes the chip itself the way home. */
+#ccp-edit-panel .ccp-type-chip.ccp-type-drifted {
+  border-style: dashed;
+  cursor: pointer;
+}
+
+#ccp-edit-panel .ccp-type-chip.ccp-type-drifted:hover {
+  background: rgb(from var(--ccp-accent) r g b / 0.2);
+}
+
+/* The caption: one quiet line that names whatever the pointer touches. */
+#ccp-edit-panel .ccp-type-cap {
+  all: initial;
+  display: block;
+  font: 8px/1.5 var(--ccp-font);
+  color: var(--ccp-text-faint);
+  padding: 3px 0 0 1px;
+  min-height: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#ccp-edit-panel .ccp-type-cap b {
+  all: initial;
+  font: inherit;
+  font-weight: var(--ccp-weight-medium);
+  color: var(--ccp-accent);
+}
+
+/* The ⤢ beside the text field. */
+#ccp-edit-panel .ccp-edit-expand {
+  all: initial;
+  box-sizing: border-box;
+  width: 18px;
+  height: 18px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--ccp-sep);
+  border-radius: var(--ccp-radius-xs);
+  color: var(--ccp-text-dim);
+  font: 9px/1 var(--ccp-font);
+  cursor: pointer;
+  background: transparent;
+}
+
+#ccp-edit-panel .ccp-edit-expand:hover {
+  border-color: var(--ccp-accent);
+  color: var(--ccp-accent);
+}
+
+/* ===== The long-text editor =====
+   A sibling root beside the panel — the picker's arrangement, for words. */
+#ccp-text-editor {
+  all: initial;
+  position: fixed;
+  z-index: var(--ccp-z-chrome);
+  box-sizing: border-box;
+  width: 220px;
+  font-family: var(--ccp-font);
+  color: var(--ccp-text);
+  background: var(--ccp-surface);
+  border: 1px solid rgb(from var(--ccp-accent) r g b / 0.5);
+  border-radius: var(--ccp-radius-lg);
+  box-shadow: var(--ccp-shadow-card);
+  padding: var(--ccp-gap-base) var(--ccp-sm) var(--ccp-sm);
+}
+
+#ccp-text-editor .ccp-txted-head {
+  all: initial;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font: var(--ccp-weight-medium) 9px/1 var(--ccp-font);
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ccp-text-muted);
+  margin-bottom: var(--ccp-gap-base);
+}
+
+#ccp-text-editor .ccp-txted-head button {
+  all: initial;
+  font: 11px/1 var(--ccp-font);
+  color: var(--ccp-text-dim);
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+#ccp-text-editor .ccp-txted-head button:hover { color: var(--ccp-accent); }
+
+#ccp-text-editor textarea {
+  all: initial;
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  height: 72px;
+  resize: none;
+  border: 1px solid var(--ccp-sep);
+  border-radius: var(--ccp-radius-xs);
+  background: rgb(from var(--ccp-text) r g b / 0.06);
+  color: var(--ccp-text);
+  font: var(--ccp-text-sm)/1.5 var(--ccp-font);
+  padding: 4px 5px;
+  cursor: text !important;
+}
+
+#ccp-text-editor textarea:focus { border-color: var(--ccp-accent); }
+
+#ccp-text-editor textarea::selection {
+  background: rgb(from var(--ccp-accent) r g b / 0.35);
+}
+
+#ccp-text-editor .ccp-txted-count {
+  all: initial;
+  display: block;
+  font: 8px/1.4 var(--ccp-font);
+  color: var(--ccp-text-faint);
+  text-align: right;
+  margin-top: 3px;
+}

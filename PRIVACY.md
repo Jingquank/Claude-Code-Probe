@@ -73,6 +73,30 @@ What that means concretely:
 
 If the fetch fails, the panel says so and simply offers fewer tokens.
 
+## Shader tuning
+
+The Edit panel's **Advanced** section can tune a WebGL canvas live. To do that, a small
+script (`shader-agent.js`) has to run in the page's own JavaScript context — that is the
+only place a page's WebGL objects are visible from. What it does and does not do:
+
+- **Injected on demand.** By default the script is injected only when you select a
+  canvas while the Edit panel is open — never during ordinary browsing.
+- **Reads numbers, not content.** It reads the names, types and numeric values of one
+  shader program's uniforms — the program drawing the canvas you selected. It reads no
+  page text, no pixels, no other scripts' data.
+- **Everything stays in the page.** The values travel from the page's context to the
+  extension's content script in the same tab, and no further. Nothing is stored, and
+  nothing leaves the browser.
+- **Leaves things as it found them.** Closing the Edit panel restores every uniform it
+  changed and removes its hooks. If the extension is reloaded mid-edit, the script
+  notices the silence within ten seconds and restores everything itself.
+- **Deep shader capture** (off by default, in Settings → Editing) additionally loads the
+  same script at page load on every page, so shaders that draw a single frame can still
+  be tuned. In that mode it records which canvases receive WebGL contexts — in memory,
+  inside that page, discarded when the page closes. It still reads nothing until you
+  open the Edit panel on a canvas, still stores nothing, and still sends nothing
+  anywhere. The on/off choice is saved locally alongside the extension's other settings.
+
 ## Third-Party Services
 
 The extension loads the **Geist Mono** font from Google Fonts via a CSS import. Google's

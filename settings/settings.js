@@ -39,6 +39,9 @@ const REDLINE_PREFS = {
 const EDIT_PREFS = {
   editGroups: ["standard", "adaptive"],
   editTokenControls: ["both", "token", "value"],
+  // Read by background.js, which registers the document_start shader agent;
+  // content.js carries the key so the rosters stay mirrors.
+  editDeepShaderCapture: ["off", "on"],
 };
 
 // Mirror of COPY_PREFS in content.js — change both.

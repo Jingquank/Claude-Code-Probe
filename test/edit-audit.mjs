@@ -73,6 +73,20 @@ const RULES = [
     re: /\.(?:set|remove)Attribute\s*\(\s*(?!["'])/,
     everywhere: true,
   },
+  // The second thing behind the door. A uniform write never touches the DOM —
+  // it crosses to the MAIN-world shader agent as a message — but it is still
+  // a host-page write, so the two message types that perform one are pinned
+  // here exactly like the style verbs: the literals may appear in Edit Apply
+  // and nowhere else in content.js. (The agent's own copies live in
+  // shader-agent.js, which this audit deliberately does not parse: that file
+  // receives the verbs, it does not originate them.)
+  { name: 'send "CCP_SHADER_SET"', re: /["']CCP_SHADER_SET["']/ },
+  { name: 'send "CCP_SHADER_CLEAR"', re: /["']CCP_SHADER_CLEAR["']/ },
+  // The third thing behind the door: the element's own words. The panel's
+  // text field writes them through nodeValue — chosen precisely because the
+  // extension's own chrome builds itself with textContent and never touches
+  // nodeValue, so the rule stays exact instead of receiver-aware.
+  { name: "nodeValue assignment", re: /\.nodeValue\s*=(?!=)/ },
 ];
 
 // Strip line comments and block comments so prose never counts as code.
@@ -172,6 +186,11 @@ check("the audit detects a planted violation", (fail) => {
     ["el.setAttribute(name, snapshot);", "setAttribute/removeAttribute with a computed name"],
     ["el.removeAttribute(attr);", "setAttribute/removeAttribute with a computed name"],
     ["el.setAttribute(ATTRS[i], v);", "setAttribute/removeAttribute with a computed name"],
+    // A uniform write escaping the door would look exactly like this.
+    ['postShaderMessage("CCP_SHADER_SET", { name, value });', 'send "CCP_SHADER_SET"'],
+    ["window.postMessage({ type: 'CCP_SHADER_CLEAR' }, o);", 'send "CCP_SHADER_CLEAR"'],
+    // ...and a stray text write like this.
+    ["node.nodeValue = wanted;", "nodeValue assignment"],
   ];
   for (const [sample, ruleName] of samples) {
     const rule = RULES.find((r) => r.name === ruleName);

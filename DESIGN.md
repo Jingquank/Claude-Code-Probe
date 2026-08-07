@@ -427,6 +427,123 @@ CSS Nesting gave every `CSSStyleRule` a `cssRules` list, so `if (rule.cssRules)`
 no longer means "this is a group rule". Detect by rule type, and read a style
 rule's own declarations whether or not it also has children.
 
+---
+
+## The Advanced section reaches past CSS, and the door still holds
+
+The panel's Advanced section tunes what the rest of the panel cannot see: a
+WebGL program's uniforms behind a `<canvas>`, and the custom properties feeding
+a gradient, filter or paint worklet. The CSS half is unremarkable by design —
+a custom property override is `setProperty("--wave-amp", …)`, which is the same
+door, the same registry, the same delta lines as any other declaration. The
+shader half is the second kind of host-page write this extension has, and it
+was built to keep the five rules above intact rather than to earn exceptions
+from them.
+
+**The agent, and why it exists.** A content script lives in Chrome's isolated
+world: it shares the DOM but not the page's objects, so it can see a canvas and
+nothing of the context, programs or uniforms behind it. `shader-agent.js` is
+injected into the MAIN world on demand — first selection of a canvas in Edit
+Mode — and speaks to the content script over `postMessage` with a per-probe
+nonce. Overrides are applied at draw time, not by rewriting the page's uniform
+calls: just before each draw on the probed context, the agent writes the
+overridden values through its own uniform locations. That keeps the hook
+surface to `useProgram` plus the draw calls, sidesteps the fact that locations
+the page cached before injection can never be mapped back to names, and makes
+freezing a page-driven `u_time` the same mechanism as nudging a constant.
+
+**One door, still.** The two bridge messages that perform a write —
+`CCP_SHADER_SET` and `CCP_SHADER_CLEAR` — are sent from the Edit Apply section
+and nowhere else, and `test/edit-audit.mjs` pins the literals there exactly as
+it pins `setProperty`. Undo, the reset dots, reset-all and the delta block all
+work off the same registry entries as CSS edits; a driven uniform's `before` is
+a sentinel meaning "the page's own loop", so undoing a takeover hands the value
+back rather than pinning yesterday's clock.
+
+**Uniform edits are session-bound, and that is honest rather than convenient.**
+A CSS edit is parked in the element's style attribute; a uniform override
+exists only while the agent enforces it at each draw. So leaving Edit Mode
+tears the session down — the agent restores every original — and the registry
+and history stop claiming those edits, because a claimed edit the page no
+longer wears is exactly the lie `staleEdits` exists to catch, and no computed
+style can catch it for a uniform. Copy the block before closing the panel; the
+panel's copy button is only reachable while it is open, so the flow enforces
+its own rule. Switching the extension off needs no special case at all.
+
+**The failure modes are owned, not hoped away.** An extension reload kills the
+isolated world silently and would strand a frozen shader, so the content script
+heartbeats and the agent restores everything after ten silent seconds. A page
+that wrapped the draw prototypes after us would lose its own wrapper if we
+restored ours, so teardown checks the slot still holds our function and
+otherwise leaves a delegating no-op behind. A relink invalidates every location
+the agent holds, so `linkProgram` is watched and the panel told to let go. Two
+limits are accepted and stated: a multi-pass renderer gets its dominant pass
+tuned, not all of them; and in lazy mode a shader that drew once before Edit
+Mode opened is recovered read-only through `CURRENT_PROGRAM` — or fully, when
+the user opts into the `document_start` registration ("deep shader capture"),
+which records context creation from page load and does nothing else until
+probed. The one residual risk in lazy mode — `getContext("webgl2")` on a canvas
+that truly has no context locks it to WebGL — is taken only for the single
+canvas the user selected, only after a whole observation window saw no draws.
+
+## Type styles: the composite is the token
+
+The token layer's original sin was pretending a design system hands out one
+number at a time. It doesn't: `.text-lg` carries size and leading together, a
+`--heading-md` stem carries three values, and treating those as unrelated
+dials produced a concrete bug — every value a multi-property class declared
+was poured into one name-keyed family, so `text-sm`'s line-height sat as a
+fake rung in the font-size ladder. The fix and the feature are the same
+change: a **type style** is a first-class entity (name, source kind, resolved
+constituents), and the values a style owns are carved out of the per-property
+families. One value, one owner.
+
+Three sources, equal citizens: multi-declaration single-class rules (CSSOM
+pre-expands `font:` shorthand into longhands, so that third source costs
+nothing), and custom-property stems grouped by a role vocabulary
+(`--heading-md-size/-weight/-leading`). Ladders hold the familiar family
+rules, lifted: same source kind only — stepping must never switch write
+mechanisms mid-climb — font-size as the axis and sort key, aliases collapsing,
+two rungs to step. A solo style is named but grows no arrows: a family of one
+is still not a scale, but silence about the most designed thing on the
+element would be the wrong kind of modesty.
+
+**Claiming extends the house rule.** A style is claimed only when its source
+is *in force* — the class actually worn, the vars actually referenced by
+winning declarations — never on value coincidence, exactly as a colour that
+merely equals a token claims nothing. In force with every constituent
+matching computed reads "on"; in force with deviation reads "modified" and
+names the drifted properties. The var half of "in force" walks winning
+declarations, so it is cached per render; the class half is a Set lookup and
+stays live.
+
+**Two ways back, two controls.** A cell's reset keeps its sacred meaning —
+revert *my* edit to its found state, even when found means drifted. The style
+chip, when drifted, conforms: every drifted constituent written back to the
+style's value in one gesture, meaningful precisely when the page shipped the
+drift and no dot is lit. Stepping and conforming ride one registry entry
+under the pseudo-property `type-style` — the same arrangement text and
+uniforms use — so a composite step is one undo entry and one delta line:
+
+    # type style: text-lg → text-xl (size 18→20)
+    # type style: text-lg (modified) → text-lg (leading 32→28)
+
+The name leads because the source edit is that name; the parenthetical echoes
+only the constituents that moved. When a class swap doesn't take (the page
+outranking its own utility class, the same case the single-prop stepper
+guards), the step falls back to writing the rung's values and the line
+reports values, not the name — a claimed swap that did nothing would be
+advice that does nothing in the source either.
+
+The typography group is the only consumer so far, wearing the round-three
+grid: micro-labelled cells, filled ticks for style-owned values, hollow for a
+cell's own single-prop token, a dashed border for covered-but-drifted, and a
+caption that names whatever the pointer touches. Loose tokenized cells step
+on the wheel — the grid has no room for the ‹ › stepper, and the caption
+carries the naming. The model is deliberately property-agnostic: shadow and
+spacing composites are the same entity with different constituents, waiting
+on nothing but their own UI round.
+
 ## Verification
 
 ```sh

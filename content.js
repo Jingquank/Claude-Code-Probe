@@ -47,6 +47,19 @@
   let editFlashTimer = null;
   let tokenIndex = null;
   let editTokenFamilies = null;
+  // Composite type styles: the named sources that set several type properties
+  // at once (.text-lg carrying size and leading, a --heading-md var stem
+  // carrying three). Built per Edit Mode entry like the families above;
+  // the claim is re-derived on every refresh because drift moves with edits.
+  let editTypeStyles = null;
+  let editTypeLadders = null;
+  let editTypeClaim = null;
+  // Which styles' sources are in force — cached per render because the var
+  // half of that answer walks winning declarations, which is too heavy for
+  // the per-scrub refresh path.
+  let editTypeInForce = null;
+  // The long-text editor, a sibling root like the colour picker.
+  let textEditorEl = null;
   // Strong element references, deliberately: the undo stack has to hold them
   // anyway, and edits outlive deselection — they are cleared by switching the
   // extension off, or by a page reload. Every path that touches a record
@@ -73,6 +86,7 @@
     "ccp-toast",
     "ccp-edit-panel",
     "ccp-color-picker",
+    "ccp-text-editor",
     "ccp-probe-cell",
   ];
   const OUR_CHROME = OUR_ROOTS.map((id) => `#${id}`).join(",");
@@ -251,6 +265,10 @@
   const EDIT_PREFS = {
     editGroups: ["standard", "adaptive"],
     editTokenControls: ["both", "token", "value"],
+    // Consumed by background.js (it registers the document_start agent), not
+    // here — carried in this roster so the settings page and the content
+    // script keep speaking the same key list.
+    editDeepShaderCapture: ["off", "on"],
   };
   const editPrefs = {};
   for (const key of Object.keys(EDIT_PREFS)) editPrefs[key] = EDIT_PREFS[key][0];
@@ -473,6 +491,13 @@
   // element the text actually lives on. Named so EDIT_GROUPS reads as a
   // statement about the element rather than as a string-length check.
   const ownsText = (el) => getDirectText(el).length > 0;
+
+  // The looser rule, for colour: setting colour on a wrapper is how an
+  // inherited colour is normally written, so it is enough that text lives
+  // anywhere beneath — but a canvas, an image or an empty decorative div has
+  // no text for a colour to reach, and offering the row there was noise.
+  const containsText = (el) =>
+    Boolean(el && typeof el.textContent === "string" && el.textContent.trim().length > 0);
 
   // Read cursor without the probe-mode plain-arrow override.
   // Temporarily strips the override class for a synchronous style read; no paint occurs.
@@ -2233,6 +2258,7 @@
       classRules: new Map(), // property -> [{ className, value, order }]
       varNames: new Set(),
       rules: [],             // { selectorText, style, order } for the winner walk
+      typeStyles: [],        // { name, kind: "class", decls } — see Type Styles
     };
 
     const stats = walkPageRules((rule, order, sheet, layered) => {
@@ -2250,6 +2276,7 @@
       index.classRules.clear();
       index.varNames.clear();
       index.rules.length = 0;
+      index.typeStyles.length = 0;
     }
 
     // The sanity check. Not "did we find tokens" — plenty of pages have none,
@@ -2309,6 +2336,9 @@
     // cascade comparison reads.
     tokenIndex = collectTokenSources();
     editTokenFamilies = buildTokenFamilies(el);
+    editTypeStyles = collectTypeStyleUniverse(el);
+    editTypeLadders = groupTypeStyleLadders(editTypeStyles);
+    editTypeClaim = detectTypeStyle(el);
     renderEditControls();
     paintDegradedMarker();
   }
@@ -2393,6 +2423,23 @@
           value: rule.style.getPropertyValue(prop),
           order: index.rules.length,
         });
+      }
+
+      // A single class that sets several type properties at once is a type
+      // style — text-lg carrying size and leading, .type-heading-md carrying
+      // four. CSSOM has already expanded any font: shorthand into these
+      // longhands, so that source costs nothing extra to read.
+      const typeDecls = {};
+      let typeCount = 0;
+      for (const prop of TYPE_STYLE_PROPS) {
+        const v = rule.style.getPropertyValue(prop);
+        if (v) {
+          typeDecls[prop] = v.trim();
+          typeCount++;
+        }
+      }
+      if (typeCount >= 2) {
+        index.typeStyles.push({ name: className, kind: "class", decls: typeDecls });
       }
     }
   }
@@ -2743,6 +2790,410 @@
     return c.a === undefined || c.a >= 1 ? base : base + h(c.a * 255);
   }
 
+  // ===== Type Styles =====
+  // Composite typography tokens. A design system rarely hands out font-size
+  // alone: .text-lg carries size and leading together, a --heading-md stem
+  // carries three values, and the panel treating those as unrelated numbers
+  // was a lie of omission. A type style is one named source setting several
+  // type properties at once:
+  //
+  //   { name: "text-lg" | "--heading-md", kind: "class" | "var",
+  //     decls: { "font-size": "18px", "line-height": "28px", ... },
+  //     constituents: { "font-size": 18, "line-height": 28, ... } }
+  //
+  // Three sources, equal citizens: multi-declaration single-class rules
+  // (collected by the stylesheet walk, font: shorthand pre-expanded by
+  // CSSOM), and custom-property stems grouped by naming role. Styles sit
+  // ABOVE the per-property families, and the values a style owns are carved
+  // OUT of those families — one value, one owner.
+  //
+  // The claiming rule extends the house rule: a style is claimed only when
+  // its source is in force (the class actually worn; the vars actually
+  // referenced by winning declarations) — full constituent match claims
+  // "on", a deviation claims "modified" and names the drift, and a value
+  // that merely coincides with a style nobody applied claims nothing.
+  //
+  // The pure half is mirrored in test/type-styles.mjs — change both.
+
+  const TYPE_STYLE_PROPS = ["font-size", "font-weight", "line-height", "letter-spacing"];
+
+  function typeStyleClassNames(index) {
+    const names = new Set();
+    for (const s of (index && index.typeStyles) || []) {
+      if (s && s.kind === "class") names.add(s.name);
+    }
+    return names;
+  }
+
+  // "--heading-md-size" → { stem: "--heading-md", prop: "font-size" }.
+  // Role vocabulary covers the common spellings; a name that matches no role
+  // is not part of a stem. Pure — mirrored in test/type-styles.mjs.
+  function splitVarStem(name) {
+    if (typeof name !== "string" || !name.startsWith("--")) return null;
+    const ROLES = [
+      ["font-size", /-(font-size|size)$/i],
+      ["font-weight", /-(font-weight|weight)$/i],
+      ["line-height", /-(line-height|lineheight|leading)$/i],
+      ["letter-spacing", /-(letter-spacing|letterspacing|tracking)$/i],
+    ];
+    for (const [prop, re] of ROLES) {
+      const m = name.match(re);
+      if (m && name.length - m[0].length > 2) {
+        return { stem: name.slice(0, name.length - m[0].length), prop };
+      }
+    }
+    return null;
+  }
+
+  // Declared strings → resolved numbers. A unitless line-height multiplies
+  // the style's own size (the CSS meaning, when the style declares one);
+  // "normal" letter-spacing is exactly 0; weights accept the two keywords.
+  // Anything unresolvable is simply absent — a constituent we cannot compare
+  // is a constituent we must not claim. Pure — mirrored in
+  // test/type-styles.mjs.
+  function resolveTypeStyle(decls, remBase, emBase) {
+    const out = {};
+    const d = decls || {};
+    const size = d["font-size"] !== undefined
+      ? parseCssLength(d["font-size"], remBase, emBase)
+      : null;
+    if (typeof size === "number") out["font-size"] = size;
+
+    if (d["font-weight"] !== undefined) {
+      const w = d["font-weight"].trim();
+      const n = w === "normal" ? 400 : w === "bold" ? 700 : parseFloat(w);
+      if (isFinite(n) && /^(normal|bold|[\d.]+)$/.test(w)) out["font-weight"] = n;
+    }
+
+    if (d["line-height"] !== undefined) {
+      const raw = d["line-height"].trim();
+      const asLength = parseCssLength(raw, remBase, typeof size === "number" ? size : emBase);
+      if (asLength !== null) out["line-height"] = asLength;
+      else if (/^[\d.]+$/.test(raw) && typeof size === "number") {
+        const unitless = parseFloat(raw);
+        if (isFinite(unitless)) out["line-height"] = Math.round(unitless * size * 100) / 100;
+      }
+    }
+
+    if (d["letter-spacing"] !== undefined) {
+      const raw = d["letter-spacing"].trim();
+      if (raw === "normal") out["letter-spacing"] = 0;
+      else {
+        const n = parseCssLength(raw, remBase, typeof size === "number" ? size : emBase);
+        if (n !== null) out["letter-spacing"] = n;
+      }
+    }
+    return out;
+  }
+
+  // Styles into ladders: same source kind only (stepping must never switch
+  // write mechanisms mid-climb), font-size present (the axis and the sort
+  // key), aliases collapsing onto their rung, two rungs to count — every
+  // rule the single-value families already live by, lifted to composites.
+  // Pure — mirrored in test/type-styles.mjs.
+  function groupTypeStyleLadders(styles) {
+    const byKey = new Map();
+    for (const s of styles || []) {
+      if (!s || !s.constituents || typeof s.constituents["font-size"] !== "number") continue;
+      const split = splitTokenName(s.name);
+      if (!split) continue;
+      const key = s.kind + " " + split.prefix;
+      if (!byKey.has(key)) byKey.set(key, []);
+      byKey.get(key).push(s);
+    }
+    const ladders = [];
+    for (const [key, members] of byKey) {
+      const seenName = new Set();
+      const unique = members.filter((m) => (seenName.has(m.name) ? false : seenName.add(m.name)));
+      unique.sort((a, b) =>
+        a.constituents["font-size"] - b.constituents["font-size"] || a.name.localeCompare(b.name));
+      const seenSize = new Set();
+      const rungs = unique.filter((m) =>
+        (seenSize.has(m.constituents["font-size"]) ? false : seenSize.add(m.constituents["font-size"])));
+      if (rungs.length < 2) continue;
+      ladders.push({ kind: rungs[0].kind, prefix: key.split(" ")[1], rungs });
+    }
+    ladders.sort((a, b) => a.prefix.localeCompare(b.prefix));
+    return ladders;
+  }
+
+  // Which constituents hold and which have drifted, against the element's
+  // computed numbers. Half a pixel is rounding; anything more is a different
+  // value. Pure — mirrored in test/type-styles.mjs.
+  function matchTypeStyleConstituents(constituents, computed) {
+    const matched = [];
+    const drifted = [];
+    for (const [prop, want] of Object.entries(constituents || {})) {
+      const got = computed ? computed[prop] : undefined;
+      if (typeof got === "number" && isFinite(got) && Math.abs(got - want) <= 0.5) matched.push(prop);
+      else drifted.push(prop);
+    }
+    return { matched, drifted };
+  }
+
+  // --- DOM-bound half ---
+
+  // The element's own type numbers, in the same shape the constituents use.
+  // line-height "normal" has no fixed number and stays absent — a style that
+  // declares leading can never claim an element the browser is leading.
+  function computedTypeValues(el) {
+    const style = getComputedStyle(el);
+    const out = {};
+    const size = parseFloat(style.fontSize);
+    if (isFinite(size)) out["font-size"] = size;
+    const weight = parseFloat(style.fontWeight);
+    if (isFinite(weight)) out["font-weight"] = weight;
+    if (style.lineHeight !== "normal") {
+      const lh = parseFloat(style.lineHeight);
+      if (isFinite(lh)) out["line-height"] = lh;
+    }
+    out["letter-spacing"] = style.letterSpacing === "normal" ? 0 : parseFloat(style.letterSpacing) || 0;
+    return out;
+  }
+
+  // Var stems in scope on this element. Scoped to the element rather than
+  // the page for the same reason the token layer asks the element: the stem
+  // that matters is the one whose values actually reach here.
+  function collectVarStemStyles(el) {
+    const byStem = new Map();
+    for (const { name, value } of collectElementTokens(el)) {
+      const split = splitVarStem(name);
+      if (!split) continue;
+      if (!byStem.has(split.stem)) byStem.set(split.stem, { decls: {}, vars: {} });
+      const entry = byStem.get(split.stem);
+      entry.decls[split.prop] = value;
+      // The var's own name survives, because stepping a stem writes
+      // font-size: var(--heading-sm-size) — the reference, not the number.
+      entry.vars[split.prop] = name;
+    }
+    const out = [];
+    for (const [stem, entry] of byStem) {
+      if (entry.decls["font-size"] === undefined || Object.keys(entry.decls).length < 2) continue;
+      out.push({ name: stem, kind: "var", decls: entry.decls, vars: entry.vars });
+    }
+    return out;
+  }
+
+  // Every style that could apply here, constituents resolved. Class styles
+  // come from the walk (first declaration of a name wins, like the cascade
+  // walk's own dedupe); var stems come from the element.
+  function collectTypeStyleUniverse(el) {
+    const rem = tokenRemBase();
+    const em = tokenEmBase(el);
+    const out = [];
+    const seen = new Set();
+    for (const s of (tokenIndex && tokenIndex.typeStyles) || []) {
+      if (seen.has("c:" + s.name)) continue;
+      seen.add("c:" + s.name);
+      const constituents = resolveTypeStyle(s.decls, rem, em);
+      if (Object.keys(constituents).length >= 2 && constituents["font-size"] !== undefined) {
+        out.push({ name: s.name, kind: "class", decls: s.decls, constituents });
+      }
+    }
+    for (const s of collectVarStemStyles(el)) {
+      if (seen.has("v:" + s.name)) continue;
+      seen.add("v:" + s.name);
+      const constituents = resolveTypeStyle(s.decls, rem, em);
+      if (Object.keys(constituents).length >= 2 && constituents["font-size"] !== undefined) {
+        out.push({ name: s.name, kind: "var", decls: s.decls, vars: s.vars, constituents });
+      }
+    }
+    return out;
+  }
+
+  // The claim. In force + all constituents matching → on the style; in force
+  // + deviation → modified, drift named; coincidence → nothing. When several
+  // sources are in force, the fullest match wins, classes before stems —
+  // the class is the more literal fact about the source.
+  function detectTypeStyle(el) {
+    if (!el || !el.isConnected || !editTypeStyles || editTypeStyles.length === 0) return null;
+    const computed = computedTypeValues(el);
+    const worn = new Set(classListOf(el));
+    let best = null;
+
+    const consider = (style, inForce) => {
+      if (!inForce) return;
+      const { matched, drifted } = matchTypeStyleConstituents(style.constituents, computed);
+      if (matched.length === 0) return; // in force but nothing holds: not a claim
+      const cand = { style, on: drifted.length === 0, drifted };
+      if (!best) { best = cand; return; }
+      if (cand.drifted.length < best.drifted.length) best = cand;
+      else if (cand.drifted.length === best.drifted.length &&
+               best.style.kind === "var" && cand.style.kind === "class") best = cand;
+    };
+
+    for (const style of editTypeStyles) {
+      if (style.kind === "class") {
+        // Worn is cheap; ask live every time.
+        consider(style, worn.has(style.name));
+      } else {
+        // A stem is in force when a winning declaration actually references
+        // it — consumption, not coincidence. That answer walks the rules, so
+        // the per-scrub refresh path reads the render-time cache instead.
+        let referenced;
+        if (editTypeInForce) {
+          referenced = editTypeInForce.has("v:" + style.name);
+        } else {
+          referenced = varStemInForce(el, style);
+        }
+        consider(style, referenced);
+      }
+    }
+    return best;
+  }
+
+  function varStemInForce(el, style) {
+    for (const prop of Object.keys(style.constituents)) {
+      const winner = findWinningDeclaration(el, prop, tokenIndex);
+      if (winner && typeof winner.value === "string" &&
+          winner.value.includes("var(" + style.name)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // Render-time snapshot of the expensive half of "in force". Class styles
+  // are never cached — worn is one Set lookup.
+  function computeTypeInForce(el) {
+    const set = new Set();
+    for (const style of editTypeStyles || []) {
+      if (style.kind === "var" && varStemInForce(el, style)) set.add("v:" + style.name);
+    }
+    return set;
+  }
+
+  // The ladder a claimed style steps along, if it has one.
+  function typeLadderFor(claim) {
+    if (!claim || !editTypeLadders) return null;
+    for (const ladder of editTypeLadders) {
+      if (ladder.kind === claim.style.kind &&
+          ladder.rungs.some((r) => r.name === claim.style.name)) {
+        return ladder;
+      }
+    }
+    return null;
+  }
+
+  // A constituent as a written declaration: weights are bare numbers,
+  // lengths are pixels. Pure — mirrored in test/type-styles.mjs.
+  function formatTypePx(prop, value) {
+    return prop === "font-weight" ? String(value) : value + "px";
+  }
+
+  // A style's values as a compact reading — "20px/28px · 600" — for the
+  // delta's fallback case, where values were written because a class swap
+  // did not take. Pure — mirrored in test/type-styles.mjs.
+  function formatTypeCss(constituents) {
+    const c = constituents || {};
+    const parts = [];
+    if (typeof c["font-size"] === "number") {
+      parts.push(typeof c["line-height"] === "number"
+        ? c["font-size"] + "px/" + c["line-height"] + "px"
+        : c["font-size"] + "px");
+    }
+    if (typeof c["font-weight"] === "number") parts.push(String(c["font-weight"]));
+    if (typeof c["letter-spacing"] === "number" && c["letter-spacing"] !== 0) {
+      parts.push(c["letter-spacing"] + "px");
+    }
+    return parts.join(" · ");
+  }
+
+  // The gesture's "before" for the style row: the claim as it stands, plus
+  // the current inline state of every constituent, so a revert puts the
+  // exact declarations back.
+  function readTypeStyleValue(el) {
+    const claim = detectTypeStyle(el);
+    const decls = {};
+    for (const p of TYPE_STYLE_PROPS) decls[p] = el.style.getPropertyValue(p) || null;
+    if (!claim) {
+      return {
+        css: formatTypeCss(computedTypeValues(el)), inline: null, priority: "",
+        cls: null, token: null, styleDecls: decls,
+        style: { name: null, values: computedTypeValues(el) },
+      };
+    }
+    return {
+      css: claim.style.name + (claim.on ? "" : " (modified)"),
+      inline: null, priority: "",
+      cls: claim.style.kind === "class" ? claim.style.name : null,
+      token: { kind: "style", name: claim.style.name },
+      styleDecls: decls,
+      style: { name: claim.style.name, values: computedTypeValues(el) },
+    };
+  }
+
+  // Step the claimed style along its ladder: adopt the rung's source, clear
+  // the overrides so it shows through, and verify it took — the page
+  // outranking its own utility class is common enough that the single-prop
+  // stepper already carries the same fallback.
+  function stepTypeStyle(claim, ladder, dir) {
+    const el = selectedElement;
+    if (!el || !el.isConnected) return;
+    const i = ladder.rungs.findIndex((r) => r.name === claim.style.name);
+    const next = ladder.rungs[Math.min(ladder.rungs.length - 1, Math.max(0, i + (dir > 0 ? 1 : -1)))];
+    if (!next || next.name === claim.style.name) return;
+
+    beginEditGesture(el, "type-style");
+    const before = editGesture ? editGesture.from : null;
+    const decls = {};
+    for (const p of Object.keys(next.constituents)) {
+      decls[p] = next.kind === "var" ? "var(" + next.vars[p] + ")" : null;
+    }
+    setEditValue(el, "type-style", {
+      css: next.name, inline: null, priority: "",
+      cls: next.kind === "class" ? next.name : null,
+      token: { kind: "style", name: next.name },
+      styleDecls: decls,
+      style: { name: next.name, values: next.constituents },
+    });
+
+    const got = computedTypeValues(el)["font-size"];
+    if (!(typeof got === "number" && Math.abs(got - next.constituents["font-size"]) <= 0.5)) {
+      // The swap did nothing the eye can see. Take the source back and write
+      // the rung's values instead — reported as values, because that is what
+      // the source edit will actually be.
+      const inline = {};
+      for (const [p, v] of Object.entries(next.constituents)) inline[p] = formatTypePx(p, v);
+      setEditValue(el, "type-style", {
+        css: formatTypeCss(next.constituents), inline: null, priority: "",
+        cls: before ? before.cls : null,
+        token: null,
+        styleDecls: inline,
+        style: { name: null, values: next.constituents },
+      });
+    }
+    commitEditGesture();
+    editTypeClaim = detectTypeStyle(el);
+    renderEditControls();
+  }
+
+  // Conform a drifted element back to its claimed style: every drifted
+  // constituent written to the style's value, one gesture, one delta line.
+  // Works whoever shipped the drift — that is the point.
+  function conformTypeStyle(claim) {
+    const el = selectedElement;
+    if (!el || !el.isConnected || !claim || claim.on) return;
+    const s = claim.style;
+    beginEditGesture(el, "type-style");
+    const decls = {};
+    for (const p of claim.drifted) {
+      decls[p] = s.kind === "var" && s.vars && s.vars[p]
+        ? "var(" + s.vars[p] + ")"
+        : formatTypePx(p, s.constituents[p]);
+    }
+    setEditValue(el, "type-style", {
+      css: s.name, inline: null, priority: "",
+      cls: s.kind === "class" ? s.name : null,
+      token: { kind: "style", name: s.name },
+      styleDecls: decls,
+      style: { name: s.name, values: { ...computedTypeValues(el), ...s.constituents } },
+    });
+    commitEditGesture();
+    editTypeClaim = detectTypeStyle(el);
+    renderEditControls();
+  }
+
   // ===== Edit Mode =====
   // A sub-mode of selection, in the same shape as redline: it cannot be
   // reached without a selection, every deselection path leaves it, and its
@@ -2767,9 +3218,21 @@
     // that no longer exist.
     tokenIndex = collectTokenSources();
     editTokenFamilies = buildTokenFamilies(selectedElement);
+    // Type styles ride the same lifecycle: universe and ladders once per
+    // entry, the claim re-derived on refresh because drift moves with edits.
+    editTypeStyles = collectTypeStyleUniverse(selectedElement);
+    editTypeLadders = groupTypeStyleLadders(editTypeStyles);
+    editTypeClaim = detectTypeStyle(selectedElement);
     // Anything the page was not allowed to read is chased through the service
     // worker and folded in when it lands. Not awaited: the panel opens now.
     topUpBlockedSheets(selectedElement);
+
+    // The Advanced section's detection. The CSS half is synchronous and is in
+    // the first render; the shader half needs the MAIN-world agent and a frame
+    // observation, so its rows fold in a beat later — the CDN-stepper trade
+    // again. Before showEditPanel, so the panel's first paint already carries
+    // whatever is cheap to know.
+    beginAdvancedProbe(selectedElement);
 
     // Capture phase, on document, so the page never sees these at all.
     document.addEventListener("pointerdown", onEditPointerGuard, true);
@@ -2797,12 +3260,24 @@
     document.removeEventListener("dblclick", onEditPointerGuard, true);
     document.removeEventListener("contextmenu", onEditPointerGuard, true);
 
+    // Uniform edits end with the session — the agent's teardown puts the
+    // page's values back, so the registry and history stop claiming them
+    // first. CSS edits (custom properties included) outlive this, as always.
+    // Safe in either order with the teardown below: CCP_SHADER_TEARDOWN
+    // itself restores every original, so clears that arrive after it land in
+    // a dormant agent as no-ops.
+    dropUniformEdits();
+    teardownShaderBridge();
+
     removeEditPanel();
     clearTimeout(tetherLoudTimer);
     setTetherLoud(false);
     clearTether();
     tokenIndex = null;
     editTokenFamilies = null;
+    editTypeStyles = null;
+    editTypeLadders = null;
+    editTypeClaim = null;
     // The measuring cell is scaffolding for the index, so it leaves with it
     // rather than sitting in the page for the rest of the session.
     releaseTokenProbes();
@@ -2828,6 +3303,7 @@
       // its own right — without this the guard below preventDefaults every
       // pointerdown on the picker and all three drag surfaces go dead.
       (editPopoverEl && editPopoverEl.contains(node)) ||
+      (textEditorEl && textEditorEl.contains(node)) ||
       (settingsButtonEl && settingsButtonEl.contains(node)) ||
       (toastEl && toastEl.contains(node))
     );
@@ -2866,6 +3342,11 @@
       // hides a group whose controls all filter out, so the five behave exactly
       // as they did when the guard was one level up.
       controls: [
+        // The content itself, not a style — but it lives where the eye is
+        // already looking when tuning type. Only where the text is the
+        // element's own: writing into a wrapper would be ambiguous about
+        // which descendant's words were meant.
+        { prop: "text", label: "text", kind: "text", when: ownsText },
         { prop: "font-size", label: "size", unit: "px", step: 1, min: 1, max: 400, when: ownsText },
         { prop: "font-weight", label: "weight", unit: "", step: 100, min: 100, max: 900, when: ownsText },
         // line-height's "normal" has no fixed numeric equivalent — it depends
@@ -2883,8 +3364,11 @@
           equivalents: { start: "left", end: "right" },
           when: ownsText,
         },
-        // No guard: every element has a computed colour, and it inherits.
-        { prop: "color", label: "colour", kind: "color" },
+        // The loose guard, not ownsText: a wrapper is usually where an
+        // inherited colour is authored, so text anywhere beneath is enough.
+        // No text at all — a canvas, an icon, an empty div — and there is
+        // nothing on the element for a colour to paint.
+        { prop: "color", label: "colour", kind: "color", when: containsText },
       ],
     },
     {
@@ -3040,6 +3524,14 @@
 
   // ===== colour values =====
   function readColorValue(el, control) {
+    if (control.uniform) {
+      // 0–1 floats to a css colour, so the swatch and the picker can carry a
+      // vec3 the way they carry any other colour.
+      const vec = currentUniformValue(control.uniform.name) || [0, 0, 0, 1];
+      const byte = (v) => Math.round(Math.min(1, Math.max(0, v || 0)) * 255);
+      const alpha = control.uniform.comps === 4 ? Math.min(1, Math.max(0, vec[3])) : 1;
+      return `rgb(${byte(vec[0])} ${byte(vec[1])} ${byte(vec[2])}${alpha < 1 ? ` / ${alpha}` : ""})`;
+    }
     if (control.shadowPart) return shadowPartValue(el, control);
     return getComputedStyle(el).getPropertyValue(control.reads || control.prop).trim();
   }
@@ -3124,6 +3616,12 @@
     }
     // Utility classes are scales too — text-sm and text-lg are rungs whether
     // or not the page also declares a custom property for them.
+    //
+    // Except the multi-property ones. A class that sets several type
+    // properties is a type style, and its values belong to the style row —
+    // pouring them in here is how text-sm's line-height once sat as a fake
+    // rung in the font-size ladder. One value, one owner.
+    const styleOwned = typeStyleClassNames(tokenIndex);
     for (const [prop, candidates] of tokenIndex.classRules) {
       // Either the property itself is a scale, or it is one side of one — the
       // side is how a shorthand utility actually arrives (see FIRST_LONGHAND_OF).
@@ -3132,6 +3630,7 @@
       // than repeats.
       if (!TOKEN_SCALE_PROPS.has(prop) && !TOKEN_SCALE_PROPS.has(SHORTHAND_OF[prop])) continue;
       for (const candidate of candidates) {
+        if (styleOwned.has(candidate.className)) continue;
         const resolved = resolveLength(candidate.value, rem, em);
         if (resolved !== null) entries.push({ name: candidate.className, resolved, kind: "class" });
       }
@@ -3365,6 +3864,13 @@
     body.textContent = "";
 
     for (const group of groupsFor(selectedElement)) {
+      // Typography wears the grid: the group the panel spends most of its
+      // height on, and the one with a composite style to name. Everything
+      // else keeps the classic rows.
+      if (group.key === "typography") {
+        body.appendChild(renderTypographySection(group));
+        continue;
+      }
       const section = document.createElement("div");
       section.className = "ccp-edit-group";
 
@@ -3395,11 +3901,388 @@
       }
       body.appendChild(section);
     }
+
+    // Advanced sits last and only when detection found something — never an
+    // empty shell. It ignores the editGroups preference on purpose: a section
+    // that exists only when relevant is already adaptive.
+    const advanced = renderAdvancedSection();
+    if (advanced) body.appendChild(advanced);
+
     refreshEditControls();
     // This render just destroyed every swatch, the open picker's anchor among
     // them — reachable from a theme change, the reset dot, a split link, or an
     // undo taken mid-pick. Re-find the anchor, or close if its row is gone.
     repositionColorPicker();
+  }
+
+  // ===== Typography Grid =====
+  // The round-three design: text row (with the long-text editor's ⤢), the
+  // style row when a composite is in force, then a three-up grid of
+  // micro-labelled cells. The tick vocabulary: a filled corner tick means
+  // the value comes from the claimed style, a hollow one means the cell sits
+  // on its own single-prop token, a dashed border means covered-but-drifted.
+  // The caption line under the grid names whatever the pointer touches.
+
+  const TYPE_CELL_LABEL = {
+    "font-size": "size", "font-weight": "weight", "line-height": "leading",
+    "letter-spacing": "tracking", "text-align": "align", color: "colour",
+  };
+
+  function renderTypographySection(group) {
+    const el = selectedElement;
+    const section = document.createElement("div");
+    section.className = "ccp-edit-group ccp-type";
+
+    const legend = document.createElement("p");
+    legend.className = "ccp-edit-legend";
+    legend.textContent = group.label;
+    section.appendChild(legend);
+
+    const controls = controlsOf(group, el);
+
+    // The words, with a way out for long ones.
+    const textControl = controls.find((c) => c.kind === "text");
+    if (textControl) {
+      const row = buildEditRow(textControl);
+      const expand = document.createElement("button");
+      expand.className = "ccp-edit-expand";
+      expand.textContent = "⤢";
+      expand.title = "Edit the full text";
+      expand.setAttribute("aria-label", "Edit the full text");
+      expand.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (textEditorEl) closeTextEditor();
+        else openTextEditor(textControl);
+      });
+      row.appendChild(expand);
+      section.appendChild(row);
+    }
+
+    // The composite, when one is in force.
+    editTypeInForce = computeTypeInForce(el);
+    editTypeClaim = detectTypeStyle(el);
+    if (editTypeClaim) section.appendChild(buildTypeStyleRow(editTypeClaim));
+
+    // The grid.
+    const grid = document.createElement("div");
+    grid.className = "ccp-type-grid";
+    for (const control of controls) {
+      if (control.kind === "text") continue;
+      grid.appendChild(buildTypeCell({ ...control, gridCell: true }));
+    }
+    section.appendChild(grid);
+
+    const cap = document.createElement("p");
+    cap.className = "ccp-type-cap";
+    section.appendChild(cap);
+    section.addEventListener("pointerover", (e) => {
+      const named = e.target.closest("[data-cap]");
+      if (named) cap.innerHTML = named.dataset.cap;
+    });
+    section.addEventListener("pointerout", () => paintTypeCaption());
+
+    refreshTypographyState();
+    return section;
+  }
+
+  // A cell: micro-label above the control, the label doubling as the reset
+  // the dot is elsewhere — it colours when the property is edited and takes
+  // the edit back on click.
+  function buildTypeCell(control) {
+    const cell = document.createElement("div");
+    cell.className = "ccp-edit-row ccp-type-cell";
+    cell.dataset.prop = control.shadowPart ? "box-shadow" : control.prop;
+    cell.dataset.control = control.prop;
+
+    const k = document.createElement("button");
+    k.className = "ccp-type-k";
+    k.textContent = TYPE_CELL_LABEL[control.prop] || control.label;
+    k.title = `Reset ${control.label}`;
+    k.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const owner = controlTarget(control);
+      if (!owner || !isEditedProp(owner, cell.dataset.prop)) return;
+      resetEditProp(owner, cell.dataset.prop);
+      renderEditControls();
+    });
+    cell.appendChild(k);
+
+    cell.appendChild(
+      control.kind === "color" ? buildColorControl(control)
+        : control.kind === "segment" ? buildSegmentControl(control)
+        : buildNumericControl(control)
+    );
+
+    // Loose tokenized values step on the wheel — the grid has no room for
+    // the ‹ › stepper, and the caption carries the naming.
+    const family = editPrefs.editTokenControls === "value"
+      ? null
+      : familyForControl(selectedElement, control);
+    if (family && !control.kind) {
+      cell.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        stepControlToken(control, family, e.deltaY < 0 ? 1 : -1);
+      }, { passive: false });
+    }
+    return cell;
+  }
+
+  function buildTypeStyleRow(claim) {
+    const row = document.createElement("div");
+    row.className = "ccp-edit-row ccp-type-stylerow";
+    row.dataset.prop = "type-style";
+    row.dataset.control = "type-style";
+
+    const dot = document.createElement("button");
+    dot.className = "ccp-edit-dot";
+    dot.title = "Reset style";
+    dot.setAttribute("aria-label", "Reset style");
+    dot.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!selectedElement || !isEditedProp(selectedElement, "type-style")) return;
+      resetEditProp(selectedElement, "type-style");
+      renderEditControls();
+    });
+
+    const label = document.createElement("span");
+    label.className = "ccp-edit-label";
+    label.textContent = "style";
+
+    const chip = document.createElement("span");
+    chip.className = "ccp-type-chip";
+    const ladder = typeLadderFor(claim);
+
+    if (ladder) {
+      const down = document.createElement("button");
+      down.className = "ccp-type-st";
+      down.textContent = "‹";
+      down.title = "Step the style down";
+      down.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        stepTypeStyle(claim, ladder, -1);
+      });
+      chip.appendChild(down);
+    }
+
+    const name = document.createElement("b");
+    name.className = "ccp-type-name";
+    name.textContent = claim.style.name;
+    chip.appendChild(name);
+
+    if (!claim.on) {
+      const mod = document.createElement("i");
+      mod.className = "ccp-type-mod";
+      mod.textContent = "· modified";
+      chip.appendChild(mod);
+      chip.classList.add("ccp-type-drifted");
+      chip.title = `Conform to ${claim.style.name}`;
+      chip.addEventListener("click", (e) => {
+        if (e.target.closest(".ccp-type-st")) return;
+        e.preventDefault();
+        e.stopPropagation();
+        conformTypeStyle(detectTypeStyle(selectedElement) || claim);
+      });
+    }
+
+    if (ladder) {
+      const up = document.createElement("button");
+      up.className = "ccp-type-st";
+      up.textContent = "›";
+      up.title = "Step the style up";
+      up.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        stepTypeStyle(claim, ladder, 1);
+      });
+      chip.appendChild(up);
+    }
+
+    row.appendChild(dot);
+    row.appendChild(label);
+    row.appendChild(chip);
+    return row;
+  }
+
+  // Live state the generic refresh loop cannot know: the claim (drift moves
+  // with every scrub), the ticks it implies, and the caption's idle text.
+  function refreshTypographyState() {
+    if (!editPanelEl || !selectedElement || !selectedElement.isConnected) return;
+    const el = selectedElement;
+    if (!editPanelEl.querySelector(".ccp-type")) return;
+    editTypeClaim = detectTypeStyle(el);
+    const claim = editTypeClaim;
+
+    for (const cell of editPanelEl.querySelectorAll(".ccp-type-cell")) {
+      const prop = cell.dataset.control;
+      cell.classList.remove("ccp-type-fromstyle", "ccp-type-drift", "ccp-type-owntok");
+      if (claim && claim.style.constituents[prop] !== undefined) {
+        const drifted = claim.drifted.includes(prop);
+        const safe = escapeHtml(claim.style.name);
+        cell.classList.add(drifted ? "ccp-type-drift" : "ccp-type-fromstyle");
+        cell.dataset.cap = drifted
+          ? `<b>${TYPE_CELL_LABEL[prop]}</b> — drifted from ${safe}`
+          : `<b>${TYPE_CELL_LABEL[prop]}</b> — from ${safe}`;
+      } else {
+        const control = typeControlFor(prop);
+        const family = control && !control.kind && editPrefs.editTokenControls !== "value"
+          ? familyForControl(el, control)
+          : null;
+        if (family) {
+          cell.classList.add("ccp-type-owntok");
+          const onRung = matchToken(family.members, numericState(el, control).value);
+          cell.dataset.cap = onRung
+            ? `<b>${escapeHtml(onRung.name)}</b> — wheel steps the ${escapeHtml(family.prefix)} scale`
+            : `off the <b>${escapeHtml(family.prefix)}</b> scale — wheel steps to a rung`;
+        } else {
+          delete cell.dataset.cap;
+        }
+      }
+    }
+
+    const styleRow = editPanelEl.querySelector(".ccp-type-stylerow");
+    if (styleRow) {
+      const edited = isEditedProp(el, "type-style");
+      styleRow.classList.toggle("ccp-edit-dirty", edited);
+      const dot = styleRow.querySelector(".ccp-edit-dot");
+      if (dot) dot.classList.toggle("ccp-edit-on", edited);
+      if (claim) {
+        const safe = escapeHtml(claim.style.name);
+        styleRow.dataset.cap = claim.on
+          ? `on <b>${safe}</b> — ${Object.keys(claim.style.constituents)
+              .map((p) => TYPE_CELL_LABEL[p]).join(" + ")}`
+          : `<b>${safe}</b> — drifted: ${claim.drifted
+              .map((p) => TYPE_CELL_LABEL[p]).join(", ")} · click to conform`;
+      }
+    }
+    paintTypeCaption();
+  }
+
+  function typeControlFor(prop) {
+    const group = EDIT_GROUPS.find((g) => g.key === "typography");
+    const control = group && group.controls.find((c) => c.prop === prop);
+    return control ? { ...control, gridCell: true } : null;
+  }
+
+  function paintTypeCaption() {
+    const cap = editPanelEl && editPanelEl.querySelector(".ccp-type-cap");
+    if (!cap) return;
+    const claim = editTypeClaim;
+    cap.innerHTML = claim
+      ? (claim.on
+        ? `<b>${escapeHtml(claim.style.name)}</b>`
+        : `<b>${escapeHtml(claim.style.name)}</b> · modified`)
+      : "";
+  }
+
+  // ===== Long-text editor =====
+  // The colour picker's move, for words: its own root beside the panel, so
+  // the field's truncation never has the last word. Live like the field —
+  // every keystroke lands — with the same exits.
+  function openTextEditor(control) {
+    closeTextEditor();
+    const el = selectedElement;
+    if (!el || !el.isConnected) return;
+
+    const pop = document.createElement("div");
+    pop.id = "ccp-text-editor";
+    const head = document.createElement("div");
+    head.className = "ccp-txted-head";
+    const title = document.createElement("span");
+    title.textContent = "Text";
+    const close = document.createElement("button");
+    close.textContent = "×";
+    close.title = "Close";
+    close.setAttribute("aria-label", "Close text editor");
+    close.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      closeTextEditor();
+    });
+    head.appendChild(title);
+    head.appendChild(close);
+
+    const area = document.createElement("textarea");
+    area.spellcheck = false;
+    area.value = readTextEditValue(el).text;
+    area.addEventListener("input", () => {
+      const target = selectedElement;
+      if (!target || !target.isConnected) return;
+      beginEditGesture(target, "text");
+      setEditValue(target, "text", {
+        css: area.value.trim().replace(/\s+/g, " "),
+        inline: null, priority: "", cls: null, token: null,
+        text: area.value,
+      });
+      refreshEditControls();
+    });
+    area.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        closeTextEditor();
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        const target = selectedElement;
+        if (target && editGesture && editGesture.el === target && editGesture.prop === "text") {
+          setEditValue(target, "text", editGesture.from);
+        }
+        closeTextEditor();
+        return;
+      }
+      e.stopPropagation();
+    });
+
+    const count = document.createElement("p");
+    count.className = "ccp-txted-count";
+    const paintCount = () => {
+      count.textContent = `${area.value.length} chars · Enter commits · Esc abandons`;
+    };
+    area.addEventListener("input", paintCount);
+    paintCount();
+
+    pop.appendChild(head);
+    pop.appendChild(area);
+    pop.appendChild(count);
+
+    // After the panel in the document, so it paints above it — the same
+    // ordering rule the picker documents.
+    document.documentElement.appendChild(pop);
+    textEditorEl = pop;
+    positionTextEditor();
+    area.focus();
+    area.setSelectionRange(area.value.length, area.value.length);
+  }
+
+  function positionTextEditor() {
+    if (!textEditorEl || !editPanelEl) return;
+    const panel = editPanelEl.getBoundingClientRect();
+    const rect = textEditorEl.getBoundingClientRect();
+    const vw = document.documentElement.clientWidth;
+    const vh = document.documentElement.clientHeight;
+    const right = panel.right + GEOMETRY.gap;
+    const left = right + rect.width + GEOMETRY.margin <= vw
+      ? right
+      : Math.max(GEOMETRY.margin, panel.left - GEOMETRY.gap - rect.width);
+    const top = Math.min(Math.max(GEOMETRY.margin, panel.top),
+      Math.max(GEOMETRY.margin, vh - rect.height - GEOMETRY.margin));
+    textEditorEl.style.left = `${Math.round(left)}px`;
+    textEditorEl.style.top = `${Math.round(top)}px`;
+  }
+
+  function closeTextEditor() {
+    if (!textEditorEl) return;
+    textEditorEl.remove();
+    textEditorEl = null;
+    commitEditGesture();
+    if (editPanelEl) refreshEditControls();
   }
 
   // Each side of a linked control is a full control in its own right, so it
@@ -3443,12 +4326,13 @@
   function buildEditRow(control, isSide) {
     const row = document.createElement("div");
     row.className = "ccp-edit-row" + (isSide ? " ccp-edit-side" : "");
-    // Shadow parts all write box-shadow, so the row's dirty state and its
-    // reset both key off that one property.
-    row.dataset.prop = control.shadowPart ? "box-shadow" : control.prop;
+    // Shadow parts all write box-shadow, and a vec uniform's components all
+    // write the whole uniform — so the row's dirty state and its reset both
+    // key off the one property the registry actually holds.
+    const resetProp = control.shadowPart ? "box-shadow" : (control.uniformKey || control.prop);
+    row.dataset.prop = resetProp;
     row.dataset.control = control.prop;
 
-    const resetProp = control.shadowPart ? "box-shadow" : control.prop;
     const dot = document.createElement("button");
     dot.className = "ccp-edit-dot";
     dot.title = `Reset ${control.label}`;
@@ -3456,8 +4340,10 @@
     dot.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      if (!isEditedProp(selectedElement, resetProp)) return;
-      resetEditProp(selectedElement, resetProp);
+      // A uniform's edits live on the probed canvas, not the selection.
+      const owner = controlTarget(control);
+      if (!owner || !isEditedProp(owner, resetProp)) return;
+      resetEditProp(owner, resetProp);
       renderEditControls();
     });
 
@@ -3508,9 +4394,66 @@
     row.appendChild(
       control.kind === "color" ? buildColorControl(control)
         : control.kind === "segment" ? buildSegmentControl(control)
+        : control.kind === "text" ? buildTextControl(control)
         : buildNumericControl(control)
     );
     return row;
+  }
+
+  // The words themselves. Live like a scrub — every keystroke lands on the
+  // page — with the same three exits typing a number has: Enter commits,
+  // Escape abandons back to where this gesture started, blur commits.
+  function buildTextControl(control) {
+    const wrap = document.createElement("span");
+    wrap.className = "ccp-edit-textwrap";
+
+    const input = document.createElement("input");
+    input.className = "ccp-edit-textin";
+    input.type = "text";
+    input.spellcheck = false;
+    input.setAttribute("aria-label", control.label);
+
+    input.addEventListener("input", () => {
+      const el = selectedElement;
+      if (!el || !el.isConnected) return;
+      beginEditGesture(el, "text");
+      setEditValue(el, "text", {
+        css: input.value, inline: null, priority: "", cls: null, token: null,
+        text: input.value,
+      });
+    });
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        e.stopPropagation();
+        commitEditGesture();
+        input.blur();
+        refreshEditControls();
+        return;
+      }
+      if (e.key === "Escape") {
+        // Abandon the typing, not the mode: put back what this gesture
+        // started from, and let the commit-on-blur see nothing moved.
+        e.preventDefault();
+        e.stopPropagation();
+        const el = selectedElement;
+        if (el && editGesture && editGesture.el === el && editGesture.prop === "text") {
+          setEditValue(el, "text", editGesture.from);
+        }
+        input.blur();
+        refreshEditControls();
+        return;
+      }
+      // Everything else is typing; it must not reach the page's shortcuts.
+      e.stopPropagation();
+    });
+    input.addEventListener("blur", () => {
+      commitEditGesture();
+      refreshEditControls();
+    });
+
+    wrap.appendChild(input);
+    return wrap;
   }
 
   function buildColorControl(control) {
@@ -3575,8 +4518,10 @@
     wrap.addEventListener("pointerdown", (e) => onNumericScrubStart(e, control, input));
 
     // "token" hides the raw number once a scale is available: the whole point
-    // of a design system is that the pixel count is not the decision.
-    if (editPrefs.editTokenControls === "token" &&
+    // of a design system is that the pixel count is not the decision. A grid
+    // cell keeps its number regardless — with no stepper beside it, hiding
+    // the value would leave the cell blank.
+    if (!control.gridCell && editPrefs.editTokenControls === "token" &&
         familyForControl(selectedElement, control)) {
       wrap.classList.add("ccp-edit-quiet");
     }
@@ -3597,8 +4542,9 @@
 
     // The stepper only exists when this element's value is actually sitting on
     // one of the page's scales. Offering "‹ — ›" over a value that belongs to
-    // no scale would promise a move that cannot happen.
-    const family = editPrefs.editTokenControls === "value"
+    // no scale would promise a move that cannot happen. Grid cells have no
+    // room for it — there, the wheel steps and the caption names.
+    const family = control.gridCell || editPrefs.editTokenControls === "value"
       ? null
       : familyForControl(selectedElement, control);
     if (family) {
@@ -3873,16 +4819,26 @@
     }
 
     function commit(token) {
-      const el2 = selectedElement;
+      const el2 = controlTarget(control);
       if (!el2 || !el2.isConnected) return;
       const css = currentCss();
-      if (control.shadowPart) {
+      if (control.uniform) {
+        // The picker's rgb back to 0–1 floats; a vec4's fourth lane is the
+        // alpha rail.
+        beginEditGesture(el2, control.uniformKey);
+        const rgb = hsvToRgb(hsv.h, hsv.s, hsv.v);
+        const vec = [rgb.r / 255, rgb.g / 255, rgb.b / 255];
+        if (control.uniform.comps === 4) vec.push(Math.min(1, Math.max(0, alpha)));
+        setUniformValue(control, vec, token || null);
+      } else if (control.shadowPart) {
         beginEditGesture(el2, "box-shadow");
         applyShadowPart(control, css);
       } else {
         beginEditGesture(el2, control.prop);
         setEditValue(el2, control.prop, {
-          css, inline: css, priority: neededPriority(el2, control.prop), cls: null,
+          css, inline: css,
+          priority: control.forceImportant ? "important" : neededPriority(el2, control.prop),
+          cls: null,
           token: token || null,
         });
       }
@@ -4021,6 +4977,12 @@
   // ===== Edit Control values =====
 
   function readComputed(el, control) {
+    // A uniform has no computed style; its display form comes off the bridge
+    // state. This is what the segment control's refresh compares against.
+    if (control.uniform) {
+      const vec = currentUniformValue(control.uniform.name);
+      return vec ? formatUniformValue(vec, control.uniform.type) : "";
+    }
     return getComputedStyle(el).getPropertyValue(control.reads || control.prop).trim();
   }
 
@@ -4029,6 +4991,10 @@
   // both report "normal" when nothing has set them), where the honest display
   // is that there is no number yet.
   function numericState(el, control) {
+    if (control.uniform) {
+      const vec = currentUniformValue(control.uniform.name);
+      return { auto: false, value: vec ? vec[Math.max(0, control.uniform.part)] || 0 : 0 };
+    }
     if (control.shadowPart) return { auto: false, value: shadowPartValue(el, control) };
     const raw = readComputed(el, control);
     if (control.autoWord && raw === control.autoWord) {
@@ -4058,12 +5024,22 @@
     String(roundTo(n, control.decimals || 0));
 
   function applyEditProp(control, cssValue) {
+    // A uniform is not a declaration; its write path is the bridge, behind
+    // the same door (see the uniform branch in applyEditValue).
+    if (control.uniform) {
+      applyUniformCss(control, cssValue);
+      return;
+    }
     const el = selectedElement;
     if (!el || !el.isConnected) return;
     setEditValue(el, control.prop, {
       css: cssValue,
       inline: cssValue,
-      priority: neededPriority(el, control.prop),
+      // A custom property a CSS animation is driving needs !important from
+      // the first write: the animation outranks plain inline, and the
+      // verify-and-escalate check cannot see that — the animated value moves
+      // between its two reads on its own, which reads as success.
+      priority: control.forceImportant ? "important" : neededPriority(el, control.prop),
       cls: null,
       token: null,
     });
@@ -4071,6 +5047,11 @@
 
   function applyNumeric(control, next) {
     const clamped = Math.min(control.max, Math.max(control.min, next));
+    if (control.uniform) {
+      applyUniformPart(control, clamped);
+      refreshEditControls();
+      return clamped;
+    }
     if (control.shadowPart) {
       applyShadowPart(control, clamped);
       refreshEditControls();
@@ -4109,8 +5090,10 @@
       const dir = e.key === "ArrowUp" ? 1 : -1;
       const step = control.step * (e.shiftKey ? 10 : 1);
       const current = parseFloat(input.value);
-      const base = isFinite(current) ? current : numericState(selectedElement, control).value;
-      beginEditGesture(selectedElement, control.prop);
+      const target = controlTarget(control);
+      if (!target || !target.isConnected) return;
+      const base = isFinite(current) ? current : numericState(target, control).value;
+      beginEditGesture(target, control.prop);
       const applied = applyNumeric(control, roundTo(base + dir * step, control.decimals || 0));
       // The field keeps focus while arrowing, and refreshEditControls leaves
       // focused fields alone so it cannot type over you — so stepping has to
@@ -4140,7 +5123,7 @@
   }
 
   function commitNumericInput(control, input) {
-    const el = selectedElement;
+    const el = controlTarget(control);
     if (!el || !el.isConnected) return;
     const typed = parseFloat(input.value);
     if (!isFinite(typed)) { refreshEditControls(); return; }
@@ -4156,7 +5139,7 @@
   function onNumericScrubStart(e, control, input) {
     if (e.button !== 0) return;
     e.stopPropagation();
-    const el = selectedElement;
+    const el = controlTarget(control);
     if (!el || !el.isConnected) return;
 
     const startX = e.clientX;
@@ -4206,7 +5189,8 @@
     if (!editPanelEl || !selectedElement || !selectedElement.isConnected) return;
     const el = selectedElement;
 
-    // Every row, including the four sides a split control expands into.
+    // Every row, including the four sides a split control expands into, plus
+    // whatever the Advanced section put up this render.
     const allControls = [];
     for (const group of EDIT_GROUPS) {
       for (const control of group.controls) {
@@ -4216,25 +5200,31 @@
         }
       }
     }
+    for (const control of advancedControls) allControls.push(control);
 
     for (const control of allControls) {
       {
         const row = editPanelEl.querySelector(`.ccp-edit-row[data-control="${control.prop}"]`);
         if (!row) continue;
 
-        const edited = isEditedProp(el, row.dataset.prop);
+        // A uniform's edits live on the probed canvas rather than on the
+        // selection; everything the row reads has to look there.
+        const target = control.uniform ? (advancedState && advancedState.canvasEl) : el;
+        if (!target) continue;
+
+        const edited = isEditedProp(target, row.dataset.prop);
         row.classList.toggle("ccp-edit-dirty", edited);
         const dot = row.querySelector(".ccp-edit-dot");
         if (dot) dot.classList.toggle("ccp-edit-on", edited);
 
         if (control.kind === "color") {
-          const raw = readColorValue(el, control);
+          const raw = readColorValue(target, control);
           const parsed = resolveColor(raw);
           const fill = row.querySelector(".ccp-edit-swatch i");
           if (fill) fill.style.background = raw || "transparent";
           const hex = row.querySelector(".ccp-edit-hex");
           if (hex) {
-            const entry = editRegistry.get(el)?.props.get(row.dataset.prop);
+            const entry = editRegistry.get(target)?.props.get(row.dataset.prop);
             const token = entry && entry.after && entry.after.token;
             hex.textContent = token ? token.name : parsed ? formatHex(parsed) : raw;
             hex.classList.toggle("ccp-edit-token", Boolean(token));
@@ -4243,7 +5233,7 @@
         }
 
         if (control.kind === "segment") {
-          const raw = readComputed(el, control);
+          const raw = readComputed(target, control);
           const value = (control.equivalents && control.equivalents[raw]) || raw;
           for (const button of row.querySelectorAll(".ccp-edit-seg button")) {
             button.setAttribute("aria-checked", String(button.dataset.value === value));
@@ -4251,14 +5241,24 @@
           continue;
         }
 
+        if (control.kind === "text") {
+          const input = row.querySelector(".ccp-edit-textin");
+          // Typing must never be overwritten mid-keystroke — same rule the
+          // numeric fields keep.
+          if (input && document.activeElement !== input) {
+            input.value = getDirectText(target);
+          }
+          continue;
+        }
+
         const input = row.querySelector(".ccp-edit-input");
         if (!input) continue;
-        const record = editRegistry.get(el);
+        const record = editRegistry.get(target);
         const entry = record && record.props.get(control.prop);
         const isAuto = entry
           ? entry.after.css === "auto"
-          : control.auto && !el.style.getPropertyValue(control.prop);
-        const state = numericState(el, control);
+          : control.auto && !target.style.getPropertyValue(control.prop);
+        const state = numericState(target, control);
         // Typing must never be overwritten mid-keystroke.
         if (document.activeElement !== input) {
           input.value = formatNumeric(state.value, control);
@@ -4279,6 +5279,22 @@
           stepper.classList.toggle("ccp-edit-offscale", !onRung);
           stepper.title = onRung ? onRung.name : `Off the ${stepper.dataset.family} scale`;
         }
+      }
+    }
+
+    // The typography grid carries state the sweep cannot know: the style
+    // claim moves with every scrub, and the ticks and caption move with it.
+    refreshTypographyState();
+
+    // The vec heading rows are not controls, so the sweep above never reaches
+    // their dots; they key off the whole uniform the same way their component
+    // rows do.
+    if (advancedState && advancedState.canvasEl) {
+      for (const head of editPanelEl.querySelectorAll("[data-adv-parent]")) {
+        const edited = isEditedProp(advancedState.canvasEl, head.dataset.advParent);
+        head.classList.toggle("ccp-edit-dirty", edited);
+        const dot = head.querySelector(".ccp-edit-dot");
+        if (dot) dot.classList.toggle("ccp-edit-on", edited);
       }
     }
 
@@ -4325,6 +5341,7 @@
   function removeEditPanel() {
     if (!editPanelEl) return;
     closeColorPicker();
+    closeTextEditor();
     editPanelEl.remove();
     editPanelEl = null;
     editPanelPos = null;
@@ -4408,8 +5425,10 @@
       // not glide either or it would trail behind the drag.
       renderTether({ instant: true });
       // The picker is placed against the panel's edge, so it has to travel with
-      // it rather than being left behind at the old coordinates.
+      // it rather than being left behind at the old coordinates. The text
+      // editor keeps the same station.
       repositionColorPicker();
+      positionTextEditor();
     };
     const up = () => {
       head.removeEventListener("pointermove", move);
@@ -4572,6 +5591,16 @@
       },
       () => el.getAttribute("class") === record.originalClassAttr
     );
+    // Words go back the same way attributes do: the exact original bytes,
+    // written until they read back. Only when the text was ever touched, and
+    // only while the node the edit landed on is still the page's.
+    if (record.originalTextData !== undefined &&
+        record.textNode && record.textNode.isConnected) {
+      untilStable(
+        () => { record.textNode.nodeValue = record.originalTextData; },
+        () => record.textNode.nodeValue === record.originalTextData
+      );
+    }
   }
 
   function untilStable(write, settled) {
@@ -4592,6 +5621,36 @@
   // a lookup here would return the value being written and conclude that the
   // class had not changed — leaving a token step recorded but never performed.
   function applyEditValue(el, prop, next, prev) {
+    // The second thing behind this door. A uniform write never touches the
+    // DOM — it crosses to the MAIN-world agent over the bridge — but it is
+    // still a host-page write, so its two message types are sent from here
+    // and nowhere else, and test/edit-audit.mjs pins the literals to this
+    // section the same way it pins setProperty. An EditValue carrying a
+    // `uniform` array is a set; one without (the driven sentinel) hands the
+    // value back to the page's own loop.
+    if (prop.startsWith("uniform:")) {
+      const name = prop.slice(8);
+      if (next && next.uniform) postShaderSet(name, next.uniform);
+      else postShaderClear(name);
+      return;
+    }
+    // The third thing behind the door: the element's own words. Not a
+    // declaration and not an attribute, so it has its own verb — nodeValue —
+    // which test/edit-audit.mjs pins to this section the same way it pins
+    // setProperty. Text reflows the element, so the tether re-measures.
+    if (prop === "text") {
+      writeTextValue(el, next);
+      if (editing && el === selectedElement) renderTether({ instant: true });
+      return;
+    }
+    // The composite door. One type-style EditValue can carry a class swap
+    // and a set of constituent declarations; applying it as one write is
+    // what lets undo and the delta treat a style step as a single action.
+    if (prop === "type-style") {
+      applyTypeStyleValue(el, next, prev);
+      if (editing && el === selectedElement) renderTether({ instant: true });
+      return;
+    }
     const record = ensureEditRecord(el);
     const entry = record.props.get(prop);
     const current = prev !== undefined ? prev : (entry ? entry.after : null);
@@ -4632,9 +5691,90 @@
     if (editing && el === selectedElement) renderTether({ instant: true });
   }
 
+  // A type-style write: swap the class if the source changed, then apply the
+  // constituent declarations — null clears an override so the new source
+  // shows through, a value writes inline with the same verify-and-escalate
+  // the main path keeps. All through this section's own verbs.
+  function applyTypeStyleValue(el, next, prev) {
+    ensureEditRecord(el);
+    const prevCls = prev ? prev.cls || null : null;
+    const nextCls = (next && next.cls) || null;
+    if (prevCls !== nextCls) swapUtilityClass(el, prevCls, nextCls);
+    const decls = (next && next.styleDecls) || null;
+    if (!decls) return;
+    for (const [p, v] of Object.entries(decls)) {
+      const writing = v !== null && v !== undefined && v !== "";
+      const beforeComputed = writing ? getComputedStyle(el).getPropertyValue(p) : null;
+      applyDeclaration(el, p, v, "");
+      if (writing && getComputedStyle(el).getPropertyValue(p) === beforeComputed) {
+        applyDeclaration(el, p, v, "important");
+      }
+    }
+  }
+
+  // The senders for the two bridge verbs. Defined here so the audit's rule —
+  // these string literals appear in Edit Apply and nowhere else — makes the
+  // write path as un-movable as the setProperty one.
+  function postShaderSet(name, value) {
+    postShaderMessage("CCP_SHADER_SET", { name, value });
+  }
+
+  function postShaderClear(name) {
+    postShaderMessage("CCP_SHADER_CLEAR", { name });
+  }
+
+  // The text node an edit lands on: the first direct child with words of its
+  // own. Never a descendant's — the field only offers itself where ownsText
+  // holds — and never a new node, so there is nothing to clean up beyond
+  // putting the original characters back.
+  function firstDirectTextNode(el) {
+    for (const node of el.childNodes) {
+      if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) return node;
+    }
+    return null;
+  }
+
+  // Write the words, remembering the exact original once — nodeValue is
+  // byte-preserving in both directions, so leading whitespace a formatter put
+  // there goes back exactly as found.
+  function writeTextValue(el, next) {
+    const record = ensureEditRecord(el);
+    const node = record.textNode && record.textNode.isConnected
+      ? record.textNode
+      : firstDirectTextNode(el);
+    if (!node) return;
+    if (record.originalTextData === undefined) {
+      record.textNode = node;
+      record.originalTextData = node.nodeValue;
+    }
+    const wanted = next && typeof next.text === "string" ? next.text : (next && next.css) || "";
+    untilStable(
+      () => { node.nodeValue = wanted; },
+      () => node.nodeValue === wanted
+    );
+  }
+
+  // The element's current words as an EditValue. css carries the collapsed
+  // display form (what the field shows, what a delta prints); text carries
+  // the raw node data, which is what a revert writes back.
+  function readTextEditValue(el) {
+    const node = firstDirectTextNode(el);
+    const raw = node ? node.nodeValue : "";
+    return {
+      css: raw.trim().replace(/\s+/g, " "),
+      inline: null, priority: "", cls: null, token: null,
+      text: raw,
+    };
+  }
+
   // Read the element's current state for a property as an EditValue. This is
   // what `before` is captured from, once, at first touch.
   function readEditValue(el, prop) {
+    // getComputedStyle cannot answer for a uniform; the bridge state can, and
+    // a driven uniform's honest "before" is the page's own loop, not a number.
+    if (prop.startsWith("uniform:")) return readUniformEditValue(prop);
+    if (prop === "text") return readTextEditValue(el);
+    if (prop === "type-style") return readTypeStyleValue(el);
     const computed = getComputedStyle(el).getPropertyValue(prop).trim();
     const token = detectPropertyToken(el, prop, computed, tokenIndex);
     return {
@@ -4810,6 +5950,13 @@
         classAttr: record.originalClassAttr,
         props: new Map(record.props),
       });
+      // Uniforms are not attributes, so the attribute restore below cannot
+      // reach them; each goes back through the door on its own. After a
+      // bridge teardown these land in a dormant agent as no-ops, which is
+      // correct — the teardown already restored the values itself.
+      for (const [prop, entry] of record.props) {
+        if (prop.startsWith("uniform:")) applyEditValue(record.el, prop, entry.before, entry.after);
+      }
       restoreElement(record);
     }
     editRegistry.clear();
@@ -4924,18 +6071,105 @@
     return shown;
   }
 
-  // [{ prop, before, after }] → the "# edits:" lines. Pure — mirrored in
+  // [{ prop, before, after }] → the "# edits:" lines. Style entries first,
+  // exactly as they always read; uniform entries — registry keys starting
+  // "uniform:" — get their own block, because "set this uniform" is a
+  // different instruction from "apply this declaration". Pure — mirrored in
   // test/edit-deltas.mjs.
-  function buildEditLines(entries) {
-    const sorted = (entries || [])
-      .filter((e) => e && e.prop)
+  function buildEditLines(entries, shaderMeta) {
+    const all = (entries || []).filter((e) => e && e.prop);
+    const texts = all.filter((e) => e.prop === "text");
+    const typeStyles = all.filter((e) => e.prop === "type-style");
+    const styles = all.filter((e) =>
+      e.prop !== "text" && e.prop !== "type-style" && !e.prop.startsWith("uniform:"));
+    const uniforms = all.filter((e) => e.prop.startsWith("uniform:"));
+    const sorted = styles
       .slice()
       .sort((a, b) => editPropRank(a.prop) - editPropRank(b.prop) || a.prop.localeCompare(b.prop));
-    if (sorted.length === 0) return [];
-    return [
-      "# edits: apply these style changes to this element in the source",
-      ...sorted.map((e) => `#   ${e.prop}: ${formatEditSide(e.before)} → ${formatEditSide(e.after)}`),
+    const lines = [];
+    // Content first: it is not a style change, and it is the loudest thing
+    // that can happen to an element. The before side is a finder, so it may
+    // truncate; the after side is the instruction, so it never does.
+    for (const e of texts) {
+      lines.push(`# text: ${formatTextSide(e.before, 80)} → ${formatTextSide(e.after)}`);
+    }
+    // Then the composite: one action, one line, changed constituents echoed.
+    lines.push(...buildTypeStyleLines(typeStyles));
+    if (sorted.length > 0) {
+      lines.push(
+        "# edits: apply these style changes to this element in the source",
+        ...sorted.map((e) => `#   ${e.prop}: ${formatEditSide(e.before)} → ${formatEditSide(e.after)}`)
+      );
+    }
+    if (uniforms.length > 0) lines.push(...buildShaderLines(uniforms, shaderMeta || null));
+    return lines;
+  }
+
+  // The composite's own grammar: the name leads because the source edit is
+  // that one name; the parenthetical echoes only the constituents that
+  // actually moved, because those numbers are what the eye was judging.
+  // Pure — mirrored in test/edit-deltas.mjs.
+  function typeStyleEcho(before, after) {
+    const LABELS = [
+      ["font-size", "size"], ["font-weight", "weight"],
+      ["line-height", "leading"], ["letter-spacing", "tracking"],
     ];
+    const a = (before && before.style && before.style.values) || {};
+    const b = (after && after.style && after.style.values) || {};
+    const parts = [];
+    for (const [prop, label] of LABELS) {
+      const x = a[prop];
+      const y = b[prop];
+      if (typeof x !== "number" || typeof y !== "number") continue;
+      if (Math.abs(x - y) <= 0.001) continue;
+      const f = (n) => String(Math.round(n * 100) / 100);
+      parts.push(`${label} ${f(x)}→${f(y)}`);
+    }
+    return parts.length ? ` (${parts.join(", ")})` : "";
+  }
+
+  // Pure — mirrored in test/edit-deltas.mjs.
+  function buildTypeStyleLines(entries) {
+    return (entries || [])
+      .filter((e) => e && e.prop === "type-style")
+      .map((e) => `# type style: ${e.before && e.before.css ? e.before.css : ""} → ` +
+        `${e.after && e.after.css ? e.after.css : ""}${typeStyleEcho(e.before, e.after)}`);
+  }
+
+  // One side of a text delta: quoted so its edges are visible, escaped so a
+  // quote inside the words cannot fake the format, capped only when a cap is
+  // given. Pure — mirrored in test/edit-deltas.mjs.
+  function formatTextSide(value, cap) {
+    const s = value && typeof value.css === "string" ? value.css : "";
+    const shown = cap && s.length > cap ? s.slice(0, cap - 1) + "…" : s;
+    return JSON.stringify(shown);
+  }
+
+  // The shader half of a delta. Names lead — the uniform name is the greppable
+  // anchor into the shader source and the upload site — and a driven value's
+  // before side is honest about what it was: the page's own loop, not a
+  // number. Pure — mirrored in test/edit-deltas.mjs.
+  function buildShaderLines(entries, meta) {
+    const sorted = (entries || [])
+      .filter((e) => e && e.prop && e.prop.startsWith("uniform:"))
+      .slice()
+      .sort((a, b) => a.prop.localeCompare(b.prop));
+    if (sorted.length === 0) return [];
+    const kind = meta && meta.contextType === "webgl2" ? "WebGL2" : "WebGL";
+    const lines = [
+      `# shader edits: this canvas is drawn by a ${kind} program — set these uniforms where the page uploads them`,
+    ];
+    for (const e of sorted) {
+      const name = e.prop.slice(8);
+      const driven = Boolean(e.before && e.before.driven);
+      const before = driven ? "page-driven" : e.before ? e.before.css : "";
+      const after = driven ? `held at ${e.after ? e.after.css : ""}` : e.after ? e.after.css : "";
+      lines.push(`#   ${name}: ${before} → ${after}`);
+    }
+    if (meta && meta.probedFrom) {
+      lines.push(`# note: this canvas was probed as a descendant of the selected ${meta.probedFrom}`);
+    }
+    return lines;
   }
 
   function editEntriesFor(el) {
@@ -4972,6 +6206,22 @@
     const computed = getComputedStyle(el);
     const stale = [];
     for (const [prop, entry] of record.props) {
+      // A uniform cannot be read back through computed style, so this check
+      // has nothing true to say about it; while its session lives the agent
+      // enforces the value at every draw.
+      if (prop.startsWith("uniform:")) continue;
+      // A style claim is re-derived on every refresh, which is a better
+      // staleness check than any string compare could be here.
+      if (prop === "type-style") continue;
+      // Words are checked against the words: a framework re-render replaces
+      // text nodes as readily as attributes.
+      if (prop === "text") {
+        const now = getDirectText(el);
+        if (now !== String(entry.after.css || "").trim().replace(/\s+/g, " ")) {
+          stale.push({ prop, now });
+        }
+        continue;
+      }
       const now = computed.getPropertyValue(prop).trim();
       // Compare what renders, not how it was written — the same test
       // sameEditValue makes.
@@ -4982,7 +6232,7 @@
 
   function buildElementSection(el) {
     const { header, located } = buildPointerHeader(el);
-    const lines = buildEditLines(editEntriesFor(el));
+    const lines = buildEditLines(editEntriesFor(el), advancedMeta.get(el) || null);
     const html = buildCopyHtml(el, located);
     const notes = [];
     if (!el.isConnected) {
@@ -5009,6 +6259,769 @@
       return selectedElement ? fenceBlock(copyPrefs, buildElementSection(selectedElement)) : "";
     }
     return fenceBlock(copyPrefs, elements.map(buildElementSection).join("\n\n"));
+  }
+
+  // ===== Advanced Detection =====
+  // What the Advanced section is about: values that drive an element's visuals
+  // through a mechanism the main panel cannot see — a WebGL program's uniforms
+  // behind a <canvas>, or custom properties consumed by gradients, filters,
+  // masks and paint worklets. Detection is scoped on purpose: "everything that
+  // parses as a number" would pour the page's whole token universe in here,
+  // and the token layer already owns that.
+
+  // The selected element itself when it is a canvas; otherwise the largest
+  // visible canvas among its descendants. The common arrangement on real pages
+  // is a wrapper div over a pointer-events:none canvas, so insisting on a
+  // direct hit would make the feature look broken exactly where it matters.
+  // Cross-origin iframes never enter: querySelectorAll cannot see into them.
+  const PROBE_CANVAS_LIMIT = 50;
+  function findProbeCanvas(el) {
+    if (!el || !el.isConnected) return null;
+    if (el.tagName === "CANVAS") return el;
+    let best = null;
+    let bestArea = 0;
+    let seen = 0;
+    for (const canvas of el.querySelectorAll("canvas")) {
+      if (++seen > PROBE_CANVAS_LIMIT) break;
+      const rect = canvas.getBoundingClientRect();
+      const area = rect.width * rect.height;
+      if (area > bestArea) {
+        best = canvas;
+        bestArea = area;
+      }
+    }
+    return bestArea > 0 ? best : null;
+  }
+
+  // Which visual channels count as a mechanism. Deliberately not
+  // background-color and not plain lengths: a var() there is an ordinary
+  // design token, and the token layer already offers it with a stepper. These
+  // are the properties whose value is a recipe — a gradient, a filter chain, a
+  // paint() — where the interesting numbers live in the custom properties
+  // feeding it.
+  const ADVANCED_VISUAL_PROPS = [
+    "background", "background-image", "filter", "backdrop-filter",
+    "mask", "mask-image", "clip-path", "transform", "box-shadow",
+  ];
+
+  // A custom property earns a control two ways: it is visibly consumed by a
+  // var() in the winning declaration of a visual property above, or it is
+  // declared on the element itself — inline or by an element-scoped rule —
+  // which is the standard shape of a JS-driven effect (script writes
+  // --wave-amp onto the node, CSS reads it). The local fallback is what keeps
+  // an unreadable stylesheet from silently emptying the section; its cost is
+  // the occasional local property nothing consumes, which tunes to no effect
+  // rather than hiding one that would.
+  function collectAdvancedCssProps(el) {
+    if (!el || !el.isConnected) return [];
+    const style = getComputedStyle(el);
+    const found = new Map();
+    const take = (name) => {
+      if (typeof name !== "string" || !name.startsWith("--")) return;
+      if (found.has(name) || isOurs.name(name)) return;
+      const css = style.getPropertyValue(name).trim();
+      if (!css) return;
+      const parsed = advancedCssKind(css);
+      if (!parsed) return;
+      found.set(name, { name, kind: parsed.kind, value: parsed.value, unit: parsed.unit || "", css, driven: false });
+    };
+
+    for (const prop of ADVANCED_VISUAL_PROPS) {
+      const texts = [];
+      const winner = findWinningDeclaration(el, prop, tokenIndex);
+      if (winner && winner.value) texts.push(winner.value);
+      const inline = el.style && el.style.getPropertyValue(prop);
+      if (inline) texts.push(inline);
+      for (const text of texts) {
+        for (const m of text.matchAll(/var\(\s*(--[\w-]+)/g)) take(m[1]);
+      }
+    }
+
+    if (el.style) {
+      for (let i = 0; i < el.style.length; i++) {
+        const name = el.style[i];
+        if (name.startsWith("--")) take(name);
+      }
+    }
+    if (tokenIndex && !tokenIndex.disabled) {
+      for (const rule of tokenIndex.rules) {
+        let hit = false;
+        try { hit = el.matches(rule.selectorText); } catch { continue; }
+        if (!hit) continue;
+        for (let i = 0; i < rule.style.length; i++) {
+          const name = rule.style[i];
+          if (name.startsWith("--")) take(name);
+        }
+      }
+    }
+
+    // A property a CSS animation is rewriting is driven, the same cluster as a
+    // shader's u_time: the read-out is the page's until the user takes over.
+    // (Overriding one rides the existing escalate-to-!important path — a plain
+    // inline declaration loses to an animation, an important one beats it.)
+    try {
+      for (const anim of el.getAnimations()) {
+        if (!anim.effect || typeof anim.effect.getKeyframes !== "function") continue;
+        for (const frame of anim.effect.getKeyframes()) {
+          for (const key of Object.keys(frame)) {
+            const entry = found.get(key);
+            if (entry) entry.driven = true;
+          }
+        }
+      }
+    } catch { /* getAnimations can throw in odd embedding contexts; stay quiet */ }
+
+    return Array.from(found.values());
+  }
+
+  // A slider needs a range and GLSL declares none, so it is inferred from the
+  // values actually seen: a headroom decade over the largest magnitude,
+  // opening below zero only when a sample has been there. Pure — mirrored in
+  // test/advanced.mjs; change both.
+  function uniformRange(samples, isInt) {
+    let peak = 0;
+    let negative = false;
+    for (const v of samples || []) {
+      if (!isFinite(v)) continue;
+      if (Math.abs(v) > peak) peak = Math.abs(v);
+      if (v < 0) negative = true;
+    }
+    if (isInt) {
+      const top = Math.max(10, Math.pow(10, Math.ceil(Math.log10((peak || 1) * 1.5))));
+      return { min: negative ? -top : 0, max: top, step: 1, decimals: 0 };
+    }
+    if (peak === 0) return { min: -1, max: 1, step: 0.01, decimals: 2 };
+    const top = Math.pow(10, Math.ceil(Math.log10(peak * 1.5)));
+    const raw = top / 200;
+    const magnitude = Math.pow(10, Math.floor(Math.log10(raw)));
+    const unit = raw / magnitude;
+    const step = (unit <= 1 ? 1 : unit <= 2 ? 2 : unit <= 5 ? 5 : 10) * magnitude;
+    return {
+      min: negative ? -top : 0,
+      max: top,
+      step,
+      decimals: Math.max(0, -Math.floor(Math.log10(step))),
+    };
+  }
+
+  // "u_amplitude" reads as "amplitude" in a 248px panel; the full name is kept
+  // on the control and is what the delta block prints, because the full name
+  // is the greppable one. Pure — mirrored in test/advanced.mjs; change both.
+  function uniformLabel(name) {
+    let s = String(name || "").replace(/\[0\]$/, "");
+    const underscored = s.match(/^[ui]_(.+)$/);
+    if (underscored) s = underscored[1];
+    else if (/^[ui][A-Z]/.test(s)) s = s.slice(1);
+    return s ? s[0].toLowerCase() + s.slice(1) : String(name || "");
+  }
+
+  // A vec3 in [0,1] whose name says colour gets the picker; everything else
+  // gets per-component numbers. Both gates matter — the range alone would call
+  // every normalised direction a colour. Pure — mirrored in test/advanced.mjs;
+  // change both.
+  function isColorUniform(name, type, value) {
+    if (type !== "vec3" && type !== "vec4") return false;
+    if (!Array.isArray(value) || !value.every((v) => isFinite(v) && v >= 0 && v <= 1)) return false;
+    return /color|colour|tint|albedo|diffuse|emissive/i.test(String(name || ""));
+  }
+
+  // What kind of control a custom property's value can carry. Anything that
+  // parses as neither a number nor a colour is not offered — a keyword or a
+  // whole gradient is not a dial. Pure — mirrored in test/advanced.mjs; change
+  // both.
+  function advancedCssKind(value) {
+    const s = String(value || "").trim();
+    if (!s) return null;
+    const m = s.match(/^(-?\d*\.?\d+)(px|deg|%|rem|em|vh|vw|s|ms)?$/);
+    if (m) return { kind: "number", value: parseFloat(m[1]), unit: m[2] || "" };
+    if (/^#[0-9a-f]{3,8}$/i.test(s)) return { kind: "color" };
+    if (/^(rgb|rgba|hsl|hsla|hwb|lab|lch|oklab|oklch|color)\(/i.test(s)) return { kind: "color" };
+    return null;
+  }
+
+  // How a uniform value reads in the panel and the delta block: GLSL-shaped,
+  // so the line can be pasted next to the shader it describes. Pure — mirrored
+  // in test/advanced.mjs; change both.
+  function formatUniformValue(value, type) {
+    const isIntKind = /^(int|uint|ivec[234]|uvec[234])$/.test(type);
+    const one = (v) => {
+      if (!isFinite(v)) return "0";
+      if (isIntKind) return String(Math.round(v));
+      if (v === 0) return "0.00";
+      const a = Math.abs(v);
+      if (a >= 100) return String(Math.round(v * 10) / 10);
+      if (a < 0.01) return String(Number(v.toPrecision(2)));
+      return v.toFixed(2);
+    };
+    if (type === "bool") return (value && value[0]) >= 0.5 ? "on" : "off";
+    const nums = (value || []).map(one);
+    if (nums.length <= 1) return nums[0] || "0";
+    return `${type}(${nums.join(", ")})`;
+  }
+
+  // ===== Shader Bridge =====
+  // The isolated world's half of the conversation with shader-agent.js, which
+  // runs in the page's MAIN world (see that file's header for why it must).
+  // Elements cannot cross worlds, so the target canvas is marked with a
+  // one-shot data attribute carrying a nonce; every message echoes it, and a
+  // stale nonce is a message from a selection that no longer exists.
+  //
+  // Nothing here writes a uniform. The two message types that do —
+  // CCP_SHADER_SET and CCP_SHADER_CLEAR — are sent from the Edit Apply section
+  // and nowhere else, and test/edit-audit.mjs pins those literals there the
+  // same way it pins setProperty.
+  let shaderNonce = null;
+  let advancedMarkedCanvas = null;
+  let advancedTicket = 0;
+  let advancedKeepalive = 0;
+
+  // file:// documents have an opaque origin, which postMessage rejects as a
+  // target; the message never leaves this window either way.
+  const shaderTarget = () => (location.origin === "null" ? "*" : location.origin);
+
+  function postShaderMessage(type, payload) {
+    if (!shaderNonce) return;
+    window.postMessage({ ccp: "shader", v: 1, nonce: shaderNonce, type, ...payload }, shaderTarget());
+  }
+
+  // Fire-and-forget on purpose: if the agent is gone (the extension was
+  // reloaded under us), the send vanishes and the agent's own dead-man switch
+  // has already put the page back.
+  function beginAdvancedProbe(el) {
+    advancedTicket++;
+    advancedState = {
+      forEl: el,
+      cssProps: collectAdvancedCssProps(el),
+      canvasEl: null,
+      contextType: null,
+      live: false,
+      gone: false,
+      truncated: false,
+      uniforms: new Map(),
+    };
+    scheduleCssDrivenResample(el);
+    const canvas = findProbeCanvas(el);
+    if (canvas) injectAndProbe(el, canvas, advancedTicket);
+  }
+
+  async function injectAndProbe(el, canvas, ticket) {
+    const nonce = (crypto.randomUUID && crypto.randomUUID()) ||
+      String(Math.random()).slice(2) + Date.now();
+    canvas.setAttribute("data-ccp-probe", nonce);
+    advancedMarkedCanvas = canvas;
+    try {
+      await chrome.runtime.sendMessage({ type: "INJECT_SHADER_AGENT" });
+    } catch { /* no worker (harness, or mid-reload): the agent may still be resident */ }
+    // Edit Mode ended, or moved on, while the worker was injecting.
+    if (ticket !== advancedTicket || !editing || selectedElement !== el) {
+      if (canvas.isConnected) canvas.removeAttribute("data-ccp-probe");
+      if (advancedMarkedCanvas === canvas) advancedMarkedCanvas = null;
+      return;
+    }
+    shaderNonce = nonce;
+    postShaderMessage("CCP_SHADER_PROBE", { observeMs: 700, maxUniforms: 64 });
+    clearInterval(advancedKeepalive);
+    advancedKeepalive = setInterval(() => postShaderMessage("CCP_SHADER_KEEPALIVE", {}), 4000);
+  }
+
+  // The uniform roster the panel will trust, held to what it can render:
+  // recognised types only, capped counts, finite numbers. A hostile page can
+  // only mislabel rows in its own panel, but a degenerate one (10,000
+  // uniforms, names by the kilobyte) should cost nothing either.
+  const ADVANCED_UNIFORM_COMPS = {
+    float: 1, vec2: 2, vec3: 3, vec4: 4,
+    int: 1, ivec2: 2, ivec3: 3, ivec4: 4,
+    uint: 1, uvec2: 2, uvec3: 3, uvec4: 4,
+    bool: 1,
+  };
+
+  function sanitizeShaderInventory(msg) {
+    const out = new Map();
+    const list = Array.isArray(msg.uniforms) ? msg.uniforms.slice(0, 64) : [];
+    for (const u of list) {
+      if (!u || typeof u.name !== "string" || !u.name) continue;
+      const name = u.name.slice(0, 128);
+      const comps = ADVANCED_UNIFORM_COMPS[u.type];
+      if (!comps || out.has(name)) continue;
+      const value = Array.isArray(u.value) ? u.value.slice(0, comps).map(Number) : null;
+      if (!value || value.length !== comps || value.some((v) => !isFinite(v))) continue;
+      const peak = Number(u.peak);
+      out.set(name, {
+        name,
+        type: u.type,
+        comps,
+        value,
+        peak: isFinite(peak) ? Math.abs(peak) : Math.max(...value.map(Math.abs)),
+        driven: Boolean(u.driven),
+      });
+    }
+    return out;
+  }
+
+  window.addEventListener("message", (e) => {
+    if (e.source !== window) return;
+    if (e.origin !== location.origin) return;
+    const msg = e.data;
+    if (!msg || msg.ccp !== "shader" || msg.v !== 1) return;
+    if (!shaderNonce || msg.nonce !== shaderNonce) return;
+    if (!advancedState) return;
+
+    if (msg.type === "CCP_SHADER_INVENTORY") {
+      if (advancedMarkedCanvas) {
+        if (advancedMarkedCanvas.isConnected) advancedMarkedCanvas.removeAttribute("data-ccp-probe");
+        advancedState.canvasEl = advancedMarkedCanvas;
+        advancedMarkedCanvas = null;
+      }
+      advancedState.contextType = msg.contextType === "webgl2" ? "webgl2" : "webgl";
+      advancedState.live = Boolean(msg.live);
+      advancedState.truncated = Boolean(msg.truncated);
+      advancedState.uniforms = sanitizeShaderInventory(msg);
+      if (advancedState.canvasEl && advancedState.uniforms.size > 0) {
+        advancedMeta.set(advancedState.canvasEl, {
+          contextType: advancedState.contextType,
+          probedFrom: advancedState.canvasEl === selectedElement
+            ? null
+            : describeProbeOrigin(selectedElement),
+        });
+      }
+      // The section folds in a beat late, the same way a slow CDN's token
+      // stepper does — better than the panel waiting on a frame observation.
+      renderEditControls();
+      // The panel was measured and clamped before this section existed;
+      // growing it can push the new rows past the viewport bottom, where
+      // they are not merely clipped but unreachable. Same remedy as a
+      // window resize: pull the panel back into view, and the tether with it.
+      if (editing) {
+        placeEditPanel();
+        renderTether({ instant: true });
+        repositionColorPicker();
+      }
+      if (advancedOpen) postShaderMessage("CCP_SHADER_WATCH", { on: hasDrivenUniforms() });
+      return;
+    }
+
+    if (msg.type === "CCP_SHADER_ERROR") {
+      if (advancedMarkedCanvas) {
+        if (advancedMarkedCanvas.isConnected) advancedMarkedCanvas.removeAttribute("data-ccp-probe");
+        advancedMarkedCanvas = null;
+      }
+      // Not an error worth a marker: most canvases are not shaders, and the
+      // section simply doesn't claim one. The CSS half may still render.
+      return;
+    }
+
+    if (msg.type === "CCP_SHADER_TICK") {
+      applyShaderTick(msg.values);
+      return;
+    }
+
+    if (msg.type === "CCP_SHADER_GONE") {
+      advancedState.gone = true;
+      advancedState.live = false;
+      renderEditControls();
+    }
+  });
+
+  function teardownShaderBridge() {
+    advancedTicket++;
+    if (shaderNonce) postShaderMessage("CCP_SHADER_TEARDOWN", {});
+    shaderNonce = null;
+    clearInterval(advancedKeepalive);
+    advancedKeepalive = 0;
+    if (advancedMarkedCanvas) {
+      if (advancedMarkedCanvas.isConnected) advancedMarkedCanvas.removeAttribute("data-ccp-probe");
+      advancedMarkedCanvas = null;
+    }
+    advancedState = null;
+    advancedControls = [];
+  }
+
+  // ===== Advanced Controls =====
+  // The collapsible section at the bottom of the panel. It renders only when
+  // something was actually detected — never an empty shell with a disabled
+  // face, for the same reason the panel never claims a token that isn't there.
+  // Collapsed by default; whether it is open is remembered for the session,
+  // because it is a way of looking at the panel rather than element state.
+  let advancedState = null;
+  let advancedOpen = false;
+  let advancedControls = [];
+  // What the delta block needs to say about a canvas after the panel has
+  // moved on: which kind of program drew it, and whether it was probed as a
+  // descendant of something else. Keyed weakly — it lives exactly as long as
+  // the canvas does.
+  const advancedMeta = new WeakMap();
+
+  function describeProbeOrigin(el) {
+    if (!el) return null;
+    const tag = el.tagName.toLowerCase();
+    const cls = Array.from(el.classList).find((c) => !isOurs.name(c));
+    return cls ? `<${tag} class="${cls}">` : `<${tag}>`;
+  }
+
+  function advancedHasContent() {
+    return Boolean(advancedState &&
+      (advancedState.uniforms.size > 0 || advancedState.cssProps.length > 0));
+  }
+
+  function hasDrivenUniforms() {
+    if (!advancedState) return false;
+    for (const rec of advancedState.uniforms.values()) {
+      if (rec.driven) return true;
+    }
+    return false;
+  }
+
+  function controlTarget(control) {
+    if (control && control.uniform) return advancedState ? advancedState.canvasEl : null;
+    return selectedElement;
+  }
+
+  // The uniform's value as the panel believes it right now: the edit if there
+  // is one, the live inventory value otherwise.
+  function currentUniformValue(name) {
+    const st = advancedState;
+    if (!st) return null;
+    const el = st.canvasEl;
+    const entry = el && editRegistry.get(el)?.props.get("uniform:" + name);
+    if (entry && entry.after && entry.after.uniform) return entry.after.uniform.slice();
+    const rec = st.uniforms.get(name);
+    return rec ? rec.value.slice() : null;
+  }
+
+  // The gesture's "before" for a uniform, built here because getComputedStyle
+  // cannot answer for one. A driven uniform's before is the page's own loop —
+  // the sentinel, not a number — so undoing the takeover hands the value back
+  // rather than pinning yesterday's time.
+  function readUniformEditValue(prop) {
+    const name = prop.slice(8);
+    const rec = advancedState ? advancedState.uniforms.get(name) : null;
+    if (rec && rec.driven) {
+      return { css: "page-driven", inline: null, priority: "", cls: null, token: null, uniform: null, driven: true };
+    }
+    const vec = rec ? rec.value.slice() : null;
+    return {
+      css: vec ? formatUniformValue(vec, rec.type) : "",
+      inline: null, priority: "", cls: null, token: null,
+      uniform: vec,
+    };
+  }
+
+  function setUniformValue(control, vec, token) {
+    const el = controlTarget(control);
+    if (!el || !el.isConnected) return;
+    const u = control.uniform;
+    setEditValue(el, control.uniformKey, {
+      css: formatUniformValue(vec, u.type),
+      inline: null, priority: "", cls: null,
+      token: token || null,
+      uniform: vec.slice(),
+    });
+  }
+
+  function applyUniformPart(control, value) {
+    const u = control.uniform;
+    const vec = currentUniformValue(u.name) || new Array(u.comps).fill(0);
+    vec[Math.max(0, u.part)] = value;
+    setUniformValue(control, vec, null);
+  }
+
+  // The segment control's path: a bool uniform arrives here as "on"/"off".
+  function applyUniformCss(control, cssValue) {
+    setUniformValue(control, [cssValue === "on" ? 1 : 0], null);
+  }
+
+  // Driven read-outs, fed by the agent's ≤10 Hz tick. Direct textContent
+  // writes rather than refreshEditControls: this runs continuously and only
+  // has to move numbers, not rebuild state.
+  function applyShaderTick(values) {
+    const st = advancedState;
+    if (!st || !st.canvasEl || !editPanelEl || !values || typeof values !== "object") return;
+    for (const [name, raw] of Object.entries(values)) {
+      const rec = st.uniforms.get(name);
+      if (!rec || !rec.driven) continue;
+      const vec = Array.isArray(raw) ? raw.slice(0, rec.comps).map(Number) : null;
+      if (!vec || vec.length !== rec.comps || vec.some((v) => !isFinite(v))) continue;
+      rec.value = vec;
+      // Taken over: the row shows the override, not the page's stream.
+      if (isEditedProp(st.canvasEl, "uniform:" + name)) continue;
+      const rows = editPanelEl.querySelectorAll(`.ccp-edit-row[data-prop="uniform:${name}"]`);
+      for (const row of rows) {
+        const control = advancedControls.find((c) => c.prop === row.dataset.control);
+        if (!control) continue;
+        const input = row.querySelector(".ccp-edit-input");
+        if (input && document.activeElement !== input) {
+          input.value = formatNumeric(vec[Math.max(0, control.uniform.part)], control);
+        }
+        const fill = row.querySelector(".ccp-edit-swatch i");
+        if (fill) fill.style.background = readColorValue(st.canvasEl, control);
+      }
+    }
+  }
+
+  // CSS animations that drive a custom property do not always announce
+  // themselves through getAnimations (a hue spun by script, a Houdini worklet
+  // ticking its own input). One re-sample a beat later catches the movers; an
+  // open gesture skips it, so a user's own scrub is never read as the page's.
+  function scheduleCssDrivenResample(el) {
+    const ticket = advancedTicket;
+    const before = new Map();
+    for (const p of advancedState.cssProps) {
+      if (!p.driven) before.set(p.name, p.css);
+    }
+    if (before.size === 0) return;
+    setTimeout(() => {
+      if (ticket !== advancedTicket || !editing || selectedElement !== el || editGesture) return;
+      if (!el.isConnected || !advancedState) return;
+      const style = getComputedStyle(el);
+      let moved = false;
+      for (const p of advancedState.cssProps) {
+        const was = before.get(p.name);
+        if (was === undefined) continue;
+        if (style.getPropertyValue(p.name).trim() !== was) {
+          p.driven = true;
+          moved = true;
+        }
+      }
+      if (moved) renderEditControls();
+    }, 180);
+  }
+
+  // State → control objects, in the same dialect EDIT_GROUPS speaks, so the
+  // rows reuse the numeric chip, the segment and the picker unchanged. A
+  // uniform control carries `uniform` metadata and a registry key; its
+  // components write the whole vector back the way shadow parts write the
+  // whole box-shadow.
+  function buildAdvancedControls() {
+    const st = advancedState;
+    const params = [];
+    const driven = [];
+    if (!st) return { params, driven };
+
+    const AXES = ["x", "y", "z", "w"];
+    for (const rec of st.uniforms.values()) {
+      const bucket = rec.driven ? driven : params;
+      const key = "uniform:" + rec.name;
+      const intish = /^(int|uint|ivec[234]|uvec[234])$/.test(rec.type);
+      const range = uniformRange(rec.value.concat([rec.peak]), intish);
+      if (rec.type === "bool") {
+        bucket.push({
+          prop: key + ".0", uniformKey: key, label: uniformLabel(rec.name),
+          kind: "segment", options: ["off", "on"],
+          uniform: { name: rec.name, type: rec.type, comps: 1, part: 0 },
+        });
+      } else if (isColorUniform(rec.name, rec.type, rec.value)) {
+        bucket.push({
+          prop: key, uniformKey: key, label: uniformLabel(rec.name),
+          kind: "color",
+          uniform: { name: rec.name, type: rec.type, comps: rec.comps, part: -1 },
+        });
+      } else if (rec.comps === 1) {
+        bucket.push({
+          prop: key + ".0", uniformKey: key, label: uniformLabel(rec.name),
+          unit: "", ...range,
+          uniform: { name: rec.name, type: rec.type, comps: 1, part: 0 },
+        });
+      } else {
+        for (let i = 0; i < rec.comps; i++) {
+          bucket.push({
+            prop: `${key}.${i}`, uniformKey: key, label: AXES[i],
+            unit: "", ...range, vecHead: i === 0 ? uniformLabel(rec.name) : null,
+            uniform: { name: rec.name, type: rec.type, comps: rec.comps, part: i },
+          });
+        }
+      }
+    }
+
+    for (const p of st.cssProps) {
+      const bucket = p.driven ? driven : params;
+      if (p.kind === "color") {
+        bucket.push({
+          prop: p.name, label: p.name.replace(/^--/, ""), kind: "color",
+          forceImportant: p.driven,
+        });
+      } else {
+        bucket.push({
+          prop: p.name, label: p.name.replace(/^--/, ""), unit: p.unit,
+          ...uniformRange([p.value], false),
+          forceImportant: p.driven,
+        });
+      }
+    }
+    return { params, driven };
+  }
+
+  function advancedSummaryText() {
+    const st = advancedState;
+    const parts = [];
+    const n = st.uniforms.size;
+    if (n > 0) {
+      parts.push(`${n} shader value${n > 1 ? "s" : ""}${st.live ? "" : " (read-only)"}`);
+    }
+    const c = st.cssProps.length;
+    if (c > 0) parts.push(`${c} css prop${c > 1 ? "s" : ""}`);
+    return parts.join(" · ");
+  }
+
+  // The vec heading row: a dot for the whole uniform above its component
+  // rows, the same arrangement a split padding control draws.
+  function buildAdvancedVecHead(control) {
+    const row = document.createElement("div");
+    row.className = "ccp-edit-row ccp-edit-parent";
+    row.dataset.prop = control.uniformKey;
+    row.dataset.advParent = control.uniformKey;
+
+    const dot = document.createElement("button");
+    dot.className = "ccp-edit-dot";
+    dot.title = `Reset ${control.vecHead}`;
+    dot.setAttribute("aria-label", `Reset ${control.vecHead}`);
+    dot.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const owner = controlTarget(control);
+      if (!owner || !isEditedProp(owner, control.uniformKey)) return;
+      resetEditProp(owner, control.uniformKey);
+      renderEditControls();
+    });
+
+    const label = document.createElement("span");
+    label.className = "ccp-edit-label";
+    label.textContent = control.vecHead;
+
+    row.appendChild(dot);
+    row.appendChild(label);
+    return row;
+  }
+
+  function appendAdvancedRows(body, controls) {
+    for (const control of controls) {
+      if (control.vecHead) body.appendChild(buildAdvancedVecHead(control));
+      body.appendChild(buildEditRow(control, Boolean(control.uniform && control.uniform.comps > 1 && control.uniform.part >= 0)));
+    }
+  }
+
+  function renderAdvancedSection() {
+    if (!advancedHasContent()) {
+      advancedControls = [];
+      return null;
+    }
+    const st = advancedState;
+    const { params, driven } = buildAdvancedControls();
+    advancedControls = params.concat(driven);
+
+    const section = document.createElement("div");
+    section.className = "ccp-edit-group ccp-adv-group";
+
+    const details = document.createElement("details");
+    details.className = "ccp-adv";
+    details.open = advancedOpen;
+    details.addEventListener("toggle", () => {
+      advancedOpen = details.open;
+      postShaderMessage("CCP_SHADER_WATCH", { on: details.open && hasDrivenUniforms() });
+      // Opening grows the panel; a panel that grew past the viewport bottom
+      // leaves its new rows unreachable, so re-clamp exactly as a resize
+      // does. After the glide, because the clamp needs the final height.
+      setTimeout(() => {
+        if (!editing) return;
+        placeEditPanel();
+        renderTether({ instant: true });
+        repositionColorPicker();
+      }, 220);
+    });
+
+    const summary = document.createElement("summary");
+    summary.className = "ccp-adv-summary";
+    const caret = document.createElement("i");
+    caret.className = "ccp-adv-caret";
+    caret.setAttribute("aria-hidden", "true");
+    const legend = document.createElement("p");
+    legend.className = "ccp-edit-legend ccp-adv-legend";
+    legend.textContent = "Advanced";
+    const count = document.createElement("span");
+    count.className = "ccp-adv-count";
+    count.textContent = advancedSummaryText();
+    summary.appendChild(caret);
+    summary.appendChild(legend);
+    summary.appendChild(count);
+    details.appendChild(summary);
+
+    const body = document.createElement("div");
+    body.className = "ccp-adv-body";
+
+    if (st.canvasEl && st.uniforms.size > 0 && st.canvasEl !== selectedElement) {
+      const note = document.createElement("p");
+      note.className = "ccp-adv-note";
+      note.innerHTML = `shader on ${editPanelIdentity(st.canvasEl)} inside the selection`;
+      body.appendChild(note);
+    }
+    if (st.gone) {
+      const note = document.createElement("p");
+      note.className = "ccp-adv-note";
+      note.textContent = "the page rebuilt its shader — these controls have let go";
+      body.appendChild(note);
+    } else if (st.uniforms.size > 0 && !st.live) {
+      const note = document.createElement("p");
+      note.className = "ccp-adv-note";
+      note.textContent = "this shader drew once and stopped — values shown, not tunable";
+      body.appendChild(note);
+    }
+
+    appendAdvancedRows(body, params);
+
+    if (driven.length > 0) {
+      const cluster = document.createElement("div");
+      cluster.className = "ccp-adv-driven";
+      const micro = document.createElement("p");
+      micro.className = "ccp-adv-driven-legend";
+      micro.textContent = "driven by the page";
+      cluster.appendChild(micro);
+      appendAdvancedRows(cluster, driven);
+      body.appendChild(cluster);
+    }
+
+    // Read-only inventories keep their rows honest: visible, valued, inert.
+    if ((st.uniforms.size > 0 && !st.live) || st.gone) {
+      body.classList.add("ccp-adv-readonly");
+      for (const node of body.querySelectorAll("input, button")) node.disabled = true;
+    }
+
+    details.appendChild(body);
+    section.appendChild(details);
+    return section;
+  }
+
+  // Uniform edits are session-bound in a way CSS edits are not: without a live
+  // agent session there is nothing on the page carrying them, so leaving Edit
+  // Mode hands every uniform back (the agent's teardown restores the values)
+  // and the registry and history must stop claiming them.
+  function dropUniformEdits() {
+    for (const [el, record] of Array.from(editRegistry)) {
+      let dropped = false;
+      for (const prop of Array.from(record.props.keys())) {
+        if (prop.startsWith("uniform:")) {
+          record.props.delete(prop);
+          dropped = true;
+        }
+      }
+      if (dropped) pruneRecord(el);
+    }
+    const survives = (entry) => {
+      if (entry.kind === "batch") {
+        for (const item of entry.items) {
+          for (const prop of Array.from(item.props.keys())) {
+            if (prop.startsWith("uniform:")) item.props.delete(prop);
+          }
+        }
+        entry.items = entry.items.filter((item) => item.props.size > 0);
+        return entry.items.length > 0;
+      }
+      return !(entry.prop && entry.prop.startsWith("uniform:"));
+    };
+    const keptUndo = undoStack.filter(survives);
+    undoStack.length = 0;
+    undoStack.push(...keptUndo);
+    const keptRedo = redoStack.filter(survives);
+    redoStack.length = 0;
+    redoStack.push(...keptRedo);
   }
 
   // ===== Event Handlers =====
@@ -5066,6 +7079,7 @@
         placeEditPanel();
         renderTether({ instant: true });
         repositionColorPicker();
+        positionTextEditor();
       }
     });
   }
@@ -5082,6 +7096,7 @@
     if (toastEl && toastEl.contains(e.target)) return;
     if (editPanelEl && editPanelEl.contains(e.target)) return;
     if (editPopoverEl && editPopoverEl.contains(e.target)) return;
+    if (textEditorEl && textEditorEl.contains(e.target)) return;
 
     e.preventDefault();
     e.stopImmediatePropagation();
@@ -5145,9 +7160,12 @@
       e.preventDefault();
       e.stopImmediatePropagation();
 
-      // Stages out: picker → editing → selected → probe off. Each Escape gives
-      // back exactly one layer, so nothing is ever lost by more than a step.
-      if (editPopoverEl) {
+      // Stages out: text editor → picker → editing → selected → probe off.
+      // Each Escape gives back exactly one layer, so nothing is ever lost by
+      // more than a step.
+      if (textEditorEl) {
+        closeTextEditor();
+      } else if (editPopoverEl) {
         closeColorPicker();
       } else if (editing) {
         exitEditMode();

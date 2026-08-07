@@ -154,6 +154,21 @@
                   <button type="button" role="radio" data-set="editTokenControls" data-val="value">value</button>
                 </span>
               </div>
+              <div class="sp-spec">
+                <span class="sp-spec-label" id="lbl-deep-shader">Deep shader capture</span>
+                <i class="sp-spec-leader" aria-hidden="true"></i>
+                <button type="button" class="sp-switch" role="switch" data-sw="editDeepShaderCapture" aria-labelledby="lbl-deep-shader"></button>
+              </div>
+              <p class="sp-note">
+                The panel's <strong>Advanced</strong> section tunes a WebGL
+                canvas by attaching to its shader while you edit — which can
+                miss one that drew a single frame before you got there. On,
+                a small hook records which canvases receive WebGL programs
+                from page load instead. It runs on every page, keeps what it
+                sees inside that page, and nothing is read until you open the
+                edit panel on a canvas — nothing is stored, and nothing
+                leaves the browser either way.
+              </p>
             </div>
           </div>
           <p class="sp-saved" id="saved-editing" role="status" aria-live="polite"></p>

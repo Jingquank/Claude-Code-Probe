@@ -26,8 +26,10 @@ const SUITES = [
   ["sim.mjs", "spec and implementation agree across viewports"],
   ["redline.mjs", "measurement geometry, swept over 10,701 configs"],
   ["edit-tokens.mjs", "design-token reverse lookup over three real corpora"],
+  ["type-styles.mjs", "composite type tokens: stems, ladders, claiming, formatting"],
   ["edit-color.mjs", "picker round trips, bounded by 8-bit quantisation"],
   ["edit-deltas.mjs", "the shape of the block the panel copies"],
+  ["advanced.mjs", "uniform ranges, labels and kinds for the Advanced section"],
   ["copy-format.mjs", "every copy setting still produces a true payload"],
   ["cdp.mjs", "the real content.js, in a real browser", { browser: true }],
 ];

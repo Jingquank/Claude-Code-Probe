@@ -87,6 +87,24 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     chrome.runtime.openOptionsPage();
   }
 
+  // The shader agent has to run in the page's own JavaScript world — the
+  // isolated world can see a <canvas> but nothing of the WebGL context behind
+  // it — and only chrome.scripting can cross that boundary. Injected on
+  // demand, when Edit Mode selects a canvas, never as a matter of course; the
+  // agent itself is re-entry-guarded, so asking twice costs nothing.
+  if (msg.type === "INJECT_SHADER_AGENT" && sender.tab) {
+    chrome.scripting.executeScript({
+      target: { tabId: sender.tab.id },
+      world: "MAIN",
+      injectImmediately: true,
+      files: ["shader-agent.js"],
+    }).then(
+      () => sendResponse({ ok: true }),
+      (err) => sendResponse({ ok: false, error: String(err && err.message || err) })
+    );
+    return true; // keeps the message channel open for the async reply
+  }
+
   // A stylesheet the page itself is not allowed to read.
   //
   // A cross-origin <link> without CORS headers throws on .cssRules, so a design
@@ -150,6 +168,47 @@ chrome.storage.onChanged.addListener(async (changes, area) => {
   for (const tabId of activeTabs) {
     chrome.action.setBadgeBackgroundColor({ tabId, color }).catch(() => {});
   }
+});
+
+// Deep shader capture (off by default). On, the shader agent is registered as
+// a document_start MAIN-world script, so it records which canvases get WebGL
+// contexts from page load — the only way to see a shader that draws once and
+// stops before Edit Mode ever opens. The registration persists across
+// sessions, so the worker only has to converge the registered state with the
+// stored preference: once at wake-up, and again whenever the setting changes.
+const DEEP_CAPTURE_KEY = "editDeepShaderCapture";
+const DEEP_CAPTURE_ID = "ccp-shader-early";
+
+async function syncDeepCapture() {
+  try {
+    const stored = await chrome.storage.local.get(DEEP_CAPTURE_KEY);
+    const wanted = stored[DEEP_CAPTURE_KEY] === "on";
+    const registered = await chrome.scripting.getRegisteredContentScripts({
+      ids: [DEEP_CAPTURE_ID],
+    });
+    const has = registered.length > 0;
+    if (wanted && !has) {
+      await chrome.scripting.registerContentScripts([{
+        id: DEEP_CAPTURE_ID,
+        js: ["shader-agent.js"],
+        matches: ["<all_urls>"],
+        runAt: "document_start",
+        world: "MAIN",
+        persistAcrossSessions: true,
+      }]);
+    } else if (!wanted && has) {
+      await chrome.scripting.unregisterContentScripts({ ids: [DEEP_CAPTURE_ID] });
+    }
+  } catch {
+    // A Chrome too old for MAIN-world registration: the lazy agent still
+    // works, this preference simply cannot take effect.
+  }
+}
+
+syncDeepCapture();
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "local" && changes[DEEP_CAPTURE_KEY]) syncDeepCapture();
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {

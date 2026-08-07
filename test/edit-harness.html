@@ -294,6 +294,32 @@
   <p class="themed-body" style="color: var(--brand-500); margin: 4px 0 0">Scoped tokens live here.</p>
 </div>
 
+<!-- No text anywhere beneath: the one arrangement where a colour row would
+     have nothing to paint. The colour guard hides it here, and the cdp suite
+     asserts that it stays hidden. -->
+<div class="glyph-block" aria-hidden="true"
+     style="width: 120px; height: 40px; margin-top: 24px; border-radius: 8px;
+            background: linear-gradient(90deg, var(--terra-soft), var(--hairline))"></div>
+
+<!-- ===== Type styles =====
+     Multi-declaration single classes: the composites the style row claims.
+     type-sm and type-lg ladder on the "type" prefix; the second heading wears
+     type-lg with an inline leading override, which is the drift the conform
+     chip heals. The stem heading is set entirely through one var stem — a
+     solo style, named but unsteppable. -->
+<style>
+  .type-sm { font-size: 14px; line-height: 20px; }
+  .type-lg { font-size: 18px; line-height: 28px; }
+</style>
+<div style="margin-top: 24px">
+  <h2 class="ts-on type-lg" style="margin: 0">Wearing type-lg squarely</h2>
+  <h2 class="ts-drift type-lg" style="margin: 8px 0 0; line-height: 32px">Drifted from type-lg</h2>
+  <h2 class="stem-title"
+      style="--h-md-size: 24px; --h-md-weight: 650; --h-md-leading: 32px;
+             font-size: var(--h-md-size); font-weight: var(--h-md-weight);
+             line-height: var(--h-md-leading); margin: 8px 0 0">Stem-set heading</h2>
+</div>
+
 <p class="note">
   <kbd>p</kbd> toggles Probe Mode. Click an element to select it, then the pencil in
   the toolbar to edit. <kbd>Esc</kbd> steps back out one layer at a time; hold

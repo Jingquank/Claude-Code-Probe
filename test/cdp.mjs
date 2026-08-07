@@ -191,8 +191,25 @@ const HELPERS = `
     esc: () => document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })),
     undo: (shift) => document.dispatchEvent(
       new KeyboardEvent("keydown", { key: "z", metaKey: true, shiftKey: !!shift, bubbles: true })),
-    step: (name, dir) => window.__t.row(name).querySelector(".ccp-edit-tok")
-      .querySelectorAll("button")[dir > 0 ? 1 : 0].click(),
+    // Two stepping mechanisms, one gesture: the classic rows carry ‹ ›
+    // buttons, the typography grid steps its cells on the wheel.
+    step: (name, dir) => {
+      const row = window.__t.row(name);
+      const tok = row.querySelector(".ccp-edit-tok");
+      if (tok) {
+        tok.querySelectorAll("button")[dir > 0 ? 1 : 0].click();
+        return;
+      }
+      row.dispatchEvent(new WheelEvent("wheel", {
+        deltaY: dir > 0 ? -100 : 100, bubbles: true, cancelable: true,
+      }));
+    },
+    // ...and two reset affordances: the dot on classic rows, the micro-label
+    // on grid cells.
+    resetProp: (name) => {
+      const row = window.__t.row(name);
+      (row.querySelector(".ccp-edit-dot") || row.querySelector(".ccp-type-k")).click();
+    },
     type: (name, value) => {
       const input = window.__t.row(name).querySelector(".ccp-edit-input");
       input.focus();
@@ -425,7 +442,7 @@ try {
   await check("every path back leaves no residue", async (fail) => {
     for (const [label, undoExpr] of [
       ["undo", `window.__t.undo();`],
-      ["dirty dot", `window.__t.row("font-size").querySelector(".ccp-edit-dot").click();`],
+      ["dirty dot", `window.__t.resetProp("font-size");`],
       ["reset all", `document.querySelector("#ccp-edit-panel .ccp-edit-resetall").click();`],
     ]) {
       // A fresh page each time: this asserts "one edit, one way back, nothing
@@ -1041,10 +1058,21 @@ try {
       // .card holds only element children, so it is the text-less case. If the
       // click ever lands on a child instead, font-size reappears below and this
       // case fails rather than quietly testing the wrong element.
-      return { withText: rowsFor(".card h2", 5, 5), wrapper: rowsFor(".card", 3, 3) };
+      return {
+        withText: rowsFor(".card h2", 5, 5),
+        wrapper: rowsFor(".card", 3, 3),
+        // No text anywhere beneath — the arrangement where even colour is noise.
+        blank: rowsFor(".glyph-block", 4, 4),
+      };
     `);
 
     if (!seen.withText.includes("color")) fail("no colour row on an element with text");
+    if (!seen.withText.includes("text")) fail("no text row on an element with its own words");
+    if (seen.wrapper.includes("text")) {
+      fail("a text field leaked onto a wrapper whose words belong to descendants");
+    }
+    if (seen.blank.includes("color")) fail("colour offered on an element with no text beneath");
+    if (seen.blank.includes("text")) fail("text field offered on an element with no text at all");
     if (!seen.withText.includes("font-size")) fail("fixture changed: h2 lost its size row");
     // Panel order has to match EDIT_PROP_ORDER, where color follows text-align.
     if (seen.withText.indexOf("color") < seen.withText.indexOf("text-align")) {
@@ -1057,6 +1085,130 @@ try {
         fail(`${metric} leaked onto a text-less wrapper: ${JSON.stringify(seen.wrapper)}`);
       }
     }
+  });
+
+  // ===== The text field edits the words, and puts them back exactly =====
+  // The third kind of host-page write. What matters end to end: keystrokes
+  // land on the element live, the row carries a dirty dot, the delta reports
+  // the change in quotes, and the reset dot restores the original bytes.
+
+  await check("the text field edits the words and puts them back", async (fail) => {
+    await loadHarness(ws);
+    const r = await evaluate(ws, `
+      window.__t.probeOn();
+      window.__t.select(".card h2", 5, 5);
+      window.__t.edit();
+      const el = document.querySelector(".card h2");
+      const original = el.textContent;
+      const input = window.__t.row("text").querySelector(".ccp-edit-textin");
+      const shown = input.value;
+      input.focus();
+      input.value = "Renamed by the probe";
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      const after = el.textContent;
+      input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+      const dirty = window.__t.row("text").classList.contains("ccp-edit-dirty");
+      const block = await window.__t.copy();
+      window.__t.row("text").querySelector(".ccp-edit-dot").click();
+      const restored = el.textContent;
+      window.__t.esc();
+      window.__t.esc();
+      return { original, shown, after, dirty, block, restored };
+    `);
+    if (r.shown !== "emil-design-eng") fail(`field shows ${JSON.stringify(r.shown)}, not the element's words`);
+    if (r.after !== "Renamed by the probe") fail(`typing did not land: ${JSON.stringify(r.after)}`);
+    if (!r.dirty) fail("no dirty dot on an edited text row");
+    if (!r.block.includes('# text: "emil-design-eng" → "Renamed by the probe"')) {
+      fail(`delta line missing: ${JSON.stringify(r.block.slice(0, 260))}`);
+    }
+    if (r.restored !== r.original) fail("the reset dot did not put the exact words back");
+  });
+
+  // ===== Composite type styles =====
+  // The style row is the composite's seat: it claims what is in force, steps
+  // the whole source as one action, and conforms drift whoever shipped it.
+
+  await check("a type style claims, steps as one action, and undoes", async (fail) => {
+    await loadHarness(ws);
+    const seen = await evaluate(ws, `
+      window.__t.probeOn();
+      window.__t.select(".ts-on");
+      window.__t.edit();
+      const chipName = () => {
+        const n = document.querySelector("#ccp-edit-panel .ccp-type-name");
+        return n ? n.textContent : null;
+      };
+      const claimed = chipName();
+      // ‹ steps down the ladder: type-lg → type-sm.
+      document.querySelector("#ccp-edit-panel .ccp-type-st").click();
+      const el = document.querySelector(".ts-on");
+      const afterStep = {
+        cls: el.getAttribute("class"),
+        size: window.__t.css(".ts-on", "font-size"),
+        lead: window.__t.css(".ts-on", "line-height"),
+        name: chipName(),
+      };
+      const block = await window.__t.copy();
+      window.__t.undo();
+      const undone = { cls: el.getAttribute("class"), size: window.__t.css(".ts-on", "font-size") };
+      window.__t.esc();
+      window.__t.esc();
+      return { claimed, afterStep, block, undone };
+    `);
+    if (seen.claimed !== "type-lg") fail(`claimed ${JSON.stringify(seen.claimed)}, not type-lg`);
+    if (!seen.afterStep.cls.includes("type-sm") || seen.afterStep.cls.includes("type-lg")) {
+      fail(`step did not swap the class: ${JSON.stringify(seen.afterStep.cls)}`);
+    }
+    if (seen.afterStep.size !== "14px" || seen.afterStep.lead !== "20px") {
+      fail(`one step moved to ${seen.afterStep.size}/${seen.afterStep.lead}, not 14px/20px — the composite did not move together`);
+    }
+    if (seen.afterStep.name !== "type-sm") fail(`chip reads ${seen.afterStep.name} after the step`);
+    if (!seen.block.includes("# type style: type-lg → type-sm (size 18→14, leading 28→20)")) {
+      fail(`delta line missing: ${JSON.stringify(seen.block.slice(0, 300))}`);
+    }
+    if (!seen.undone.cls.includes("type-lg") || seen.undone.size !== "18px") {
+      fail(`one undo did not give the whole step back: ${JSON.stringify(seen.undone)}`);
+    }
+  });
+
+  await check("drift reads modified and the chip conforms", async (fail) => {
+    await loadHarness(ws);
+    const seen = await evaluate(ws, `
+      window.__t.probeOn();
+      window.__t.select(".ts-drift");
+      window.__t.edit();
+      const chip = () => document.querySelector("#ccp-edit-panel .ccp-type-chip");
+      const wasDrifted = chip().classList.contains("ccp-type-drifted");
+      chip().click();
+      const lead = window.__t.css(".ts-drift", "line-height");
+      const block = await window.__t.copy();
+      const stillDrifted = chip().classList.contains("ccp-type-drifted");
+      window.__t.esc();
+      window.__t.esc();
+      return { wasDrifted, lead, block, stillDrifted };
+    `);
+    if (!seen.wasDrifted) fail("page-shipped drift did not read as modified");
+    if (seen.lead !== "28px") fail(`conform left leading at ${seen.lead}`);
+    if (seen.stillDrifted) fail("the chip still reads modified after conforming");
+    if (!seen.block.includes("# type style: type-lg (modified) → type-lg (leading 32→28)")) {
+      fail(`conform delta missing: ${JSON.stringify(seen.block.slice(0, 300))}`);
+    }
+  });
+
+  await check("a var stem claims solo — named, unsteppable", async (fail) => {
+    await loadHarness(ws);
+    const seen = await evaluate(ws, `
+      window.__t.probeOn();
+      window.__t.select(".stem-title");
+      window.__t.edit();
+      const name = document.querySelector("#ccp-edit-panel .ccp-type-name");
+      const arrows = document.querySelectorAll("#ccp-edit-panel .ccp-type-st").length;
+      window.__t.esc();
+      window.__t.esc();
+      return { name: name ? name.textContent : null, arrows };
+    `);
+    if (seen.name !== "--h-md") fail(`stem claimed as ${JSON.stringify(seen.name)}`);
+    if (seen.arrows !== 0) fail(`a solo style grew ${seen.arrows} stepper arrows`);
   });
 
   // ===== The copy payload, against a real element =====

@@ -61,7 +61,26 @@ const MIRRORS = [
     names: [
       "EDIT_PROP_ORDER", "SHORTHAND_OF", "editPropRank",
       "parseCssColor", "formatHex", "displayCss",
-      "formatEditSide", "buildEditLines",
+      "formatEditSide", "buildEditLines", "buildShaderLines", "formatTextSide",
+      "typeStyleEcho", "buildTypeStyleLines",
+    ],
+  },
+  {
+    file: "advanced.mjs",
+    names: [
+      "uniformRange", "uniformLabel", "isColorUniform",
+      "advancedCssKind", "formatUniformValue",
+    ],
+  },
+  {
+    file: "type-styles.mjs",
+    // parseCssLength and splitTokenName ride along from edit-tokens.mjs for
+    // the same reason parseCssColor rides along in edit-deltas.mjs: a suite
+    // cannot import a sibling that exits on load.
+    names: [
+      "parseCssLength", "splitTokenName",
+      "splitVarStem", "resolveTypeStyle", "groupTypeStyleLadders",
+      "matchTypeStyleConstituents", "formatTypePx", "formatTypeCss",
     ],
   },
   {
