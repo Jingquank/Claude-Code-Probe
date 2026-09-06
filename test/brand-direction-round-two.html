@@ -1,0 +1,946 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pointee Round Two</title>
+<!--
+  Round two of the brand directions. 07 won, with four changes from the author:
+  a red-orange accent instead of mint (three shades to choose between below),
+  a new handle, the two themes paired with their own kind of page — light
+  chrome over light pages, dark over dark, never the inverse — and the icon
+  left to the author. And one addition: motion is shown, not described. The
+  motion stage plays the whole flow on the real chrome under four presets, at
+  full speed or slowed three times, so the spring can be judged by eye.
+
+  Mint's green-tinted neutrals became warm ones so the surfaces lean toward
+  the accent they now carry. Terracotta-distance is kept by saturation: every
+  shade here is a signal colour, none is clay.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap">
+<style>
+/* ============================================================
+   GALLERY SHELL — neutral on purpose; the directions carry colour.
+   ============================================================ */
+:root {
+  --g-ground: #f5f5f6;
+  --g-raised: #ffffff;
+  --g-ink: #18191c;
+  --g-dim: #4f5259;
+  --g-muted: #7c808a;
+  --g-rule: #e2e3e7;
+  --g-rule-hi: #c9ccd3;
+  --g-link: #18191c;
+  --sans: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --g-ground: #0f1012; --g-raised: #16171a; --g-ink: #e9eaed; --g-dim: #a6a9b1;
+    --g-muted: #737780; --g-rule: #23252a; --g-rule-hi: #33363d; --g-link: #e9eaed;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --g-ground: #0f1012; --g-raised: #16171a; --g-ink: #e9eaed; --g-dim: #a6a9b1;
+  --g-muted: #737780; --g-rule: #23252a; --g-rule-hi: #33363d; --g-link: #e9eaed;
+  color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0; background: var(--g-ground); color: var(--g-ink);
+  font-family: var(--sans); font-size: 15px; line-height: 1.55;
+  -webkit-font-smoothing: antialiased; overflow-x: hidden;
+}
+.wrap { max-width: 1200px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 40px); }
+a { color: var(--g-link); }
+kbd { font-family: var(--mono); font-size: .8em; }
+
+/* Top bar with the jump list. */
+.topbar { position: sticky; top: 0; z-index: 50; background: color-mix(in srgb, var(--g-ground) 86%, transparent); backdrop-filter: blur(12px); border-bottom: 1px solid var(--g-rule); }
+.topbar-in { display: flex; align-items: center; gap: 20px; padding: 10px 0; flex-wrap: wrap; }
+.topbar-title { font-weight: 600; font-size: 14px; margin: 0; letter-spacing: -.01em; }
+.topbar-title small { font-weight: 400; color: var(--g-muted); margin-left: 8px; }
+.jump { display: flex; gap: 4px; margin-left: auto; flex-wrap: wrap; }
+.jump a { font-family: var(--mono); font-size: 12px; text-decoration: none; color: var(--g-dim); border: 1px solid var(--g-rule); border-radius: 6px; width: 30px; height: 30px; display: grid; place-items: center; transition: background .15s, color .15s, border-color .15s; }
+.jump a:hover, .jump a:focus-visible { background: var(--g-ink); border-color: var(--g-ink); color: var(--g-ground); outline: none; }
+
+/* Masthead */
+.masthead { padding: clamp(36px, 6vw, 64px) 0 28px; border-bottom: 1px solid var(--g-rule); }
+h1 { font-weight: 600; font-size: clamp(30px, 4.5vw, 44px); line-height: 1.05; letter-spacing: -.025em; margin: 0 0 16px; text-wrap: balance; }
+.lede { font-size: 18px; line-height: 1.5; color: var(--g-dim); max-width: 64ch; margin: 0 0 28px; }
+.brief { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px 40px; }
+.brief h3 { font-size: 13px; font-weight: 600; margin: 0 0 8px; color: var(--g-ink); }
+.brief ul { margin: 0; padding: 0; list-style: none; color: var(--g-dim); font-size: 14px; }
+.brief li { padding: 5px 0; border-top: 1px solid var(--g-rule); }
+.brief li:first-child { border-top: 0; }
+.brief li b { color: var(--g-ink); font-weight: 500; }
+
+/* Overview strip — the ten marks side by side, for hybrid picking. */
+.overview { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; max-width: 400px; padding: 24px 0; border-bottom: 1px solid var(--g-rule); }
+.ov { display: grid; grid-template-rows: auto auto; gap: 8px; text-decoration: none; color: var(--g-ink); }
+.ov-tile { aspect-ratio: 1; border-radius: 10px; display: grid; place-items: center; border: 1px solid var(--g-rule); position: relative; overflow: hidden; }
+.ov-tile svg { width: 44%; height: 44%; }
+.ov-tile i { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; }
+.ov-name { font-size: 12px; line-height: 1.25; }
+.ov-name b { display: block; font-weight: 600; }
+.ov-name span { color: var(--g-muted); font-family: var(--mono); font-size: 11px; }
+.ov:hover .ov-tile, .ov:focus-visible .ov-tile { border-color: var(--g-ink); }
+.ov:focus-visible { outline: none; }
+
+/* A direction */
+.d { padding: clamp(40px, 6vw, 72px) 0; border-bottom: 1px solid var(--g-rule); scroll-margin-top: 60px; }
+.d-head { display: grid; grid-template-columns: auto 1fr; gap: 6px 20px; align-items: baseline; margin-bottom: 8px; }
+.d-num { font-family: var(--mono); font-size: 28px; font-weight: 500; color: var(--g-rule-hi); line-height: 1; font-variant-numeric: tabular-nums; }
+.d-head h2 { font-weight: 600; font-size: 26px; margin: 0; letter-spacing: -.02em; line-height: 1.2; }
+.thesis { grid-column: 2; margin: 0; color: var(--g-dim); max-width: 70ch; }
+.spec { grid-column: 2; display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 0; padding: 0; list-style: none; }
+.spec li { font-family: var(--mono); font-size: 11px; color: var(--g-dim); border: 1px solid var(--g-rule); border-radius: 999px; padding: 3px 9px; white-space: nowrap; }
+.spec li b { font-weight: 500; color: var(--g-ink); }
+.spec li i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; vertical-align: -1px; margin-right: 6px; border: 1px solid rgb(0 0 0 / .15); }
+
+/* Two-column grid of stages / specimens */
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 24px; }
+@media (max-width: 860px) { .grid2 { grid-template-columns: 1fr; }  }
+.cell-cap { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 12px; color: var(--g-muted); margin: 0 0 8px; }
+.cell-cap b { color: var(--g-ink); font-weight: 500; }
+.replay { font: 500 11px/1 var(--mono); color: var(--g-dim); background: none; border: 1px solid var(--g-rule); border-radius: 6px; padding: 5px 8px; cursor: pointer; }
+.replay:hover, .replay:focus-visible { border-color: var(--g-ink); color: var(--g-ink); outline: none; }
+
+/* Stage frame: fixed 560×380 world, scaled to the column. */
+.frame { position: relative; width: 100%; aspect-ratio: 560 / 380; overflow: hidden; border-radius: 10px; border: 1px solid var(--g-rule-hi); }
+.stage { position: absolute; left: 0; top: 0; width: 560px; height: 380px; transform-origin: 0 0; transform: scale(var(--k, 1)); }
+
+/* Specimen rows (palette, type, icon) */
+.spec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
+@media (max-width: 860px) { .spec-grid { grid-template-columns: 1fr; } }
+.sheet { border: 1px solid var(--g-rule-hi); border-radius: 10px; overflow: hidden; }
+.sheet-half { padding: 14px 16px; }
+.sheet-half + .sheet-half { border-top: 1px solid rgb(127 127 127 / .25); }
+
+/* palette strip */
+.pal { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; }
+.sw { display: grid; gap: 4px; font-family: var(--mono); font-size: 10px; line-height: 1.2; }
+.sw i { display: block; height: 34px; border-radius: 6px; border: 1px solid rgb(127 127 127 / .25); }
+.sw b { font-weight: 500; }
+.sw span { opacity: .7; }
+.sw .ok::after { content: " ✓"; }
+.sw .bad { color: #e5484d; font-weight: 600; }
+.sw .bad::after { content: " ✗"; }
+
+/* type specimen */
+.type { display: grid; gap: 6px; }
+.type > div { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.type .lbl { font-family: var(--mono); font-size: 10px; opacity: .6; white-space: nowrap; }
+
+/* icon tiles */
+.icons { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; align-items: end; }
+.ic { display: grid; place-items: center; aspect-ratio: 1; border-radius: 8px; border: 1px solid rgb(127 127 127 / .25); position: relative; }
+.ic::after { content: attr(data-s); position: absolute; right: 5px; bottom: 3px; font: 500 9px/1 var(--mono); opacity: .5; }
+.ic-l { background: #fff; color: #111; }
+.ic-d { background: #0c0c0e; color: #f2f2f2; }
+.ic-empty i { display: block; border: 1.5px dashed currentColor; border-radius: 25%; opacity: .55; }
+
+/* tradeoffs */
+.tradeoff { display: grid; grid-template-columns: 90px 1fr; gap: 6px 16px; margin: 22px 0 0; font-size: 14px; max-width: 78ch; }
+.tradeoff dt { color: var(--g-muted); }
+.tradeoff dd { margin: 0; color: var(--g-dim); }
+
+footer.end { padding: 40px 0 80px; color: var(--g-dim); max-width: 64ch; }
+footer.end code { font-family: var(--mono); font-size: 13px; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: 0s !important; transition-duration: 0s !important; }
+}
+
+/* ============================================================
+   THE CHROME — rendered through a direction's tokens. `.t` is a themed
+   container: it carries --d-* tokens (emitted per direction × theme by the
+   script below) and the direction's variant attributes.
+   ============================================================ */
+.t { color: var(--d-t1); font-family: var(--sans); font-size: 12px; line-height: 1.45; }
+.t button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+.t button:focus-visible { outline: 2px solid var(--d-focus); outline-offset: 1px; }
+.t svg { display: block; }
+.t .mono, .t kbd, .t .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.t .kbd { display: inline-flex; align-items: center; height: 16px; padding: 0 4px; border-radius: max(2px, calc(var(--d-r) - 2px)); font: 500 10px/1 var(--mono); color: var(--d-t3); background: var(--d-s2); border: 1px solid var(--d-b1); white-space: nowrap; }
+.t .micro { font: 500 10px/1 var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--d-t3); }
+
+/* glass surface — every panel shares it; blur strength is a token */
+.t .glass { background: var(--d-glass); -webkit-backdrop-filter: blur(var(--d-blur)) saturate(1.15); backdrop-filter: blur(var(--d-blur)) saturate(1.15); border: 1px solid var(--d-b2); box-shadow: var(--d-sh1); }
+
+/* ---- host page (the site being inspected) ---- */
+.host { position: absolute; inset: 0; --h-bg: #ffffff; --h-fg: #16181d; --h-mute: #6b7078; --h-card: #ffffff; --h-line: #e6e8ec; --h-soft: #f3f4f6; background: var(--h-bg); color: var(--h-fg); font-family: var(--sans); }
+.host[data-host="dark"] { --h-bg: #0d0f13; --h-fg: #e8eaee; --h-mute: #8b919b; --h-card: #14171c; --h-line: #262a31; --h-soft: #1a1d23; }
+.host .pg-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; border-bottom: 1px solid var(--h-line); }
+.host .pg-logo { font-weight: 600; font-size: 13px; letter-spacing: -.01em; }
+.host .pg-nav { display: flex; gap: 14px; font-size: 11px; color: var(--h-mute); }
+.host .pg-title { padding: 18px 24px 0; font-size: 18px; font-weight: 600; letter-spacing: -.02em; }
+.host .cards { position: absolute; left: 24px; top: 94px; display: grid; grid-template-columns: repeat(3, 160px); gap: 16px; }
+.host .card { position: relative; width: 160px; height: 176px; padding: 16px; background: var(--h-card); border: 1px solid var(--h-line); border-radius: 12px; }
+.host .card h4 { margin: 0 0 6px; font-size: 12px; font-weight: 600; }
+.host .card .price { font-size: 20px; font-weight: 600; letter-spacing: -.02em; margin-bottom: 4px; }
+.host .card .price small { font-size: 10px; font-weight: 400; color: var(--h-mute); }
+.host .card p { margin: 0; font-size: 10px; line-height: 1.4; color: var(--h-mute); }
+.host .card .cta { position: absolute; left: 16px; right: 16px; bottom: 16px; height: 26px; border-radius: 7px; background: var(--h-soft); border: 1px solid var(--h-line); font-size: 10px; display: grid; place-items: center; color: var(--h-fg); }
+.host .card.featured .cta { background: var(--h-fg); color: var(--h-bg); border-color: var(--h-fg); }
+
+/* ---- hover: dashed outline + box-model bands ---- */
+.hov { outline: 1px dashed var(--d-acc); outline-offset: 0; }
+.hov::before { content: ""; position: absolute; inset: -12px; border-radius: 16px; background: color-mix(in srgb, var(--d-t3) 14%, transparent); z-index: -1; }
+.hov::after { content: ""; position: absolute; inset: 0; border-radius: 11px; box-shadow: inset 0 0 0 16px color-mix(in srgb, var(--d-acc) 14%, transparent); pointer-events: none; }
+.host .card.hov { isolation: isolate; }
+
+/* ---- selection vocabularies ---- */
+.sel { position: relative; }
+.t[data-sel="ring"] .sel { outline: 2px solid var(--d-acc); outline-offset: 2px; }
+.t[data-sel="glow"] .sel { box-shadow: 0 0 0 2px var(--d-acc), 0 0 22px 2px color-mix(in srgb, var(--d-acc) 45%, transparent); }
+.t[data-sel="halo"] .sel { box-shadow: 0 0 0 2px var(--d-acc), 0 0 0 3.5px var(--d-on-acc); }
+.t[data-sel="tint"] .sel::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: color-mix(in srgb, var(--d-acc) 9%, transparent); pointer-events: none; }
+.t .brk { display: none; }
+.t[data-sel="brackets"] .brk, .t[data-sel="tint"] .brk { display: block; position: absolute; inset: -6px; pointer-events: none; }
+.brk i { position: absolute; width: 14px; height: 14px; border: 2px solid var(--d-acc); }
+.brk .c1 { left: 0; top: 0; border-right: 0; border-bottom: 0; border-radius: 3px 0 0 0; }
+.brk .c2 { right: 0; top: 0; border-left: 0; border-bottom: 0; border-radius: 0 3px 0 0; }
+.brk .c3 { left: 0; bottom: 0; border-right: 0; border-top: 0; border-radius: 0 0 0 3px; }
+.brk .c4 { right: 0; bottom: 0; border-left: 0; border-top: 0; border-radius: 0 0 3px 0; }
+.t .ants { display: none; }
+.t[data-sel="ants"] .ants { display: block; position: absolute; inset: -4px; width: calc(100% + 8px); height: calc(100% + 8px); pointer-events: none; overflow: visible; }
+.t[data-sel="ants"] .ants rect { x: 1px; y: 1px; width: calc(100% - 2px); height: calc(100% - 2px); fill: none; stroke: var(--d-acc); stroke-width: 1.5; stroke-dasharray: 6 5; animation: march 1.6s linear infinite; }
+@keyframes march { to { stroke-dashoffset: -22; } }
+
+/* ---- info label ---- */
+.lab { position: absolute; padding: 8px 10px; border-radius: var(--d-r-lg); white-space: nowrap; min-width: 210px; }
+.lab-id { display: flex; align-items: baseline; gap: 0; font-size: 13px; line-height: 1.3; }
+.lab-id .tag { color: var(--d-acc); font-weight: 600; }
+.lab-id .cls { color: var(--d-cls); font-weight: 500; }
+.lab-id .sz { margin-left: auto; padding-left: 12px; font-family: var(--mono); font-size: 11px; color: var(--d-t3); }
+.lab-line { margin-top: 5px; font-size: 11px; color: var(--d-t2); display: flex; align-items: center; gap: 6px; }
+.lab-line .sep { color: var(--d-t4); }
+.lab-line .swatch { width: 10px; height: 10px; border-radius: 3px; border: 1px solid var(--d-b3); display: inline-block; }
+.lab-crumb { margin-top: 8px; font-size: 11px; color: var(--d-t3); }
+.lab-crumb .tag { color: var(--d-acc); }
+/* chips variant */
+.t[data-label="chips"] .lab-line { flex-wrap: wrap; gap: 4px; margin-top: 7px; }
+.t[data-label="chips"] .lab-line .sep { display: none; }
+.t[data-label="chips"] .lab-line > span:not(.sep) { display: inline-flex; align-items: center; gap: 5px; height: 18px; padding: 0 6px; border-radius: max(3px, calc(var(--d-r) - 2px)); background: var(--d-s2); border: 1px solid var(--d-b1); font-family: var(--mono); font-size: 10.5px; color: var(--d-t2); }
+/* columns variant */
+.t[data-label="columns"] .lab-cols { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; margin-top: 8px; align-items: baseline; }
+.t[data-label="columns"] .lab-cols .k { font: 500 10px/1.5 var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--d-t3); }
+.t[data-label="columns"] .lab-cols .v { font-family: var(--mono); font-size: 11px; color: var(--d-t2); display: flex; align-items: center; gap: 6px; }
+.t:not([data-label="columns"]) .lab-cols { display: none; }
+.t[data-label="columns"] .lab-line { display: none; }
+
+/* ---- toolbar ---- */
+.tb { position: absolute; display: flex; align-items: stretch; gap: 8px; }
+.tb-bar { display: flex; gap: 2px; padding: 3px; border-radius: var(--d-r-lg); }
+.tb button { display: inline-flex; align-items: center; gap: 7px; height: 28px; padding: 0 9px; border-radius: var(--d-r); color: var(--d-t1); font-weight: 500; font-size: 12px; white-space: nowrap; transition: background var(--d-dur) var(--d-ease), color var(--d-dur) var(--d-ease); }
+.tb button svg { width: 14px; height: 14px; stroke-width: 1.75; }
+.tb button:hover { background: var(--d-s2); }
+.tb button.on { background: var(--d-acc); color: var(--d-on-acc); }
+.tb button.on .kbd { background: color-mix(in srgb, var(--d-on-acc) 14%, transparent); border-color: transparent; color: var(--d-on-acc); }
+.tb .parent { color: var(--d-acc); }
+.tb .parent:hover { background: var(--d-acc-soft); }
+/* pill: bar + separate parent capsule */
+.t[data-tb="pill"] .tb-parent { display: flex; padding: 3px; border-radius: var(--d-r-lg); }
+/* segments: one bar, hairline dividers, kbd as quiet text */
+.t[data-tb="segments"] .tb-bar { gap: 0; padding: 0; }
+.t[data-tb="segments"] .tb button { border-radius: 0; height: 30px; padding: 0 12px; }
+.t[data-tb="segments"] .tb button:first-child { border-radius: var(--d-r-lg) 0 0 var(--d-r-lg); }
+.t[data-tb="segments"] .tb button:last-child { border-radius: 0 var(--d-r-lg) var(--d-r-lg) 0; }
+.t[data-tb="segments"] .tb button + button { border-left: 1px solid var(--d-b2); }
+.t[data-tb="segments"] .tb .kbd { background: none; border: 0; padding: 0; color: var(--d-t4); }
+.t[data-tb="segments"] .tb-parent { display: contents; }
+.t[data-tb="segments"] .tb-parent .parent { border-left: 1px solid var(--d-b2); }
+/* command: heavier, hints always framed, a mark up front */
+.t[data-tb="command"] .tb-bar { padding: 4px; gap: 2px; background: var(--d-s0); border-color: var(--d-b3); }
+.t[data-tb="command"] .tb button { height: 30px; padding: 0 10px 0 9px; gap: 9px; }
+.t[data-tb="command"] .tb .kbd { height: 18px; border-color: var(--d-b3); background: var(--d-s1); color: var(--d-t2); }
+.t[data-tb="command"] .tb-mark { display: grid; place-items: center; width: 22px; color: var(--d-t3); }
+.t[data-tb="command"] .tb-mark svg { width: 14px; height: 14px; }
+.t:not([data-tb="command"]) .tb-mark { display: none; }
+.t[data-tb="command"] .tb-parent { display: contents; }
+
+/* ---- gear ---- */
+.gear { position: absolute; width: 28px; height: 28px; display: grid; place-items: center; border-radius: var(--d-r); color: var(--d-t2); }
+.gear svg { width: 14px; height: 14px; stroke-width: 1.75; }
+
+/* ---- toast ---- */
+.toast { position: absolute; display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 10px 0 8px; border-radius: var(--d-r-lg); font-size: 12px; }
+.toast svg { width: 14px; height: 14px; color: var(--d-ok); stroke-width: 2; }
+.toast .num { color: var(--d-t3); }
+
+/* ---- edit panel ---- */
+.pnl { position: absolute; width: 248px; border-radius: var(--d-r-lg); overflow: hidden; }
+.t[data-panel="docked"] .pnl { top: 0; bottom: 0; right: 0; border-radius: 0; border-top: 0; border-right: 0; border-bottom: 0; box-shadow: var(--d-sh2); }
+.t[data-panel="attached"] .pnl { border-radius: 0 var(--d-r-lg) var(--d-r-lg) 0; }
+.pnl-head { display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 8px 0 6px; border-bottom: 1px solid var(--d-b1); }
+.pnl-head button { width: 24px; height: 24px; display: grid; place-items: center; border-radius: var(--d-r); color: var(--d-t2); }
+.pnl-head button:hover { background: var(--d-s2); }
+.pnl-head svg { width: 14px; height: 14px; stroke-width: 1.75; }
+.pnl-id { flex: 1; font-size: 13px; font-weight: 600; letter-spacing: -.01em; display: flex; gap: 0; align-items: baseline; }
+.pnl-id .tag { color: var(--d-acc); }
+.pnl-id .cls { color: var(--d-cls); font-weight: 500; }
+.pnl-head .count { position: relative; }
+.pnl-head .count i { position: absolute; right: -2px; top: -2px; min-width: 14px; height: 14px; padding: 0 4px; border-radius: 7px; background: var(--d-acc); color: var(--d-on-acc); font: 600 9px/14px var(--mono); text-align: center; }
+.pnl-body { padding: 8px 10px 10px; display: grid; gap: 12px; }
+.grp legend, .grp .legend { display: flex; justify-content: space-between; align-items: baseline; margin: 0 0 6px; font-size: 11px; font-weight: 500; color: var(--d-t2); }
+.grp .legend .kbd { height: 14px; }
+.stylerow { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.stylerow .chip { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 4px 0 8px; border-radius: var(--d-r); background: var(--d-acc-soft); color: var(--d-acc); font: 500 11px/1 var(--mono); border: 1px solid transparent; }
+.stylerow .chip button { width: 18px; height: 18px; display: grid; place-items: center; border-radius: max(2px, calc(var(--d-r) - 3px)); color: inherit; font-size: 12px; }
+.stylerow .chip button:hover { background: color-mix(in srgb, var(--d-acc) 18%, transparent); }
+.stylerow .state { font-size: 10.5px; color: var(--d-t3); }
+.tgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.cell { position: relative; height: 44px; padding: 5px 7px; border-radius: var(--d-r); background: var(--d-s1); border: 1px solid var(--d-b1); display: grid; align-content: space-between; }
+.cell:hover { border-color: var(--d-b3); }
+.cell .micro { display: flex; justify-content: space-between; align-items: center; }
+.cell .val { font-family: var(--mono); font-size: 12px; color: var(--d-t1); display: flex; align-items: baseline; gap: 3px; }
+.cell .val small { font-size: 10px; color: var(--d-t3); }
+.cell .tick { width: 6px; height: 6px; border-radius: 50%; border: 1.5px solid var(--d-t3); }
+.cell .tick.filled { background: var(--d-t3); }
+.cell.dirty { border-color: color-mix(in srgb, var(--d-acc) 55%, var(--d-b1)); }
+.cell.dirty .tick { border-color: var(--d-acc); background: var(--d-acc); box-shadow: 0 0 0 3px var(--d-acc-soft); }
+.cell.dirty .val { color: var(--d-acc); }
+.cell.drift { border-style: dashed; }
+.cell .swat { width: 14px; height: 14px; border-radius: 4px; border: 1px solid var(--d-b3); background: #1a1b1e; }
+.caption { margin-top: 6px; font-size: 10.5px; color: var(--d-t3); display: flex; gap: 6px; align-items: baseline; }
+.caption b { color: var(--d-t2); font-weight: 500; font-family: var(--mono); }
+.row { display: flex; align-items: center; gap: 8px; height: 26px; }
+.row .dot { width: 14px; height: 14px; display: grid; place-items: center; }
+.row .dot::before { content: ""; width: 6px; height: 6px; border-radius: 50%; border: 1.5px solid var(--d-t4); }
+.row .dot.on::before { background: var(--d-acc); border-color: var(--d-acc); box-shadow: 0 0 0 3px var(--d-acc-soft); }
+.row .lbl { width: 56px; font-size: 11px; color: var(--d-t2); }
+.row .field { flex: 1; display: flex; align-items: center; gap: 4px; height: 24px; padding: 0 6px; border-radius: var(--d-r); background: var(--d-s1); border: 1px solid var(--d-b1); font-family: var(--mono); font-size: 12px; }
+.row .field .u { font-size: 10px; color: var(--d-t3); margin-left: auto; }
+.row .four { flex: 1; display: grid; grid-template-columns: repeat(4, 1fr) 20px; gap: 3px; }
+.row .four span { height: 24px; display: grid; place-items: center; border-radius: var(--d-r); background: var(--d-s1); border: 1px solid var(--d-b1); font-family: var(--mono); font-size: 11.5px; }
+.row .four .lnk { display: grid; place-items: center; color: var(--d-t3); }
+.row .four .lnk svg { width: 12px; height: 12px; stroke-width: 1.75; }
+.row .color { flex: 1; display: flex; align-items: center; gap: 8px; }
+.row .color .swat { width: 22px; height: 22px; border-radius: var(--d-r); border: 1px solid var(--d-b3); background: #1a1b1e; box-shadow: 0 0 0 2px var(--d-s0), 0 0 0 3px var(--d-acc); }
+.row .color .tok { font-family: var(--mono); font-size: 12px; color: var(--d-acc); }
+.pnl-foot { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-top: 1px solid var(--d-b1); font-size: 10.5px; color: var(--d-t3); }
+.pnl-foot span { display: inline-flex; align-items: center; gap: 4px; }
+
+/* tether: ticks at the element's edge midpoints, a dashed run from the panel */
+.stage > .tick { position: absolute; background: var(--d-acc); border-radius: 1px; }
+.stage > .run { position: absolute; border-top: 2px dashed var(--d-acc); }
+.stage > .run.v { border-top: 0; border-left: 2px dashed var(--d-acc); }
+.t[data-panel="attached"] .run { display: none; }
+
+/* ---- colour picker ---- */
+.pick { position: absolute; width: 196px; border-radius: var(--d-r-lg); padding: 8px; display: grid; gap: 6px; }
+.pick-head { display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: var(--d-t2); }
+.pick-head b { font-family: var(--mono); font-weight: 500; color: var(--d-t1); }
+.pick-head button { width: 20px; height: 20px; display: grid; place-items: center; color: var(--d-t3); border-radius: var(--d-r); }
+.sat { position: relative; height: 96px; border-radius: var(--d-r); background: linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, hsl(var(--hue, 220) 100% 50%)); border: 1px solid var(--d-b2); }
+.sat i { position: absolute; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px rgb(0 0 0 / .5); background: #1a1b1e; }
+.hue { position: relative; height: 10px; border-radius: 5px; background: linear-gradient(to right, #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%); }
+.hue i { position: absolute; top: -2px; width: 14px; height: 14px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px rgb(0 0 0 / .5); background: hsl(var(--hue, 220) 100% 50%); }
+.hex { display: flex; align-items: center; gap: 6px; height: 26px; padding: 0 8px; border-radius: var(--d-r); background: var(--d-s1); border: 1px solid var(--d-b1); font-family: var(--mono); font-size: 12px; }
+.hex .swat { width: 14px; height: 14px; border-radius: 4px; background: #1a1b1e; border: 1px solid var(--d-b3); }
+.hex .pipette { margin-left: auto; color: var(--d-t3); }
+.hex .pipette svg { width: 13px; height: 13px; stroke-width: 1.75; }
+.ptoks .micro { margin-bottom: 5px; display: block; }
+.ptoks .list { display: flex; gap: 4px; }
+.ptoks .list i { width: 18px; height: 18px; border-radius: 4px; border: 1px solid var(--d-b3); }
+.ptoks .list i.on { box-shadow: 0 0 0 2px var(--d-s0), 0 0 0 3px var(--d-acc); }
+
+/* ---- entrance motion (replay button re-runs it) ---- */
+.enter { animation: enter var(--d-dur) var(--d-ease) both; }
+.enter.later { animation-delay: 60ms; }
+@keyframes enter { from { opacity: 0; transform: translateY(8px) scale(.985); } to { opacity: 1; transform: none; } }
+
+/* ---- settings thumbnail (880×598 world inside the 560×380 frame) ---- */
+.set { position: absolute; left: 0; top: 0; width: 880px; height: 598px; transform-origin: 0 0; transform: scale(calc(var(--k, 1) * 0.63636)); background: var(--d-s0); color: var(--d-t1); font-size: 12px; overflow: hidden; }
+.set .hd { display: flex; align-items: baseline; gap: 12px; height: 52px; padding: 0 28px; border-bottom: 1px solid var(--d-b1); }
+.set .hd b { font-size: 14px; font-weight: 600; letter-spacing: -.01em; }
+.set .hd span { color: var(--d-t3); font-size: 12px; }
+.set .hd .ver { margin-left: auto; font-family: var(--mono); color: var(--d-t3); }
+.set .sec-h { display: flex; align-items: baseline; justify-content: space-between; font-size: 13px; font-weight: 600; margin: 0 0 4px; }
+.set .sub { color: var(--d-t3); font-size: 11.5px; line-height: 1.45; margin: 0 0 10px; max-width: 46ch; }
+.set .r { display: flex; align-items: center; gap: 10px; height: 34px; font-size: 12px; color: var(--d-t1); }
+.set .r .lead { flex: 1; border-bottom: 1px dotted var(--d-b3); height: 1px; margin-top: 8px; }
+.set .seg { display: inline-flex; padding: 2px; border-radius: var(--d-r); background: var(--d-s1); border: 1px solid var(--d-b1); }
+.set .seg b { padding: 2px 8px; border-radius: max(2px, calc(var(--d-r) - 2px)); font: 500 11px/16px var(--sans); color: var(--d-t3); }
+.set .seg b.on { background: var(--d-s2); color: var(--d-t1); box-shadow: 0 1px 0 var(--d-b1); }
+.set .sw2 { width: 30px; height: 18px; border-radius: 9px; background: var(--d-b3); position: relative; }
+.set .sw2.on { background: var(--d-acc); }
+.set .sw2::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; }
+.set .sw2.on::after { left: 14px; }
+.set .pills { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
+.set .pill { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px 0 6px; border-radius: 999px; border: 1px solid var(--d-b2); font-size: 11.5px; color: var(--d-t2); }
+.set .pill i { width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--d-b3); }
+.set .pill.on { border-color: var(--d-acc); color: var(--d-t1); background: var(--d-acc-soft); }
+.set .rail { background: var(--d-s1); border-left: 1px solid var(--d-b1); }
+.set .rail .cap { font: 500 10px/1 var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--d-t3); margin: 0 0 10px; }
+.set .mini { position: relative; height: 150px; border-radius: var(--d-r-lg); background: var(--d-s0); border: 1px solid var(--d-b2); overflow: hidden; }
+.set .mini .mcard { position: absolute; left: 24px; top: 22px; width: 96px; height: 62px; border-radius: 8px; background: var(--d-s2); border: 1px solid var(--d-b2); outline: 2px solid var(--d-acc); outline-offset: 2px; }
+.set .mini .mlab { position: absolute; left: 136px; top: 22px; width: 150px; padding: 6px 8px; border-radius: var(--d-r); background: var(--d-glass); border: 1px solid var(--d-b2); }
+.set .mini .mlab b { color: var(--d-acc); font-size: 11px; }
+.set .mini .mlab span { color: var(--d-t3); font-size: 10px; display: block; }
+.set .mini .mtb { position: absolute; left: 136px; top: 78px; height: 24px; width: 150px; border-radius: var(--d-r); background: var(--d-glass); border: 1px solid var(--d-b2); display: flex; align-items: center; gap: 6px; padding: 0 8px; }
+.set .mini .mtb i { height: 8px; border-radius: 4px; background: var(--d-b3); flex: 1; }
+.set .mini .mtb i.on { background: var(--d-acc); }
+/* sheet: 5:7 columns, dotted leaders, sticky rail */
+.set[data-set="sheet"] .body { display: grid; grid-template-columns: 5fr 7fr; height: 546px; }
+.set[data-set="sheet"] .col { padding: 20px 28px; display: grid; gap: 22px; align-content: start; }
+.set[data-set="sheet"] .rail { padding: 20px 28px; }
+/* sidebar: nav rail on the left, cards on the right */
+.set[data-set="sidebar"] .body { display: grid; grid-template-columns: 200px 1fr; height: 546px; }
+.set[data-set="sidebar"] .nav { padding: 18px 14px; border-right: 1px solid var(--d-b1); display: grid; gap: 2px; align-content: start; }
+.set[data-set="sidebar"] .nav b { display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 10px; border-radius: var(--d-r); font-weight: 500; color: var(--d-t2); font-size: 12px; }
+.set[data-set="sidebar"] .nav b.on { background: var(--d-s2); color: var(--d-t1); }
+.set[data-set="sidebar"] .nav b i { width: 6px; height: 6px; border-radius: 50%; background: var(--d-t4); }
+.set[data-set="sidebar"] .nav b.on i { background: var(--d-acc); }
+.set[data-set="sidebar"] .main { padding: 22px 28px; display: grid; gap: 14px; align-content: start; }
+.set[data-set="sidebar"] .cardx { padding: 14px 16px; border-radius: var(--d-r-lg); border: 1px solid var(--d-b1); background: var(--d-s1); }
+.set[data-set="sidebar"] .cardx .r { height: 32px; }
+.set[data-set="sidebar"] .rail { border: 1px solid var(--d-b1); border-radius: var(--d-r-lg); padding: 14px 16px; }
+/* column: one measure, preview inline */
+.set[data-set="column"] .body { height: 546px; display: grid; justify-content: center; }
+.set[data-set="column"] .col { width: 560px; padding: 22px 0; display: grid; gap: 18px; align-content: start; }
+.set[data-set="column"] .rail { border: 1px solid var(--d-b1); border-left: 1px solid var(--d-b1); border-radius: var(--d-r-lg); padding: 14px 16px; }
+
+/* ============================================================
+   MOTION STAGE — the flow, played on the real chrome. State lives in
+   data-state; entering transitions take the preset's spring, leaving ones a
+   short ease, because the transition is read from the state being entered.
+   ============================================================ */
+.frame-m { aspect-ratio: 560 / 460; }
+.mstage { height: 460px; --speed: 1; --dur: calc(var(--base) * var(--speed)); --exit: calc(.14s * var(--speed)); }
+.mstage[data-speed="slow"] { --speed: 3; }
+.mstage[data-preset="soft"] { --base: .52s; --ease: cubic-bezier(.22, 1.18, .36, 1); }
+.mstage[data-preset="snappy"] { --base: .32s; --ease: cubic-bezier(.2, 1.32, .4, 1); }
+.mstage[data-preset="bouncy"] { --base: .62s; --ease: cubic-bezier(.34, 1.56, .64, 1); }
+.mstage[data-preset="restrained"] { --base: .18s; --ease: cubic-bezier(.2, .7, .2, 1); }
+.mstage .host .cards { top: 100px; left: 32px; }
+.mstage .hovbox { position: absolute; top: 100px; left: 208px; width: 160px; height: 150px; border-radius: 12px; outline: 1px dashed var(--d-acc); opacity: 0; pointer-events: none; transition: left var(--dur) var(--ease), opacity var(--exit) ease; }
+.mstage .hovbox::before { content: ""; position: absolute; inset: -12px; border-radius: 16px; background: color-mix(in srgb, var(--d-t3) 14%, transparent); z-index: -1; }
+.mstage .hovbox::after { content: ""; position: absolute; inset: 0; border-radius: 11px; box-shadow: inset 0 0 0 16px color-mix(in srgb, var(--d-acc) 14%, transparent); }
+.mstage[data-state="hover2"] .hovbox { opacity: 1; left: 208px; }
+.mstage[data-state="hover1"] .hovbox { opacity: 1; left: 32px; }
+.mstage .selbox { position: absolute; left: 28px; top: 96px; width: 168px; height: 158px; opacity: 0; transform: scale(1.03); transform-origin: center; pointer-events: none; transition: opacity var(--exit) ease, transform var(--exit) ease; overflow: visible; }
+.mstage .selbox rect { x: 1px; y: 1px; width: calc(100% - 2px); height: calc(100% - 2px); fill: none; stroke: var(--d-acc); stroke-width: 1.5; stroke-dasharray: 6 5; animation: march 1.6s linear infinite; }
+.mstage:is([data-state="selected"], [data-state="editing"], [data-state="copied"]) .selbox { opacity: 1; transform: none; transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease); }
+.mstage .lab, .mstage .tb, .mstage .pnl, .mstage .toast { opacity: 0; transform: translateY(8px) scale(.985); transition: opacity var(--exit) ease, transform var(--exit) ease; }
+.mstage .pnl { transform: translateX(-10px) scale(.985); }
+.mstage .tb { transition-delay: 0s; }
+.mstage:is([data-state="selected"], [data-state="copied"]) :is(.lab, .tb) { opacity: 1; transform: none; transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease); }
+.mstage:is([data-state="selected"], [data-state="copied"]) .tb { transition-delay: calc(60ms * var(--speed)); }
+.mstage[data-state="editing"] .pnl, .mstage[data-state="copied"] .pnl { opacity: 1; transform: none; transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease); }
+.mstage[data-state="copied"] :is(.lab, .tb) { opacity: 0; transform: translateY(8px) scale(.985); transition: opacity var(--exit) ease, transform var(--exit) ease; }
+.mstage[data-state="copied"] .toast { opacity: 1; transform: none; transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease); }
+.mstage .stage-tick { position: absolute; background: var(--d-acc); border-radius: 1px; transform: scale(0); transition: transform var(--exit) ease; }
+.mstage[data-state="editing"] .stage-tick, .mstage[data-state="copied"] .stage-tick { transform: none; transition: transform var(--dur) var(--ease); }
+.mstage[data-state="editing"] .stage-tick:nth-of-type(2), .mstage[data-state="copied"] .stage-tick:nth-of-type(2) { transition-delay: calc(40ms * var(--speed)); }
+.mstage[data-state="editing"] .stage-tick:nth-of-type(3), .mstage[data-state="copied"] .stage-tick:nth-of-type(3) { transition-delay: calc(80ms * var(--speed)); }
+.mstage[data-state="editing"] .stage-tick:nth-of-type(4), .mstage[data-state="copied"] .stage-tick:nth-of-type(4) { transition-delay: calc(120ms * var(--speed)); }
+.mstage[data-state="editing"] .tb button.editbtn, .mstage[data-state="copied"] .tb button.editbtn { background: var(--d-acc); color: var(--d-on-acc); }
+.mstage[data-state="copied"] .pnl-head .count { animation: press calc(.22s * var(--speed)) var(--ease); }
+@keyframes press { 40% { transform: scale(.88); } }
+.mstage .host .card.pro { opacity: 1; transition: opacity var(--exit) ease; }
+
+/* controls */
+.ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: 12px 0 0; font-size: 12px; color: var(--g-muted); }
+.ctl .grp2 { display: inline-flex; gap: 4px; align-items: center; }
+.ctl .grp2 > span { margin-right: 4px; }
+.ctl button { font: 500 11px/1 var(--mono); color: var(--g-dim); background: none; border: 1px solid var(--g-rule); border-radius: 6px; padding: 6px 9px; cursor: pointer; }
+.ctl button:hover, .ctl button:focus-visible { border-color: var(--g-ink); color: var(--g-ink); outline: none; }
+.ctl button.on { background: var(--g-ink); border-color: var(--g-ink); color: var(--g-ground); }
+.ctl button.play { font-weight: 600; padding: 6px 12px; }
+.ctl button.play::before { content: "▶"; margin-right: 6px; font-size: 9px; }
+.readout { margin: 10px 0 0; font: 12px/1.5 var(--mono); color: var(--g-muted); }
+.readout b { color: var(--g-ink); font-weight: 500; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap topbar-in">
+    <p class="topbar-title">Pointee <small>directions · round two</small></p>
+    <nav class="jump" id="jump" aria-label="Jump to a direction"></nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="masthead">
+    <h1>Direction 07, refined</h1>
+    <p class="lede">Light-first, soft corners, an attached panel, a pill toolbar, slow ants, a spring under
+      every entrance — kept. Changed: the accent is now a red-orange, shown in three shades so the exact
+      hue is yours to pick; the neutrals warmed to follow it; each theme sits on its own kind of page;
+      the mark is a blank until you draw one. Added: the motion, playable.</p>
+    <div class="brief">
+      <div>
+        <h3>Kept from 07</h3>
+        <ul>
+          <li><b>Light designed first</b>, dark derived second.</li>
+          <li><b>Radius 10 / 14</b>, blur 16, hairline borders.</li>
+          <li><b>Pill toolbar</b>, attached panel, stacked-row label, sidebar settings.</li>
+          <li><b>Slow ants</b> for the selection.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Changed</h3>
+        <ul>
+          <li><b>Accent</b> — red-orange. Vermilion, Tomato or Persimmon: pick one below.</li>
+          <li><b>Neutrals</b> — warm-tinted instead of green-tinted, so they lean toward the accent.</li>
+          <li><b>Danger</b> — moved to a crimson so it cannot be mistaken for the accent.</li>
+          <li><b>Pairing</b> — light chrome over light pages, dark over dark. System follows the OS.</li>
+          <li><b>Icon</b> — yours, later. The slot is empty on purpose.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>How to answer</h3>
+        <ul>
+          <li>A shade: <b>A</b>, <b>B</b> or <b>C</b>.</li>
+          <li>A motion preset, after playing the stage: <b>soft</b>, <b>snappy</b>, <b>bouncy</b>, or <b>restrained</b>.</li>
+          <li>A handle for the direction, since Mint no longer fits.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  
+  <section class="d" id="motion">
+    <div class="d-head">
+      <span class="d-num">M</span>
+      <h2>The motion, played</h2>
+      <p class="thesis">One flow on the real chrome: the hover outline glides from card to card, the
+        selection settles in with the label and toolbar a beat apart, Edit swaps them for the
+        attached panel whose ticks grow out one by one, Copy presses and the toast arrives, then
+        everything leaves faster than it came. Entering takes the preset's curve; leaving is always
+        a short ease, because a departure should never bounce. Four presets, each with the spring it
+        maps to in <code>motion</code>. Slow it three times to see the overshoot.</p>
+    </div>
+    <div class="ctl" id="mctl">
+      <button type="button" class="play" data-act="play">Play the flow</button>
+      <span class="grp2"><span>step</span>
+        <button type="button" data-state="hover2">hover</button><button type="button" data-state="hover1">glide</button><button type="button" data-state="selected">select</button><button type="button" data-state="editing">edit</button><button type="button" data-state="copied">copy</button><button type="button" data-state="idle">release</button></span>
+      <span class="grp2"><span>preset</span>
+        <button type="button" data-preset="soft">soft</button><button type="button" data-preset="snappy" class="on">snappy</button><button type="button" data-preset="bouncy">bouncy</button><button type="button" data-preset="restrained">restrained</button></span>
+      <span class="grp2"><span>speed</span><button type="button" data-speed="1" class="on">1×</button><button type="button" data-speed="slow">⅓×</button></span>
+      <span class="grp2"><span>shade</span><button type="button" data-shade="A">A</button><button type="button" data-shade="B" class="on">B</button><button type="button" data-shade="C">C</button></span>
+      <span class="grp2"><span>theme</span><button type="button" data-theme="light" class="on">light</button><button type="button" data-theme="dark">dark</button></span>
+    </div>
+    <div class="grid2" style="grid-template-columns: 1fr; max-width: 860px">
+      <div><div class="frame frame-m" id="mframe"></div>
+        <p class="readout" id="mreadout"></p></div>
+    </div>
+  </section>
+
+  <nav class="overview" id="overview" aria-label="All ten directions"></nav>
+
+  <div id="directions"></div>
+</main>
+
+<footer class="wrap end">
+  <p>Round two of the brand directions. Round one, with all ten, is
+    <code>test/brand-direction-prototypes.html</code>. When a shade and a preset are chosen, the
+    token block for that shade becomes the reference theme in <code>tokens.css</code> and the
+    preset becomes the first entry in <code>MOTION</code>.</p>
+</footer>
+
+<script>
+/* ============================================================
+   DIRECTIONS — the spec. Everything below is rendered from this.
+   ============================================================ */
+const ICON = {
+  code: '<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>',
+  camera: '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>',
+  pencil: '<path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/>',
+  parent: '<path d="M4 9V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3"/><path d="M12 20v-8"/><polyline points="9 15 12 12 15 15"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+  check: '<polyline points="20 6 9 17 4 12"/>',
+  back: '<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>',
+  reset: '<polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>',
+  link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
+  pipette: '<path d="m2 22 1-1h3l9-9"/><path d="M3 21v-3l9-9"/><path d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8a2.1 2.1 0 1 1 3-3l.4.4Z"/>',
+  x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+};
+const svg = (inner, extra = "") => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ${extra}>${inner}</svg>`;
+
+// Shared syntax pairs (id, class) that clear 4.5:1 on the surfaces below.
+const SYN = {
+  coolD: ["#7cc4ff", "#8fd18a"], coolL: ["#1d6fd1", "#3b7d24"],
+  skyD: ["#7dd3fc", "#6ee7b7"], skyL: ["#0369a1", "#15803d"],
+  warmD: ["#86b6f5", "#d3a95a"], warmL: ["#2a5f9e", "#8a5a10"],
+  goldD: ["#86b6f5", "#e0c26a"], goldL: ["#1d5fb8", "#8a6a12"],
+  limeD: ["#6fd3ff", "#d1e26a"], limeL: ["#0369a1", "#5f7d1e"],
+  monoD: ["#cfcfcf", "#9a9a9a"], monoL: ["#333333", "#5a5a5a"],
+};
+
+const WARM_L = { s0: "#ffffff", s1: "#f8f6f4", s2: "#f0ecea", b1: "#eeeae7", b2: "#ddd6d2", b3: "#c3b9b3", t1: "#1d1917", t2: "#5c534f", t3: "#6d645f", t4: "#a49b96", syn: ["#2a5f9e", "#4a7a2a"], alpha: .82 };
+const WARM_D = { s0: "#171412", s1: "#1e1a18", s2: "#282320", b1: "#241f1d", b2: "#322c29", b3: "#453d39", t1: "#f1ece8", t2: "#b3a9a3", t3: "#8c817b", t4: "#675e59", syn: ["#86b6f5", "#9ccf7a"], alpha: .8 };
+const shade = (id, handle, accentName, hue, accD, accL, thesis) => ({
+  id, handle, accentName, hue, surface: "warm, light-first", r: 10, rlg: 14, blur: 16,
+  sel: "ants", tb: "pill", panel: "attached", label: "rows", set: "sidebar", motion: "springy",
+  dark: { ...WARM_D, acc: accD, onacc: "#2a0c05" }, light: { ...WARM_L, acc: accL, onacc: "#ffffff" },
+  icon: "", thesis, wins: "", costs: "",
+});
+const DIRECTIONS = [
+  shade("A", "Vermilion", "vermilion", 10, "#f0452b", "#d13a1d",
+    "The reddest of the three. Reads as a signal, never as clay; the furthest from terracotta by hue, and the one most likely to fight a page that already uses red for errors."),
+  shade("B", "Tomato", "tomato", 14, "#f55f3a", "#c8441c",
+    "Red-orange in balance. Warm enough to feel like the light-first direction it belongs to, red enough to stay a signal colour. The middle pick, and the one the motion stage uses."),
+  shade("C", "Persimmon", "persimmon", 20, "#f7742f", "#bf4f14",
+    "The most orange. Friendliest and brightest on dark pages, and the closest of the three to the band this project just left — saturation is what keeps it on the right side of that line."),
+];
+
+/* ---- contrast ---- */
+const lin = (c) => { c /= 255; return c <= .03928 ? c / 12.92 : ((c + .055) / 1.055) ** 2.4; };
+const lum = (hex) => { const n = parseInt(hex.slice(1), 16); return .2126 * lin(n >> 16) + .7152 * lin((n >> 8) & 255) + .0722 * lin(n & 255); };
+const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + .05) / (y + .05); };
+const fmt = (r) => r.toFixed(1);
+
+/* ---- token blocks: one per direction × theme, emitted as real CSS ---- */
+function tokenBlock(d, theme) {
+  const t = d[theme];
+  const dark = theme === "dark";
+  return `.t[data-d="${d.id}"][data-t="${theme}"] {
+  --d-s0: ${t.s0}; --d-s1: ${t.s1}; --d-s2: ${t.s2};
+  --d-glass: rgb(from ${t.s0} r g b / ${t.alpha}); --d-blur: ${d.blur}px;
+  --d-b1: ${t.b1}; --d-b2: ${t.b2}; --d-b3: ${t.b3};
+  --d-t1: ${t.t1}; --d-t2: ${t.t2}; --d-t3: ${t.t3}; --d-t4: ${t.t4};
+  --d-acc: ${t.acc}; --d-on-acc: ${t.onacc};
+  --d-acc-soft: color-mix(in srgb, ${t.acc} ${dark ? 18 : 12}%, transparent);
+  --d-focus: color-mix(in srgb, ${t.acc} 70%, transparent);
+  --d-id: ${t.syn[0]}; --d-cls: ${t.syn[1]};
+  --d-danger: ${dark ? "#ff5470" : "#c0164a"}; --d-ok: ${dark ? "#3ecf8e" : "#1a7f4b"};
+  --d-scrim: rgb(0 0 0 / ${dark ? .18 : .08});
+  --d-sh1: ${dark ? "0 1px 2px rgb(0 0 0 / .35), 0 10px 28px -14px rgb(0 0 0 / .7)" : "0 1px 2px rgb(20 20 30 / .08), 0 10px 28px -14px rgb(20 20 30 / .28)"};
+  --d-sh2: ${dark ? "0 0 0 1px rgb(255 255 255 / .04), 0 24px 48px -24px rgb(0 0 0 / .8)" : "0 0 0 1px rgb(0 0 0 / .03), 0 24px 48px -24px rgb(20 20 30 / .3)"};
+  --d-r: ${d.r}px; --d-r-lg: ${d.rlg}px;
+  --d-dur: ${d.motion === "springy" ? ".46s" : ".16s"};
+  --d-ease: ${d.motion === "springy" ? "cubic-bezier(.34, 1.56, .64, 1)" : "cubic-bezier(.2, .7, .2, 1)"};
+}`;
+}
+const styleEl = document.createElement("style");
+styleEl.textContent = DIRECTIONS.map((d) => tokenBlock(d, "dark") + "\n" + tokenBlock(d, "light")).join("\n");
+document.head.appendChild(styleEl);
+
+/* ---- pieces ---- */
+const kbd = (k) => `<span class="kbd">${k}</span>`;
+const toolbar = (d, x, y, opts = {}) => `
+  <div class="tb enter later" style="left:${x}px;top:${y}px">
+    <div class="tb-bar glass">
+      
+      <button type="button">${svg(ICON.code)}<span>Copy Code</span>${kbd("⌘C")}</button>
+      <button type="button">${svg(ICON.camera)}<span>Screenshot</span>${kbd("⌘⇧S")}</button>
+      <button type="button" class="${opts.editOn ? "on" : ""}">${svg(ICON.pencil)}<span>Edit</span>${kbd("E")}</button>
+    </div>
+    <div class="tb-parent glass"><button type="button" class="parent">${svg(ICON.parent)}<span>Select Parent</span>${kbd("↑")}</button></div>
+  </div>`;
+
+const label = (d, x, bottom) => `
+  <div class="lab glass enter" style="left:${x}px;bottom:${bottom}px">
+    <div class="lab-id"><span class="tag">div</span><span class="cls">.card</span><span class="sz">160 × 150</span></div>
+    <div class="lab-line"><span>flex column</span><span class="sep">·</span><span>pad 16</span><span class="sep">·</span><span>gap 6</span></div>
+    <div class="lab-line"><span><i class="swatch" style="background:#fff"></i>#ffffff</span><span class="sep">·</span><span>radius 12</span><span class="sep">·</span><span>border 1</span></div>
+    <div class="lab-cols">
+      <span class="k">layout</span><span class="v">flex column · pad 16</span>
+      <span class="k">paint</span><span class="v"><i class="swatch" style="background:#fff;width:10px;height:10px;border-radius:3px;border:1px solid var(--d-b3);display:inline-block"></i>#ffffff · r 12</span>
+      <span class="k">path</span><span class="v">div.grid › <span class="tag" style="color:var(--d-acc)">div</span></span>
+    </div>
+    <div class="lab-crumb">main › div.grid › <span class="tag">div</span>.card</div>
+  </div>`;
+
+const gear = (x, y) => `<button type="button" class="gear glass" style="left:${x}px;top:${y}px" aria-label="Settings">${svg(ICON.gear)}</button>`;
+const toast = (x, bottom) => `<div class="toast glass enter later" style="left:${x}px;bottom:${bottom}px">${svg(ICON.check)}<span>Copied</span><span class="num">3 edits</span></div>`;
+
+const selWrap = (inner, cls = "") => `<div class="card sel ${cls}">${inner}<div class="brk"><i class="c1"></i><i class="c2"></i><i class="c3"></i><i class="c4"></i></div><svg class="ants"><rect rx="14"/></svg></div>`;
+
+function stagePoint(d, theme, host, opts = {}) {
+  return `
+  <div class="stage t" data-d="${d.id}" data-t="${theme}" data-sel="${d.sel}" data-tb="${d.tb}" data-label="${d.label}">
+    <div class="host" data-host="${host}">
+      <div class="pg-head"><span class="pg-logo">Acme</span><span class="pg-nav"><span>Product</span><span>Pricing</span><span>Docs</span><span>Sign in</span></span></div>
+      <div class="pg-title">Pricing</div>
+      <div class="cards">
+        <div class="card hov"><h4>Starter</h4><div class="price">$0<small>/mo</small></div><p>For trying it out.</p><div class="cta">Start free</div></div>
+        ${selWrap('<h4>Pro</h4><div class="price">$24<small>/mo</small></div><p>For teams that need more.</p><div class="cta">Upgrade</div>', "featured")}
+        <div class="card"><h4>Team</h4><div class="price">$96<small>/mo</small></div><p>For the whole company.</p><div class="cta">Talk to us</div></div>
+      </div>
+    </div>
+    ${label(d, 176, 252)}
+    ${toolbar(d, d.tb === "command" ? 20 : 32, 294)}
+    ${gear(520, 10)}
+    ${opts.toast ? toast(24, 12) : ""}
+  </div>`;
+}
+
+function stageEdit(d, theme, host) {
+  const panelPos = d.panel === "docked" ? "" : d.panel === "attached" ? "left:244px;top:26px" : "left:300px;top:18px";
+  const runW = d.panel === "docked" ? 68 : 56;
+  return `
+  <div class="stage t" data-d="${d.id}" data-t="${theme}" data-sel="${d.sel}" data-panel="${d.panel}" style="--hue:${d.hue}">
+    <div class="host" data-host="${host}">
+      <div class="pg-title" style="position:absolute;left:40px;top:0;padding:0;font-size:11px;color:var(--h-mute);font-weight:500">Pricing</div>
+      <div class="card featured sel" style="position:absolute;left:40px;top:26px;width:180px;height:140px">
+        <h4 style="font-size:20px;font-weight:600;letter-spacing:-.02em;line-height:1.2;margin:0 0 6px;color:var(--d-acc)">Pro Plan</h4>
+        <div class="price">$24<small>/mo</small></div><p>For teams that need more.</p>
+        <div class="brk"><i class="c1"></i><i class="c2"></i><i class="c3"></i><i class="c4"></i></div>
+        <svg class="ants"><rect rx="14"/></svg>
+      </div>
+    </div>
+    <i class="tick" style="left:129px;top:2px;width:2px;height:16px"></i>
+    <i class="tick" style="left:129px;top:174px;width:2px;height:16px"></i>
+    <i class="tick" style="left:16px;top:95px;width:16px;height:2px"></i>
+    <i class="tick" style="left:228px;top:95px;width:16px;height:2px"></i>
+    <i class="run" style="left:244px;top:95px;width:${runW}px"></i>
+    <div class="pnl glass enter" style="${panelPos}">
+      <div class="pnl-head">
+        <button type="button" aria-label="Back">${svg(ICON.back)}</button>
+        <span class="pnl-id"><span class="tag">h2</span><span class="cls">.card-title</span></span>
+        <button type="button" class="count" aria-label="Copy 2 edits">${svg(ICON.code)}<i>2</i></button>
+        <button type="button" aria-label="Reset all">${svg(ICON.reset)}</button>
+      </div>
+      <div class="pnl-body">
+        <div class="grp">
+          <div class="legend"><span>Typography</span>${kbd("T")}</div>
+          <div class="stylerow"><span class="chip"><button type="button">‹</button>text-lg<button type="button">›</button></span><span class="state">· modified</span></div>
+          <div class="tgrid">
+            <div class="cell dirty"><span class="micro">size<i class="tick"></i></span><span class="val">20<small>px</small></span></div>
+            <div class="cell"><span class="micro">weight<i class="tick"></i></span><span class="val">600</span></div>
+            <div class="cell"><span class="micro">leading<i class="tick filled"></i></span><span class="val">24<small>px</small></span></div>
+            <div class="cell drift"><span class="micro">tracking<i class="tick"></i></span><span class="val">−0.4<small>px</small></span></div>
+            <div class="cell"><span class="micro">align</span><span class="val">≡</span></div>
+            <div class="cell"><span class="micro">colour</span><span class="val"><i class="swat" style="background:${d[theme].acc}"></i></span></div>
+          </div>
+          <div class="caption"><b>size</b><span>text-lg 18 → 20 · off scale</span></div>
+        </div>
+        <div class="grp">
+          <div class="legend"><span>Spacing</span></div>
+          <div class="row"><span class="dot"></span><span class="lbl">padding</span><span class="four"><span>16</span><span>16</span><span>16</span><span>16</span><span class="lnk">${svg(ICON.link)}</span></span></div>
+        </div>
+        <div class="grp">
+          <div class="legend"><span>Fill</span></div>
+          <div class="row"><span class="dot on"></span><span class="lbl">colour</span><span class="color"><span class="swat"></span><span class="tok">--ink</span></span></div>
+        </div>
+      </div>
+      <div class="pnl-foot"><span>${kbd("⌘Z")} undo</span><span>${kbd("⇧⌘Z")} redo</span><span>${kbd("esc")} back</span></div>
+    </div>
+    <div class="pick glass enter later" style="left:40px;top:198px">
+      <div class="pick-head"><span>colour · <b>--ink</b></span><button type="button" aria-label="Close">${svg(ICON.x)}</button></div>
+      <div class="sat" style="height:48px"><i style="left:78%;top:70%"></i></div>
+      <div class="hue" style="height:8px"><i style="left:${(d.hue / 360) * 100}%"></i></div>
+      <div class="hex" style="height:24px"><i class="swat"></i>#1a1b1e<span class="pipette">${svg(ICON.pipette)}</span></div>
+      <div class="ptoks"><span class="micro">page tokens</span><div class="list"><i class="on" style="background:#1a1b1e"></i><i style="background:#6b7280"></i><i style="background:#f3f4f6"></i><i style="background:#2563eb"></i><i style="background:#16a34a"></i></div></div>
+    </div>
+  </div>`;
+}
+
+function stageSettings(d, theme) {
+  const rows = (n) => [
+    `<div class="r"><span>Unit</span><i class="lead"></i><span class="seg"><b class="on">px</b><b>rem</b></span></div>`,
+    `<div class="r"><span>Precision</span><i class="lead"></i><span class="seg"><b class="on">whole</b><b>tenths</b></span></div>`,
+    `<div class="r"><span>Extension guides</span><i class="lead"></i><span class="sw2 on"></span></div>`,
+    `<div class="r"><span>Quiet overlay</span><i class="lead"></i><span class="sw2"></span></div>`,
+  ].slice(0, n).join("");
+  const pills = `<div class="pills"><span class="pill on"><i style="background:${d[theme].acc}"></i>System</span><span class="pill"><i style="background:${d.dark.s0}"></i>Dark</span><span class="pill"><i style="background:${d.light.s0}"></i>Light</span><span class="pill"><i style="background:#282a36"></i>Dracula</span><span class="pill"><i style="background:#2e3440"></i>Nord</span></div>`;
+  const mini = `<div class="mini"><div class="mcard"></div><div class="mlab"><b>div</b>.card<span>flex · 16px · #ffffff</span></div><div class="mtb"><i class="on"></i><i></i><i></i></div></div>`;
+  const hd = `<div class="hd"><b>Pointee</b><span>Settings</span><span class="ver">2.0.0</span></div>`;
+  let body = "";
+  if (d.set === "sheet") body = `<div class="body"><div class="col">
+      <div><p class="sec-h">Appearance</p><p class="sub">Theme for Pointee’s own interface. System follows the OS and switches with it.</p>${pills}</div>
+      <div><p class="sec-h">Measuring</p><p class="sub">Hold Option and point to measure. These control how readouts draw.</p>${rows(4)}</div>
+    </div><div class="rail"><p class="cap">Preview</p>${mini}</div></div>`;
+  if (d.set === "sidebar") body = `<div class="body"><div class="nav"><b class="on"><i></i>Appearance</b><b><i></i>Measuring</b><b><i></i>Editing</b><b><i></i>Copying</b><b><i></i>About</b></div>
+    <div class="main">
+      <div class="cardx"><p class="sec-h">Appearance</p><p class="sub">Theme for Pointee’s own interface. System follows the OS.</p>${pills}</div>
+      <div class="cardx"><p class="sec-h">Measuring</p>${rows(3)}</div>
+      <div class="rail"><p class="cap">Preview</p>${mini}</div>
+    </div></div>`;
+  if (d.set === "column") body = `<div class="body"><div class="col">
+      <div><p class="sec-h">Appearance</p><p class="sub">Theme for Pointee’s own interface. System follows the OS and switches with it.</p>${pills}<div class="rail">${mini}</div></div>
+      <div><p class="sec-h">Measuring</p>${rows(3)}</div>
+    </div></div>`;
+  return `<div class="set t" data-d="${d.id}" data-t="${theme}" data-set="${d.set}">${hd}${body}</div>`;
+}
+
+function palette(d, theme) {
+  const t = d[theme];
+  const cell = (hex, name, note) => `<div class="sw"><i style="background:${hex}"></i><b>${name}</b><span>${hex}</span>${note || ""}</div>`;
+  const text = (hex, name) => { const r = ratio(hex, t.s0); return cell(hex, name, `<span class="${r >= 4.5 ? "ok" : "bad"}">${fmt(r)} : 1</span>`); };
+  const accR = ratio(t.acc, t.s0), onR = ratio(t.onacc, t.acc);
+  return `<div class="pal">
+    ${cell(t.s0, "surface 0")}${cell(t.s1, "surface 1")}${cell(t.s2, "surface 2")}${cell(t.b2, "border")}
+    ${text(t.t1, "text")}${text(t.t2, "text 2")}${text(t.t3, "text 3")}
+    ${cell(t.acc, "accent", `<span class="${accR >= 3 ? "ok" : "bad"}">${fmt(accR)} : 1</span><span class="${onR >= 4.5 ? "ok" : "bad"}">ink ${fmt(onR)} : 1</span>`)}
+  </div>`;
+}
+
+function typeSpecimen(d, theme) {
+  return `<div class="type t" data-d="${d.id}" data-t="${theme}" style="color:var(--d-t1)">
+    <div><span style="font:600 13px/1.3 var(--sans)">Pro Plan <span style="color:var(--d-cls);font-weight:500">.card-title</span></span><span class="lbl">13 · 600 · titles</span></div>
+    <div><span style="font:500 12px/1.4 var(--sans)">Copy Code · Screenshot · Edit</span><span class="lbl">12 · 500 · controls</span></div>
+    <div><span style="font:400 11px/1.4 var(--sans);color:var(--d-t2)">For teams that need more. Upgrade.</span><span class="lbl">11 · 400 · secondary</span></div>
+    <div><span style="font:400 12px/1.4 var(--mono)">var(--title-lg) → 28px · #ffffff</span><span class="lbl">12 · mono · values</span></div>
+    <div><span class="micro">size · weight · leading</span><span class="lbl">10 · caps · micro</span></div>
+  </div>`;
+}
+
+function iconRow(d) {
+  const tile = (size, theme) => `<div class="ic ic-${theme[0]} ic-empty" data-s="${size}" style="color:${d[theme].acc}"><i style="width:${Math.max(6, size * .5)}px;height:${Math.max(6, size * .5)}px"></i></div>`;
+  return `<div class="icons">${tile(16, "light")}${tile(48, "light")}${tile(128, "light")}${tile(16, "dark")}${tile(48, "dark")}${tile(128, "dark")}</div>`;
+}
+
+const cap = (title, note, replay) => `<p class="cell-cap"><span><b>${title}</b> ${note}</span>${replay ? '<button type="button" class="replay">replay</button>' : ""}</p>`;
+
+function section(d) {
+  return `
+  <section class="d" id="d${d.id}">
+    <div class="d-head">
+      <span class="d-num">${d.id}</span>
+      <h2>${d.handle}</h2>
+      <p class="thesis">${d.thesis}</p>
+      <ul class="spec">
+        <li><i style="background:${d.light.acc}"></i><i style="background:${d.dark.acc};margin-left:-4px"></i><b>${d.light.acc} · ${d.dark.acc}</b></li>
+        <li>surface <b>${d.surface}</b></li><li>radius <b>${d.r} / ${d.rlg}</b></li><li>selection <b>${d.sel}</b></li>
+        <li>toolbar <b>${d.tb}</b></li><li>panel <b>${d.panel}</b></li><li>settings <b>${d.set}</b></li>
+      </ul>
+    </div>
+    <div class="grid2">
+      <div>${cap("Point Mode", "light theme over a light page", true)}<div class="frame">${stagePoint(d, "light", "light")}</div></div>
+      <div>${cap("Point Mode", "dark theme over a dark page — with the toast", true)}<div class="frame">${stagePoint(d, "dark", "dark", { toast: true })}</div></div>
+      <div>${cap("Edit Mode", "light theme — attached panel, tether, typography grid, picker", true)}<div class="frame">${stageEdit(d, "light", "light")}</div></div>
+      <div>${cap("Edit Mode", "dark theme", true)}<div class="frame">${stageEdit(d, "dark", "dark")}</div></div>
+      <div>${cap("Settings", "light theme — sidebar architecture, at two-thirds", false)}<div class="frame">${stageSettings(d, "light")}</div></div>
+      <div>${cap("Settings", "dark theme", false)}<div class="frame">${stageSettings(d, "dark")}</div></div>
+    </div>
+    <div class="spec-grid">
+      <div>${cap("Palette", "contrast against surface 0; every text token must clear 4.5 : 1", false)}
+        <div class="sheet"><div class="sheet-half t" data-d="${d.id}" data-t="light" style="background:var(--d-s0);color:var(--d-t1)">${palette(d, "light")}</div><div class="sheet-half t" data-d="${d.id}" data-t="dark" style="background:var(--d-s0);color:var(--d-t1)">${palette(d, "dark")}</div></div></div>
+      <div>${cap("Type and mark", "Geist Sans and Mono on the scale; the icon slot is yours", false)}
+        <div class="sheet"><div class="sheet-half t" data-d="${d.id}" data-t="light" style="background:var(--d-s0)">${typeSpecimen(d, "light")}</div><div class="sheet-half t" data-d="${d.id}" data-t="dark" style="background:var(--d-s0)">${typeSpecimen(d, "dark")}</div><div class="sheet-half" style="background:var(--g-raised)">${iconRow(d)}</div></div></div>
+    </div>
+  </section>`;
+}
+
+/* ---- mount ---- */
+document.getElementById("directions").innerHTML = DIRECTIONS.map(section).join("");
+document.getElementById("jump").innerHTML = DIRECTIONS.map((d) => `<a href="#d${d.id}" title="${d.handle}">${d.id}</a>`).join("");
+document.getElementById("overview").innerHTML = DIRECTIONS.map((d) => `
+  <a class="ov" href="#d${d.id}">
+    <span class="ov-tile" style="background:${d.light.s0};color:${d.light.acc}"><b style="font:600 22px/1 var(--sans);color:${d.light.acc}">${d.id}</b><i style="background:${d.light.acc}"></i></span>
+    <span class="ov-name"><b>${d.handle}</b><span>${d.light.acc}</span></span>
+  </a>`).join("");
+
+/* scale every fixed stage to its frame */
+const ro = new ResizeObserver((entries) => { for (const e of entries) e.target.style.setProperty("--k", (e.contentRect.width / 560).toFixed(4)); });
+document.querySelectorAll(".frame").forEach((f) => ro.observe(f));
+
+/* replay the entrance of a stage's chrome */
+document.addEventListener("click", (ev) => {
+  const btn = ev.target.closest(".replay"); if (!btn) return;
+  const frame = btn.closest(".cell-cap").nextElementSibling;
+  frame.querySelectorAll(".enter").forEach((el) => { el.style.animation = "none"; void el.offsetWidth; el.style.animation = ""; });
+});
+
+/* ---- motion stage ---- */
+const PRESETS = {
+  soft:       { spring: "stiffness 170 · damping 24 · mass 1", enter: 520, note: "settles without hurry; a single small overshoot" },
+  snappy:     { spring: "stiffness 320 · damping 30 · mass 1", enter: 320, note: "arrives fast, overshoots once by a hair" },
+  bouncy:     { spring: "stiffness 420 · damping 16 · mass 1", enter: 620, note: "two visible bounces; playful, and a risk over dense pages" },
+  restrained: { spring: "no spring — duration and ease", enter: 180, note: "Cursor’s register: quick, eased, never past its target" },
+};
+const MSTATE = { preset: "snappy", speed: "1", shade: "B", theme: "light", state: "selected", timers: [] };
+function motionStage() {
+  const d = DIRECTIONS.find((x) => x.id === MSTATE.shade);
+  const card = (title, price, blurb, cta, cls = "") => `<div class="card ${cls}"><h4>${title}</h4><div class="price">$${price}<small>/mo</small></div><p>${blurb}</p><div class="cta">${cta}</div></div>`;
+  return `
+  <div class="stage mstage t" data-d="${d.id}" data-t="${MSTATE.theme}" data-sel="ants" data-tb="pill" data-label="rows" data-panel="attached" data-preset="${MSTATE.preset}" data-speed="${MSTATE.speed}" data-state="${MSTATE.state}" style="--hue:${d.hue}">
+    <div class="host" data-host="${MSTATE.theme}">
+      <div class="pg-head"><span class="pg-logo">Acme</span><span class="pg-nav"><span>Product</span><span>Pricing</span><span>Docs</span><span>Sign in</span></span></div>
+      <div class="pg-title">Pricing</div>
+      <div class="cards">
+        ${card("Starter", 0, "For trying it out.", "Start free")}
+        ${card("Pro", 24, "For teams that need more.", "Upgrade", "featured pro")}
+        ${card("Team", 96, "For the whole company.", "Talk to us")}
+      </div>
+    </div>
+    <div class="hovbox"></div>
+    <svg class="selbox"><rect rx="14"/></svg>
+    <div class="lab glass" style="left:16px;top:258px">
+      <div class="lab-id"><span class="tag">div</span><span class="cls">.card</span><span class="sz">160 × 150</span></div>
+      <div class="lab-line"><span>flex column</span><span class="sep">·</span><span>pad 16</span><span class="sep">·</span><span>gap 6</span></div>
+      <div class="lab-line"><span><i class="swatch" style="background:#fff"></i>#ffffff</span><span class="sep">·</span><span>radius 12</span><span class="sep">·</span><span>border 1</span></div>
+      <div class="lab-crumb">main › div.grid › <span class="tag">div</span>.card</div>
+    </div>
+    <div class="tb" style="left:16px;top:364px">
+      <div class="tb-bar glass">
+        <button type="button" class="copybtn">${svg(ICON.code)}<span>Copy Code</span>${kbd("⌘C")}</button>
+        <button type="button">${svg(ICON.camera)}<span>Screenshot</span>${kbd("⌘⇧S")}</button>
+        <button type="button" class="editbtn">${svg(ICON.pencil)}<span>Edit</span>${kbd("E")}</button>
+      </div>
+      <div class="tb-parent glass"><button type="button" class="parent">${svg(ICON.parent)}<span>Select Parent</span>${kbd("↑")}</button></div>
+    </div>
+    <i class="stage-tick" style="left:111px;top:76px;width:2px;height:16px"></i>
+    <i class="stage-tick" style="left:200px;top:174px;width:16px;height:2px"></i>
+    <i class="stage-tick" style="left:111px;top:258px;width:2px;height:16px"></i>
+    <i class="stage-tick" style="left:8px;top:174px;width:16px;height:2px"></i>
+    <div class="pnl glass" style="left:216px;top:100px">
+      <div class="pnl-head">
+        <button type="button" aria-label="Back">${svg(ICON.back)}</button>
+        <span class="pnl-id"><span class="tag">div</span><span class="cls">.card</span></span>
+        <button type="button" class="count" aria-label="Copy 1 edit">${svg(ICON.code)}<i>1</i></button>
+        <button type="button" aria-label="Reset all">${svg(ICON.reset)}</button>
+      </div>
+      <div class="pnl-body">
+        <div class="grp">
+          <div class="legend"><span>Spacing</span>${kbd("S")}</div>
+          <div class="row"><span class="dot on"></span><span class="lbl">padding</span><span class="four"><span style="color:var(--d-acc)">20</span><span style="color:var(--d-acc)">20</span><span style="color:var(--d-acc)">20</span><span style="color:var(--d-acc)">20</span><span class="lnk">${svg(ICON.link)}</span></span></div>
+          <div class="row"><span class="dot"></span><span class="lbl">gap</span><span class="field">6<span class="u">px</span></span></div>
+        </div>
+        <div class="grp">
+          <div class="legend"><span>Border</span></div>
+          <div class="row"><span class="dot"></span><span class="lbl">radius</span><span class="field">12<span class="u">px</span></span></div>
+          <div class="row"><span class="dot"></span><span class="lbl">colour</span><span class="color"><span class="swat" style="background:#e6e8ec;box-shadow:none"></span><span class="tok" style="color:var(--d-t2)">#e6e8ec</span></span></div>
+        </div>
+      </div>
+      <div class="pnl-foot"><span>${kbd("⌘Z")} undo</span><span>${kbd("⇧⌘Z")} redo</span><span>${kbd("esc")} back</span></div>
+    </div>
+    <div class="toast glass" style="left:16px;bottom:12px">${svg(ICON.check)}<span>Copied</span><span class="num">1 edit</span></div>
+    ${gear(520, 10)}
+  </div>`;
+}
+const mframe = document.getElementById("mframe");
+function mountMotion() { mframe.innerHTML = motionStage(); ro.observe(mframe); readout(); }
+function readout() {
+  const p = PRESETS[MSTATE.preset];
+  const f = MSTATE.speed === "slow" ? 3 : 1;
+  document.getElementById("mreadout").innerHTML = `<b>${MSTATE.preset}</b> · ${p.spring} · enter ${p.enter * f} ms · exit ${140 * f} ms · ${p.note}`;
+}
+function setState(st) { MSTATE.state = st; const el = mframe.firstElementChild; if (el) el.dataset.state = st; }
+function clearTimers() { MSTATE.timers.forEach(clearTimeout); MSTATE.timers = []; }
+function play() {
+  clearTimers(); setState("idle");
+  const f = MSTATE.speed === "slow" ? 3 : 1;
+  const steps = [["hover2", 150], ["hover1", 850], ["selected", 1600], ["editing", 3000], ["copied", 4800], ["idle", 6600]];
+  for (const [st, at] of steps) MSTATE.timers.push(setTimeout(() => setState(st), at * f));
+}
+document.getElementById("mctl").addEventListener("click", (ev) => {
+  const b = ev.target.closest("button"); if (!b) return;
+  if (b.dataset.act === "play") return play();
+  if (b.dataset.state) { clearTimers(); return setState(b.dataset.state); }
+  for (const key of ["preset", "speed", "shade", "theme"]) {
+    if (b.dataset[key] !== undefined) {
+      MSTATE[key] = b.dataset[key];
+      b.parentElement.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b));
+      const el = mframe.firstElementChild;
+      if (key === "preset") el.dataset.preset = MSTATE.preset;
+      else if (key === "speed") el.dataset.speed = MSTATE.speed;
+      else { clearTimers(); MSTATE.state = "idle"; mountMotion(); }
+      readout();
+    }
+  }
+});
+mountMotion();
+</script>
+</body>
+</html>
