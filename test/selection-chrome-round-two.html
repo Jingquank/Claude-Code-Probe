@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Selection Chrome Round Two</title>
+<!--
+  Round two for the selection chrome. Round one put fourteen structures on the
+  table; the author kept four families and asked for variations inside each,
+  with a tooltip on every icon-only button: the Header card, the Primary card,
+  the Strip whose card is never wider than its action row, and the Overlay
+  pill. Fourteen variations again, each drawn four ways at real scale in the
+  shipped tokens, plus a specimen strip per family showing the four tooltips
+  as they read on hover.
+
+  The idea the author asked for inside the two cards — "each control sitting
+  at a meaningful place" — is taken literally: outputs (Copy Code, Screenshot)
+  near the identity, Edit beside the properties it edits, Select Parent on the
+  breadcrumb it climbs.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap">
+<style>
+/* ============================================================
+   GALLERY SHELL — the quiet frame the brand rounds used.
+   ============================================================ */
+:root {
+  --g-ground: #f5f5f6; --g-raised: #ffffff; --g-ink: #18191c; --g-dim: #4f5259; --g-muted: #7c808a;
+  --g-rule: #e2e3e7; --g-rule-hi: #c9ccd3; --g-link: #18191c;
+  --sans: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --g-ground: #0f1012; --g-raised: #16171a; --g-ink: #e9eaed; --g-dim: #a6a9b1; --g-muted: #737780; --g-rule: #23252a; --g-rule-hi: #33363d; --g-link: #e9eaed; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --g-ground: #0f1012; --g-raised: #16171a; --g-ink: #e9eaed; --g-dim: #a6a9b1; --g-muted: #737780; --g-rule: #23252a; --g-rule-hi: #33363d; --g-link: #e9eaed; color-scheme: dark; }
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--g-ground); color: var(--g-ink); font-family: var(--sans); font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+.wrap { max-width: 1200px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 40px); }
+kbd { font-family: var(--mono); font-size: .8em; }
+.topbar { position: sticky; top: 0; z-index: 50; background: color-mix(in srgb, var(--g-ground) 86%, transparent); backdrop-filter: blur(12px); border-bottom: 1px solid var(--g-rule); }
+.topbar-in { display: flex; align-items: center; gap: 20px; padding: 10px 0; flex-wrap: wrap; }
+.topbar-title { font-weight: 600; font-size: 14px; margin: 0; letter-spacing: -.01em; }
+.topbar-title small { font-weight: 400; color: var(--g-muted); margin-left: 8px; }
+.jump { display: flex; gap: 4px; margin-left: auto; flex-wrap: wrap; }
+.jump a { font-family: var(--mono); font-size: 12px; text-decoration: none; color: var(--g-dim); border: 1px solid var(--g-rule); border-radius: 6px; width: 30px; height: 30px; display: grid; place-items: center; transition: background .15s, color .15s, border-color .15s; }
+.jump a:hover, .jump a:focus-visible { background: var(--g-ink); border-color: var(--g-ink); color: var(--g-ground); outline: none; }
+.masthead { padding: clamp(36px, 6vw, 64px) 0 28px; border-bottom: 1px solid var(--g-rule); }
+h1 { font-weight: 600; font-size: clamp(30px, 4.5vw, 44px); line-height: 1.05; letter-spacing: -.025em; margin: 0 0 16px; text-wrap: balance; }
+.lede { font-size: 18px; line-height: 1.5; color: var(--g-dim); max-width: 64ch; margin: 0 0 28px; }
+.brief { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px 40px; }
+.brief h3 { font-size: 13px; font-weight: 600; margin: 0 0 8px; }
+.brief ul { margin: 0; padding: 0; list-style: none; color: var(--g-dim); font-size: 14px; }
+.brief li { padding: 5px 0; border-top: 1px solid var(--g-rule); }
+.brief li:first-child { border-top: 0; }
+.brief li b { color: var(--g-ink); font-weight: 500; }
+.d { padding: clamp(40px, 6vw, 72px) 0; border-bottom: 1px solid var(--g-rule); scroll-margin-top: 60px; }
+.d-head { display: grid; grid-template-columns: auto 1fr; gap: 6px 20px; align-items: baseline; margin-bottom: 8px; }
+.d-num { font-family: var(--mono); font-size: 28px; font-weight: 500; color: var(--g-rule-hi); line-height: 1; font-variant-numeric: tabular-nums; }
+.d-head h2 { font-weight: 600; font-size: 26px; margin: 0; letter-spacing: -.02em; line-height: 1.2; }
+.thesis { grid-column: 2; margin: 0; color: var(--g-dim); max-width: 70ch; }
+.spec { grid-column: 2; display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 0; padding: 0; list-style: none; }
+.spec li { font-family: var(--mono); font-size: 11px; color: var(--g-dim); border: 1px solid var(--g-rule); border-radius: 999px; padding: 3px 9px; white-space: nowrap; }
+.spec li b { font-weight: 500; color: var(--g-ink); }
+.grid2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 24px; }
+@media (max-width: 860px) { .grid2 { grid-template-columns: 1fr; } }
+.cell-cap { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 12px; color: var(--g-muted); margin: 0 0 8px; }
+.cell-cap b { color: var(--g-ink); font-weight: 500; }
+.frame { position: relative; width: 100%; aspect-ratio: 560 / 380; overflow: hidden; border-radius: 10px; border: 1px solid var(--g-rule-hi); background: #fff; }
+.stage { position: absolute; left: 0; top: 0; width: 560px; height: 380px; transform-origin: 0 0; transform: scale(var(--k, 1)); }
+.tradeoff { display: grid; grid-template-columns: 90px 1fr; gap: 6px 16px; margin: 22px 0 0; font-size: 14px; max-width: 78ch; }
+.tradeoff dt { color: var(--g-muted); }
+.tradeoff dd { margin: 0; color: var(--g-dim); }
+footer.end { padding: 40px 0 80px; color: var(--g-dim); max-width: 64ch; }
+footer.end code { font-family: var(--mono); font-size: 13px; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { animation-duration: 0s !important; transition-duration: 0s !important; } }
+
+/* ============================================================
+   THE SHIPPED TOKENS — Vermilion, light. Copied from tokens.css so
+   this page stands alone; the winner is ported back, not the reverse.
+   ============================================================ */
+.t {
+  --s0: #ffffff; --s1: #f8f6f4; --s2: #f0ecea; --b1: #eeeae7; --b2: #ddd6d2; --b3: #c3b9b3;
+  --t1: #1d1917; --t2: #5c534f; --t3: #6d645f; --t4: #968c87;
+  --acc: #d13a1d; --acc-h: #b93018; --on-acc: #ffffff; --acc-soft: color-mix(in srgb, #d13a1d 14%, transparent);
+  --id: #2a5f9e; --cls: #4a7a2a; --ok: #1a7f4b;
+  --glass: rgb(255 255 255 / 0.82); --blur: 16px;
+  --sh1: 0 1px 2px rgb(20 20 30 / .08), 0 10px 28px -14px rgb(20 20 30 / .28);
+  --r-xs: 4px; --r-sm: 8px; --r-md: 10px; --r-lg: 14px;
+  color: var(--t1); font-family: var(--sans); font-size: 12px; line-height: 1.45;
+}
+.t button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+.t svg { display: block; }
+
+/* ---- host pages ---- */
+.host { position: absolute; inset: 0; background: #ffffff; color: #16181d; font-family: var(--sans); overflow: hidden; }
+.host .pg-head { display: flex; align-items: center; justify-content: space-between; height: 38px; padding: 0 24px; border-bottom: 1px solid #e6e8ec; }
+.host .pg-logo { font-weight: 600; font-size: 13px; letter-spacing: -.01em; }
+.host .pg-nav { display: flex; gap: 14px; font-size: 11px; color: #6b7078; }
+.host .logos { position: absolute; left: 24px; right: 24px; top: 24px; display: flex; gap: 22px; align-items: center; }
+.host .logos i { height: 14px; border-radius: 3px; background: #dfe1e5; flex: 1; }
+.host .card { position: absolute; padding: 14px 16px; background: #fff; border: 1px solid #e6e8ec; border-radius: 12px; }
+.host .card h4 { margin: 0 0 6px; font-size: 12px; font-weight: 600; }
+.host .card .price { font-size: 18px; font-weight: 600; letter-spacing: -.02em; }
+.host .card .price small { font-size: 10px; font-weight: 400; color: #6b7078; }
+.host .card p { margin: 4px 0 0; font-size: 10px; line-height: 1.4; color: #6b7078; }
+.host .hero { position: absolute; left: 24px; top: 130px; width: 512px; font-size: 40px; font-weight: 500; letter-spacing: -.03em; line-height: 1.15; color: #16181d; }
+.host .hero em { font-style: normal; display: inline-block; }
+.host .h2top { position: absolute; left: 24px; top: 8px; width: 320px; height: 48px; font-size: 22px; font-weight: 600; letter-spacing: -.02em; line-height: 48px; color: #16181d; }
+.host .faded { opacity: .55; }
+
+/* ---- outline vocabularies ---- */
+.ol { position: absolute; pointer-events: none; border-radius: 12px; }
+.t[data-ol="ants2"] .ol { outline: 2px dashed var(--acc); outline-offset: 2px; }
+.t[data-ol="ants15"] .ol { outline: 1.5px dashed var(--acc); outline-offset: 2px; }
+.t[data-ol="ring"] .ol { outline: 1px solid var(--acc); outline-offset: 3px; }
+.ol.hov { outline: 1px dashed color-mix(in srgb, var(--acc) 70%, transparent) !important; outline-offset: 0 !important; }
+.ol.hov::before { content: ""; position: absolute; inset: -12px; border-radius: 16px; background: color-mix(in srgb, var(--t3) 14%, transparent); z-index: -1; }
+.ol.hov::after { content: ""; position: absolute; inset: 0; border-radius: 11px; box-shadow: inset 0 0 0 14px color-mix(in srgb, var(--acc) 12%, transparent); }
+
+/* ---- material ---- */
+.card-m { position: absolute; border: 1px solid var(--b2); border-radius: var(--r-lg); box-shadow: var(--sh1); background: var(--glass); -webkit-backdrop-filter: blur(var(--blur)) saturate(1.15); backdrop-filter: blur(var(--blur)) saturate(1.15); }
+.t[data-mat="opaque"] .card-m { background: var(--s0); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.t[data-mat="flat"] .card-m { background: var(--s0); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; border-radius: var(--r-sm); }
+
+/* ---- readout pieces ---- */
+.ro { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; min-width: 0; white-space: nowrap; }
+.ro-id { display: flex; align-items: baseline; gap: 0; font-size: 13px; font-weight: 600; line-height: 1.3; letter-spacing: -.01em; }
+.ro-id .tag { color: var(--acc); }
+.ro-id .cls { color: var(--cls); font-weight: 500; }
+.ro-id .sz { margin-left: auto; padding-left: 12px; font: 400 11px/1.3 var(--mono); color: var(--t3); letter-spacing: .01em; }
+.ro-ln { font-size: 11px; color: var(--t2); display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; }
+.ro-ln .sep { color: var(--t4); }
+.ro-ln.txt { font-style: italic; }
+.ro-ln .sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; border: 1px solid var(--b3); vertical-align: -1px; margin-right: 3px; }
+.ro-crumb { margin-top: 4px; font-size: 11px; color: var(--t3); min-width: 0; }
+.ro-crumb .tag { color: var(--acc); font-weight: 500; }
+.ro-crumb .sep { color: var(--t4); margin: 0 3px; }
+/* breadcrumb treatments */
+.ro-crumb[data-crumb="marquee"] { overflow: hidden; white-space: nowrap; mask-image: linear-gradient(to right, transparent, #000 8px, #000 calc(100% - 24px), transparent); }
+.ro-crumb[data-crumb="clamp"] { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; direction: rtl; text-align: left; }
+.ro-crumb[data-crumb="clamp"] > span { direction: ltr; unicode-bidi: isolate; }
+.ro-crumb[data-crumb="wrap"] { white-space: normal; line-height: 1.5; }
+.ro-crumb[data-crumb="trim"] { white-space: nowrap; }
+.ro-crumb .more { display: inline-flex; align-items: center; height: 15px; padding: 0 5px; border-radius: 999px; background: var(--s2); color: var(--t3); font: 500 10px/1 var(--mono); margin-right: 4px; }
+/* ledger */
+.ro.ledger { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; align-items: baseline; }
+.ro.ledger .ro-id { grid-column: 1 / -1; }
+.ro.ledger .k { font: 500 10px/1.5 var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--t3); }
+.ro.ledger .v { font-size: 11px; color: var(--t2); display: flex; gap: 6px; align-items: center; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* chips */
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chips span { display: inline-flex; align-items: center; gap: 4px; height: 18px; padding: 0 6px; border-radius: 5px; background: var(--s2); border: 1px solid var(--b1); font: 400 10.5px/1 var(--mono); color: var(--t2); }
+
+/* ---- keyboard hints ---- */
+.kbd { display: inline-flex; align-items: center; height: 16px; padding: 0 4px; border-radius: var(--r-xs); font: 500 10px/1 var(--mono); color: var(--t3); background: var(--s2); border: 1px solid var(--b1); }
+.hint { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; color: var(--t3); white-space: nowrap; }
+.hint .sep { color: var(--t4); margin: 0 4px; }
+.hint.u .kbd { background: none; border: 0; padding: 0; text-decoration: underline; text-underline-offset: 2px; color: var(--t2); }
+
+/* ---- action registers ---- */
+.acts { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; }
+.acts.text, .acts.icons, .acts.vlist, .acts.segments, .acts.primary { flex-wrap: nowrap; }
+.acts button { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 8px; border-radius: var(--r-md); color: var(--t1); font-weight: 500; font-size: 12px; white-space: nowrap; }
+.acts button svg { width: 14px; height: 14px; stroke-width: 1.75; }
+.acts button:hover { background: var(--s2); }
+.acts .edit { color: var(--acc); }
+.acts .parent { color: var(--acc); }
+.acts.icons button { width: 28px; height: 28px; padding: 0; justify-content: center; }
+.acts.icons button span { display: none; }
+.acts.text button svg { display: none; }
+.acts.text button { padding: 0 7px; }
+.acts.text button + button { border-left: 1px solid var(--b2); border-radius: 0; }
+.acts.text button:first-child { border-radius: var(--r-md) 0 0 var(--r-md); }
+.acts.text button:last-child { border-radius: 0 var(--r-md) var(--r-md) 0; }
+.acts.segments { width: 100%; gap: 0; }
+.acts.segments button { flex: 1; justify-content: center; height: 30px; border-radius: 0; }
+.acts.segments button + button { border-left: 1px solid var(--b1); }
+.acts.vlist { flex-direction: column; align-items: stretch; gap: 1px; }
+.acts.vlist button { justify-content: flex-start; height: 28px; padding: 0 10px; border-radius: var(--r-sm); }
+.acts.primary .copy { background: var(--acc); color: var(--on-acc); }
+.acts.primary .copy:hover { background: var(--acc-h); }
+.acts.primary button:not(.copy) { width: 28px; height: 28px; padding: 0; justify-content: center; color: var(--t2); }
+.acts.primary button:not(.copy) span { display: none; }
+.tip { position: absolute; padding: 3px 7px; border-radius: 6px; background: var(--t1); color: var(--s0); font-size: 10.5px; white-space: nowrap; pointer-events: none; }
+.tip::after { content: ""; position: absolute; left: 50%; top: 100%; margin-left: -4px; border: 4px solid transparent; border-top-color: var(--t1); }
+
+/* ---- structure furniture ---- */
+.foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 5px 6px; border-top: 1px solid var(--b1); }
+.foot .hint { margin-left: auto; padding-right: 4px; }
+.cap { display: flex; align-items: center; gap: 4px; padding: 0 10px 7px; font-size: 10.5px; color: var(--t3); }
+.cap .hint { margin-left: auto; }
+.hdr { display: flex; align-items: center; gap: 6px; padding: 6px 6px 6px 10px; border-bottom: 1px solid var(--b1); }
+.hdr .ro-id { flex: 1; min-width: 0; }
+.cols { display: flex; align-items: stretch; }
+.cols .ro { flex: 1; }
+.rail { display: flex; flex-direction: column; gap: 4px; padding: 6px; border-left: 1px solid var(--b1); }
+.rail .hint { justify-content: center; padding-top: 4px; border-top: 1px solid var(--b1); }
+.bar { position: absolute; display: flex; align-items: center; gap: 8px; min-height: 32px; padding: 2px 6px 2px 10px; white-space: nowrap; }
+.bar .ro-id { font-size: 12px; flex: none; }
+.bar .ro-id .sz { white-space: nowrap; }
+.bar .hint { margin-left: auto; }
+.bar .acts { flex: none; }
+.tabid { position: absolute; display: inline-flex; align-items: baseline; gap: 0; height: 20px; padding: 0 8px; border-radius: 6px 6px 0 0; background: var(--acc); color: var(--on-acc); font: 600 11px/20px var(--sans); white-space: nowrap; }
+.tabid .cls { font-weight: 500; opacity: .85; }
+.tabid .sz { font: 400 10px/20px var(--mono); margin-left: 8px; opacity: .8; }
+.dock { position: absolute; top: 8px; right: 8px; bottom: 8px; width: 236px; display: flex; flex-direction: column; border-radius: var(--r-lg); }
+.dock .ro { padding: 10px 12px; }
+.dock .acts { padding: 6px; border-top: 1px solid var(--b1); }
+.dock .hint { margin-top: auto; padding: 8px 12px; border-top: 1px solid var(--b1); }
+.cluster { position: absolute; display: flex; gap: 2px; padding: 3px; border-radius: 999px; z-index: 2; }
+.ribbon-row { display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 10px; }
+.ribbon-row .ro-id { flex: none; }
+.ribbon-row .ro-ln.txt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; display: block; white-space: nowrap; }
+.ribbon-row .hint { flex: none; }
+.ribbon-row .acts { flex: none; }
+.ribbon-row .ro-id { white-space: nowrap; }
+.ribbon-sub { display: flex; align-items: center; gap: 12px; padding: 5px 10px 7px; border-top: 1px solid var(--b1); font-size: 11px; color: var(--t2); }
+.ribbon-sub .ro-crumb { margin: 0; flex: 1; min-width: 0; }
+.ribbon-sub { white-space: nowrap; overflow: hidden; }
+.ribbon-sub .ro-ln { flex: none; }
+.ribbon-sub .hint { flex: none; margin-left: auto; }
+
+/* ---- round two: tooltips on icons, spines, full-width primary, specimens ---- */
+.acts button, .ghost, .ib { position: relative; }
+[data-tip].tip-on::after { content: attr(data-tip); position: absolute; left: 50%; bottom: calc(100% + 7px); translate: -50% 0; padding: 3px 7px; border-radius: 6px; background: var(--t1); color: var(--s0); font: 500 10.5px/1.3 var(--sans); white-space: nowrap; pointer-events: none; z-index: 3; }
+[data-tip].tip-on::before { content: ""; position: absolute; left: 50%; bottom: calc(100% + 3px); translate: -50% 0; border: 4px solid transparent; border-top-color: var(--t1); z-index: 3; }
+[data-tip].tip-on.tip-below::after { bottom: auto; top: calc(100% + 7px); }
+[data-tip].tip-on.tip-below::before { bottom: auto; top: calc(100% + 3px); border-top-color: transparent; border-bottom-color: var(--t1); }
+[data-tip].tip-on.tip-right::after { left: calc(100% + 7px); bottom: auto; top: 50%; translate: 0 -50%; }
+[data-tip].tip-on.tip-right::before { left: calc(100% + 3px); bottom: auto; top: 50%; translate: 0 -50%; border-top-color: transparent; border-right-color: var(--t1); }
+[data-tip].tip-on.tip-left::after { left: auto; right: calc(100% + 7px); bottom: auto; top: 50%; translate: 0 -50%; }
+[data-tip].tip-on.tip-left::before { left: auto; right: calc(100% + 3px); bottom: auto; top: 50%; translate: 0 -50%; border-top-color: transparent; border-left-color: var(--t1); }
+.igroup.v { flex-direction: column; }
+.ib { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: var(--r-sm); color: var(--t2); }
+.ib svg { width: 14px; height: 14px; stroke-width: 1.75; }
+.ib:hover { background: var(--s2); color: var(--t1); }
+.ib.edit, .ib.parent { color: var(--acc); }
+.ib.sm { width: 20px; height: 20px; }
+.ib.sm svg { width: 12px; height: 12px; }
+.igroup { display: inline-flex; align-items: center; gap: 2px; }
+.rowx { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.rowx > .ro-ln, .rowx > .ro-crumb { flex: 1; min-width: 0; margin: 0; }
+.rows { display: grid; grid-template-columns: 24px 1fr; gap: 4px 6px; align-items: center; padding: 8px 10px 8px 6px; white-space: nowrap; }
+.rows .ro-crumb { margin: 0; }
+.rows .ro-id { min-width: 0; }
+.fill { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: var(--r-md); background: var(--acc); color: var(--on-acc); font-weight: 500; font-size: 12px; white-space: nowrap; }
+.fill svg { width: 14px; height: 14px; stroke-width: 1.75; }
+.fill.wide { width: 100%; justify-content: center; height: 30px; }
+.divider { width: 1px; height: 18px; background: var(--b2); margin: 0 4px; }
+.cluster.v { flex-direction: column; }
+.tipspec { display: flex; align-items: flex-end; gap: 64px; padding: 34px 40px 12px 16px; margin-top: 16px; border: 1px solid var(--g-rule-hi); border-radius: 10px; background: #fff; width: max-content; }
+.tipspec .lbl { font: 400 11px/1.3 var(--sans); color: #7c808a; margin-right: 8px; align-self: center; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap topbar-in">
+    <p class="topbar-title">Pointee <small>selection chrome · round two</small></p>
+    <nav class="jump" id="jump" aria-label="Jump to a direction"></nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="masthead">
+    <h1>Four families, fourteen variations</h1>
+    <p class="lede">Round one put fourteen structures on the table. Four survived: the Header card, the
+      Primary card, the Strip, and the Overlay pill. This round varies inside each — where every control
+      sits, read literally: the outputs near the identity, Edit beside what it edits, Select Parent on the
+      breadcrumb it climbs — and puts a tooltip on every icon-only button. Same four stages at real scale
+      in the shipped tokens, plus one strip per family showing the four tooltips as they read on hover.</p>
+    <div class="brief">
+      <div>
+        <h3>Still fixed</h3>
+        <ul>
+          <li><b>The four actions</b>, with their names, all reachable.</li>
+          <li><b>Every icon-only button names itself</b> in a tooltip on hover.</li>
+          <li><b>Keyboard hints visible somewhere</b>: Option to measure, Escape to step back.</li>
+          <li><b>All five readout lines at rest.</b></li>
+        </ul>
+      </div>
+      <div>
+        <h3>What each family varies</h3>
+        <ul>
+          <li><b>Header</b> — which controls share the identity row, and where the others go.</li>
+          <li><b>Primary</b> — where the filled Copy Code sits, and how the three ghosts group.</li>
+          <li><b>Strip</b> — the card is never wider than its action row; with and without the hints in it.</li>
+          <li><b>Overlay</b> — which edge of the selection the pill straddles.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>How to answer</h3>
+        <ul>
+          <li>A letter. <b>02B</b> is an answer.</li>
+          <li>Or a hybrid across families: <b>02B's rows with 13A's pill</b>.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+  <div id="directions"></div>
+</main>
+
+<footer class="wrap end">
+  <p>Round two for the selection chrome. Round one, with all fourteen structures, is
+    <code>test/selection-chrome-prototypes.html</code>; the brief is
+    <code>docs/SELECTION-CHROME-ROUND.md</code>.</p>
+</footer>
+
+<script>
+/* ===== icons ===== */
+const ICON = {
+  code: '<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>',
+  camera: '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>',
+  pencil: '<path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/>',
+  parent: '<path d="M4 9V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3"/><path d="M12 20v-8"/><polyline points="9 15 12 12 15 15"/>',
+};
+const svg = (inner) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+const ACTS = [
+  { cls: "copy", label: "Copy Code", icon: ICON.code },
+  { cls: "shot", label: "Screenshot", icon: ICON.camera },
+  { cls: "edit", label: "Edit", icon: ICON.pencil },
+  { cls: "parent", label: "Select Parent", icon: ICON.parent },
+];
+const acts = (register, tipOn) => `<div class="acts ${register}">${ACTS.map((a) => `<button type="button" class="${a.cls}" title="${a.label}">${svg(a.icon)}<span>${a.label}</span></button>`).join("")}</div>`;
+const tip = (x, y, text) => `<span class="tip" style="left:${x}px;top:${y}px">${text}</span>`;
+const kbd = (k) => `<kbd class="kbd">${k}</kbd>`;
+const hints = (variant = "chips") => variant === "text"
+  ? `<span class="hint">⌥ measure<span class="sep">·</span>esc back</span>`
+  : `<span class="hint${variant === "u" ? " u" : ""}">${kbd("⌥")}measure<span class="sep">·</span>${kbd("esc")}back</span>`;
+
+/* ===== the three stages ===== */
+const LINES = {
+  card: { tag: "div", cls: ".card", size: "180 × 64", text: "Pro Plan", layout: ["flex", "column", "3 children"], paint: [`<i class="sw" style="background:#fff"></i>#ffffff`, "radius 12px", `border 1px <i class="sw" style="background:#e6e8ec"></i>#e6e8ec`], crumb: ["main", "div.grid"] },
+  em: { tag: "em", cls: ".gky9r3", size: "666 × 65", text: "a physics-native world model.", layout: ["inline", "52px", "w:500"], paint: [`color:<i class="sw" style="background:#29231e"></i>#29231e`], crumb: ["div.gky9r0", "div.gky9r1", "h2.om3by2i", "div._8sgev99", "div.gky9r0"] },
+  h2: { tag: "h2", cls: ".title", size: "280 × 48", text: "Pricing", layout: ["block", "22px", "w:600"], paint: [`color:<i class="sw" style="background:#16181d"></i>#16181d`], crumb: ["body", "main", "header"] },
+};
+const hostA = (r) => `
+  <div class="host">
+    <div class="pg-head"><span class="pg-logo">Acme</span><span class="pg-nav"><span>Product</span><span>Pricing</span><span>Docs</span><span>Sign in</span></span></div>
+    <div class="card" style="left:${r.left}px;top:${r.top}px;width:${r.w}px;height:${r.h}px"><h4>Pro Plan</h4><div class="price">$24<small>/mo</small></div></div>
+    <div class="card faded" style="left:${r.left + r.w + 20}px;top:${r.top}px;width:${r.w}px;height:${r.h}px"><h4>Team</h4><div class="price">$96<small>/mo</small></div></div>
+  </div>`;
+const hostB = `
+  <div class="host">
+    <div class="logos"><i style="flex:.6"></i><i style="flex:.5"></i><i style="flex:.8"></i><i style="flex:.5"></i><i style="flex:.7"></i></div>
+    <div class="hero" style="top:150px">A spatial design platform for<br><em style="font-size:32px;line-height:44px">a physics-native world model.</em></div>
+  </div>`;
+const hostC = `
+  <div class="host">
+    <div class="h2top">Pricing</div>
+    <div class="card faded" style="left:24px;top:72px;width:160px;height:110px"><h4>Starter</h4><div class="price">$0<small>/mo</small></div><p>For trying it out.</p></div>
+    <div class="card faded" style="left:200px;top:72px;width:160px;height:110px"><h4>Pro</h4><div class="price">$24<small>/mo</small></div><p>For teams that need more.</p></div>
+    <div class="card faded" style="left:376px;top:72px;width:160px;height:110px"><h4>Team</h4><div class="price">$96<small>/mo</small></div><p>For the whole company.</p></div>
+  </div>`;
+
+const EL_A = { left: 40, top: 204, w: 180, h: 64 };
+const STAGES = {
+  h: { title: "Hover", note: "the readout alone", lines: LINES.card, sel: EL_A, state: "hover", hostFn: (r) => hostA(r) },
+  s: { title: "Selected", note: "the full chrome on the same card", lines: LINES.card, sel: EL_A, state: "selected", hostFn: (r) => hostA(r) },
+  b: { title: "The hard case", note: "a wide heading, a long breadcrumb, a long text preview", lines: LINES.em, sel: { left: 24, top: 196, w: 480, h: 44 }, state: "selected", host: hostB },
+  c: { title: "At the top", note: "no room above — the chrome has to work below or beside", lines: LINES.h2, sel: { left: 24, top: 8, w: 280, h: 48 }, state: "selected", host: hostC },
+};
+
+/* ===== readout ===== */
+const H = 380, VW = 560, M = 8, GAP = 8;
+const clampL = (left, w) => Math.max(M, Math.min(left, VW - w - M));
+const crumbHtml = (lines, treatment) => {
+  const segs = lines.crumb;
+  const last = `<span class="tag">${lines.tag}</span>${lines.cls}`;
+  const sep = `<span class="sep">›</span>`;
+  if (treatment === "trim") {
+    const keep = segs.slice(-1);
+    const more = segs.length - keep.length;
+    return `<div class="ro-crumb" data-crumb="trim">${more ? `<span class="more">+${more}</span>` : ""}${keep.join(sep)}${sep}${last}</div>`;
+  }
+  if (treatment === "clamp") {
+    // truncate from the front to a budget: the end of a path is what locates
+    let parts = [...segs, null]; let out = [];
+    let budget = 44;
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const s = parts[i] === null ? `${lines.tag}${lines.cls}` : parts[i];
+      if (out.join(" › ").length + s.length + 3 > budget && out.length) { out.unshift("…"); break; }
+      out.unshift(parts[i] === null ? last : s);
+    }
+    return `<div class="ro-crumb" data-crumb="clamp"><span>${out.join(sep)}</span></div>`;
+  }
+  return `<div class="ro-crumb" data-crumb="${treatment}">${segs.join(sep)}${sep}${last}</div>`;
+};
+const idRow = (lines, extra = "") => `<div class="ro-id"><span class="tag">${lines.tag}</span><span class="cls">${lines.cls}</span><span class="sz">${lines.size}</span>${extra}</div>`;
+const ln = (parts, cls = "") => `<div class="ro-ln ${cls}">${parts.join('<span class="sep">·</span>')}</div>`;
+const txtLn = (lines) => `<div class="ro-ln txt">“${lines.text}”</div>`;
+// The five lines, in a column. opts: crumb treatment; noId; hintsInCrumb; chips; ledger
+function readout(lines, o = {}) {
+  if (o.ledger) {
+    return `<div class="ro ledger">${idRow(lines)}<span class="k">text</span><span class="v">“${lines.text}”</span><span class="k">layout</span><span class="v">${lines.layout.join('<span class="sep">·</span>')}</span><span class="k">paint</span><span class="v">${lines.paint.join('<span class="sep">·</span>')}</span><span class="k">path</span><span class="v">${[...lines.crumb.slice(-2), `<span class="tag" style="color:var(--acc);font-weight:500">${lines.tag}</span>${lines.cls}`].join('<span class="sep">›</span>')}</span></div>`;
+  }
+  const crumb = o.hintsInCrumb
+    ? `<div style="display:flex;align-items:center;gap:8px;min-width:0">${crumbHtml(lines, o.crumb || "clamp").replace('class="ro-crumb"', 'class="ro-crumb" style="flex:1;min-width:0"')}${hints("chips")}</div>`
+    : crumbHtml(lines, o.crumb || "clamp");
+  const body = o.chips
+    ? `<div class="chips">${[...lines.layout, ...lines.paint].map((p) => `<span>${p}</span>`).join("")}</div>`
+    : ln(lines.layout) + ln(lines.paint);
+  return `<div class="ro">${o.noId ? "" : idRow(lines, o.idExtra || "")}${txtLn(lines)}${body}${crumb}</div>`;
+}
+const card = (x, y, w, inner, extra = "") => `<div class="card-m" style="left:${x}px;${y}width:${w}px;${extra}">${inner}</div>`;
+const above = (rect) => `bottom:${H - (rect.top - GAP)}px;`;
+const below = (rect, gap = GAP) => `top:${rect.top + rect.h + gap}px;`;
+const olHtml = (rect, state) => `<div class="ol${state === "hover" ? " hov" : ""}" style="left:${rect.left}px;top:${rect.top}px;width:${rect.w}px;height:${rect.h}px"></div>`;
+
+/* ===== the directions =====
+   Icon buttons carry data-tip; one per stage wears .tip-on so the tooltip is
+   seen at real scale. The specimen strip under each family shows all four. */
+const A = Object.fromEntries(ACTS.map((a) => [a.cls, a]));
+const ib = (key, o = {}) => { const a = A[key]; return `<button type="button" class="ib ${a.cls}${o.sm ? " sm" : ""}${o.tip ? " tip-on" : ""}${o.below ? " tip-below" : ""}${o.right ? " tip-right" : ""}${o.left ? " tip-left" : ""}" data-tip="${a.label}">${svg(a.icon)}</button>`; };
+const tipFor = (stage) => ({ s: "shot", b: "edit", c: "parent", h: null })[stage];
+const igroup = (keys, tipOn, o = {}) => `<span class="igroup${o.v ? " v" : ""}">${keys.map((k) => ib(k, { tip: tipOn === k, sm: o.sm, below: o.below, right: o.right, left: o.left })).join("")}</span>`;
+const fill = (o = {}) => `<button type="button" class="fill${o.wide ? " wide" : ""}${o.tip ? " tip-on" : ""}" data-tip="Copy Code">${svg(ICON.code)}<span>Copy Code</span></button>`;
+const cap2 = (sel) => sel ? `<div class="cap">${hints("text")}</div>` : "";
+const body4 = (lines, o = {}) => `${txtLn(lines)}${ln(lines.layout)}${o.paintExtra ? `<div class="rowx">${ln(lines.paint)}${o.paintExtra}</div>` : ln(lines.paint)}${o.crumbExtra ? `<div class="rowx">${o.crumbExtra}${crumbHtml(lines, "clamp")}</div>` : crumbHtml(lines, "clamp")}`;
+const place = (rect, stage) => stage === "c" ? below(rect) : above(rect);
+
+const DIRECTIONS = [
+  // ---- 02 Header ----
+  { id: "02A", fam: "Header", handle: "Outputs right, parent on the path", w: { hov: 240, sel: 300 },
+    thesis: "The identity row is a title bar with the two outputs — Copy Code, Screenshot — and Edit as icons at its right. Select Parent leaves the row and sits at the head of the breadcrumb, because that is the path it climbs. Hints as the quiet last line.",
+    chrome: ({ rect, lines, state, stage, W }) => {
+      const sel = state === "selected"; const t = tipFor(stage);
+      const hdr = `<div class="hdr">${idRow(lines)}${sel ? igroup(["copy", "shot", "edit"], t) : ""}</div>`;
+      const body = `<div class="ro" style="padding-top:6px">${body4(lines, { crumbExtra: sel ? ib("parent", { sm: true, tip: t === "parent", below: stage === "b" }) : "" })}</div>`;
+      return card(clampL(rect.left, W), place(rect, stage), W, hdr + body + cap2(sel));
+    } },
+  { id: "02B", fam: "Header", handle: "Each control on its row", w: { hov: 240, sel: 300 },
+    thesis: "Read the readout as rows and put each control on the row it acts on: Copy Code and Screenshot on the identity, since they output the element; Edit at the end of the paint line, since that is what it edits; Select Parent at the head of the breadcrumb, since that is what it climbs. Nothing is in a bar.",
+    chrome: ({ rect, lines, state, stage, W }) => {
+      const sel = state === "selected"; const t = tipFor(stage);
+      const hdr = `<div class="hdr">${idRow(lines)}${sel ? igroup(["copy", "shot"], t) : ""}</div>`;
+      const body = `<div class="ro" style="padding-top:6px">${body4(lines, { paintExtra: sel ? ib("edit", { sm: true, tip: t === "edit" }) : "", crumbExtra: sel ? ib("parent", { sm: true, tip: t === "parent", below: stage === "b" }) : "" })}</div>`;
+      return card(clampL(rect.left, W), place(rect, stage), W, hdr + body + cap2(sel));
+    } },
+  { id: "02C", fam: "Header", handle: "A spine", w: { hov: 240, sel: 300 },
+    thesis: "The four icons stand in a column down the card's left edge, each level with the row it belongs to — Copy Code by the identity, Screenshot by the text, Edit by the paint, Select Parent by the breadcrumb. The readout reads as before; the spine is a map of what you can do to each line.",
+    chrome: ({ rect, lines, state, stage, W }) => {
+      const sel = state === "selected"; const t = tipFor(stage);
+      const cell = (k) => sel ? ib(k, { sm: true, tip: t === k, right: true }) : "<span></span>";
+      const rows = `<div class="rows">${cell("copy")}${idRow(lines)}${cell("shot")}${txtLn(lines)}<span></span>${ln(lines.layout)}${cell("edit")}${ln(lines.paint)}${cell("parent")}${crumbHtml(lines, "clamp")}</div>`;
+      return card(clampL(rect.left, W), place(rect, stage), W, rows + cap2(sel));
+    } },
+  { id: "02D", fam: "Header", handle: "Icon strip under the identity", w: { hov: 240, sel: 300 },
+    thesis: "The identity row stays clean; the four icons sit in a strip directly beneath it, with the hints at the strip's end, and the readout follows. The controls are one row from the name and never mixed with a readout line.",
+    chrome: ({ rect, lines, state, stage, W }) => {
+      const sel = state === "selected"; const t = tipFor(stage);
+      const hdr = `<div class="hdr" style="border-bottom:0;padding-bottom:0">${idRow(lines)}</div>`;
+      const strip = sel ? `<div class="hdr" style="padding:2px 6px 6px 8px;gap:2px">${igroup(["copy", "shot", "edit", "parent"], t)}<span style="margin-left:auto">${hints("chips")}</span></div>` : "";
+      const body = `<div class="ro" style="padding-top:6px">${body4(lines)}</div>`;
+      return card(clampL(rect.left, W), place(rect, stage), W, hdr + strip + body);
+    } },
+
+  // ---- 10 Primary ----
+  { id: "10A", fam: "Primary", handle: "Footer, parent apart", w: { hov: 240, sel: 300 },
+    thesis: "The stack with a hierarchy: Copy Code filled at the footer's left, Screenshot and Edit as ghosts beside it, and Select Parent alone at the far right — a navigation kept apart from the outputs. Hints as a caption.",
+    chrome: ({ rect, lines, state, stage, W }) => {
+      const sel = state === "selected"; const t = tipFor(stage);
+      const foot = sel ? `<div class="foot">${fill()}${igroup(["shot", "edit"], t)}<span style="margin-left:auto">${ib("parent", { tip: t === "parent" })}</span></div>` : "";
+      return card(clampL(rect.left, W), place(rect, stage), W, readout(lines, { crumb: "clamp" }) + foot + cap2(sel));
+    } },
+  { id: "10B", fam: "Primary", handle: "In the header", w: { hov: 240, sel: 300 },
+    thesis: "Copy Code — the thing you came for — sits beside the name, filled, at the identity row's right. The two ghosts that also act on the element, Screenshot and Edit, share the footer with the hints; Select Parent heads the breadcrumb.",
+    chrome: ({ rect, lines, state, stage, W }) => {
+      const sel = state === "selected"; const t = tipFor(stage);
+      const hdr = `<div class="hdr">${idRow(lines)}${sel ? fill() : ""}</div>`;
+      const body = `<div class="ro" style="padding-top:6px">${body4(lines, { crumbExtra: sel ? ib("parent", { sm: true, tip: t === "parent", below: stage === "b" }) : "" })}</div>`;
+      const foot = sel ? `<div class="foot">${igroup(["shot", "edit"], t)}${hints("chips")}</div>` : "";
+      return card(clampL(rect.left, W), place(rect, stage), W, hdr + body + foot);
+    } },
+  { id: "10C", fam: "Primary", handle: "Grouped footer", w: { hov: 240, sel: 320 },
+    thesis: "The footer in two groups behind a divider: the outputs — Copy Code filled, Screenshot a ghost — on the left, the things that change the chrome — Edit, Select Parent — on the right. The divider says which two belong together.",
+    chrome: ({ rect, lines, state, stage, W }) => {
+      const sel = state === "selected"; const t = tipFor(stage);
+      const foot = sel ? `<div class="foot">${fill()}${ib("shot", { tip: t === "shot" })}<span class="divider"></span>${igroup(["edit", "parent"], t)}</div>` : "";
+      return card(clampL(rect.left, W), place(rect, stage), W, readout(lines, { crumb: "clamp" }) + foot + cap2(sel));
+    } },
+  { id: "10D", fam: "Primary", handle: "Full width", w: { hov: 240, sel: 300 },
+    thesis: "Copy Code spans the whole footer as one filled button — the card ends in the action it exists for. The three ghosts sit in the identity row's right, where the smaller decisions are made. Hints as a caption under the button.",
+    chrome: ({ rect, lines, state, stage, W }) => {
+      const sel = state === "selected"; const t = tipFor(stage);
+      const hdr = `<div class="hdr">${idRow(lines)}${sel ? igroup(["shot", "edit", "parent"], t) : ""}</div>`;
+      const body = `<div class="ro" style="padding-top:6px">${body4(lines)}</div>`;
+      const foot = sel ? `<div class="foot" style="padding:6px 8px 4px">${fill({ wide: true })}</div>` : "";
+      return card(clampL(rect.left, W), place(rect, stage), W, hdr + body + foot + cap2(sel));
+    } },
+
+  // ---- 12 Strip ----
+  { id: "12A", fam: "Strip", handle: "As wide as its strip", w: { hov: 240, sel: 392 },
+    thesis: "The rule the author asked for: the card is never wider than its action strip. Four labelled actions set the width at 392px; the readout wraps its chips and clamps its breadcrumb inside that. Hints ride the breadcrumb row.",
+    chrome: ({ rect, lines, state, stage, W }) => {
+      const sel = state === "selected";
+      const w = sel ? 392 : W;
+      return card(clampL(rect.left, w), place(rect, stage), w, readout(lines, { crumb: "clamp", chips: true, hintsInCrumb: sel }) + (sel ? `<div class="foot" style="flex-wrap:nowrap">${acts("iconlabel")}</div>` : ""));
+    } },
+  { id: "12B", fam: "Strip", handle: "Strip with the hints", w: { hov: 240, sel: 500 },
+    thesis: "The same rule with the hints inside the strip, so the strip — and therefore the card — is 500px. Wider, but every control and every hint is on one row, and the breadcrumb row is only the breadcrumb.",
+    chrome: ({ rect, lines, state, stage, W }) => {
+      const sel = state === "selected";
+      const w = sel ? Math.min(500, VW - 2 * M - Math.min(rect.left, 24)) : W;
+      return card(clampL(rect.left, w), place(rect, stage), w, readout(lines, { crumb: "clamp", chips: true }) + (sel ? `<div class="foot" style="flex-wrap:nowrap">${acts("iconlabel")}${hints("chips")}</div>` : ""));
+    } },
+
+  // ---- 13 Overlay ----
+  { id: "13A", fam: "Overlay", handle: "Top centre", w: { hov: 260, sel: 300 }, ol: "ants15",
+    thesis: "The pill straddles the top edge of the selection at its centre, half on the element and half off; the readout sits beyond it. Where there is no room above, both flip to the bottom edge.",
+    chrome: ({ rect, lines, state, stage, W }) => {
+      const sel = state === "selected"; const t = tipFor(stage);
+      const top = stage !== "c";
+      const cy = top ? rect.top - 17 : rect.top + rect.h - 17;
+      const cx = clampL(rect.left + rect.w / 2 - 66, 132);
+      const pill = sel ? `<div class="cluster card-m" style="left:${cx}px;top:${cy}px">${igroup(["copy", "shot", "edit", "parent"], t, { below: !top })}</div>` : "";
+      const y = top ? `bottom:${H - (rect.top - 26)}px;` : `top:${rect.top + rect.h + 24}px;`;
+      return pill + card(clampL(rect.left, W), y, W, readout(lines, { crumb: "clamp" }) + cap2(sel));
+    } },
+  { id: "13B", fam: "Overlay", handle: "Corner badge", w: { hov: 260, sel: 300 }, ol: "ants15",
+    thesis: "The pill sits on the selection's top-right corner like a badge, leaving the top edge's centre — where the readout points — clear. The readout is above-left, so the two never share a column.",
+    chrome: ({ rect, lines, state, stage, W }) => {
+      const sel = state === "selected"; const t = tipFor(stage);
+      const top = stage !== "c";
+      const cy = top ? rect.top - 17 : rect.top + rect.h - 17;
+      const cx = Math.max(M, Math.min(rect.left + rect.w - 132 + 8, VW - M - 132));
+      const pill = sel ? `<div class="cluster card-m" style="left:${cx}px;top:${cy}px">${igroup(["copy", "shot", "edit", "parent"], t, { below: !top })}</div>` : "";
+      const w = Math.min(W, Math.max(200, cx - rect.left - 8));
+      const y = top ? `bottom:${H - (rect.top - 10)}px;` : `top:${rect.top + rect.h + 24}px;`;
+      return pill + card(clampL(rect.left, stage === "c" ? W : w), y, stage === "c" ? W : w, readout(lines, { crumb: "clamp" }) + cap2(sel));
+    } },
+  { id: "13C", fam: "Overlay", handle: "Bottom centre", w: { hov: 260, sel: 300 }, ol: "ants15",
+    thesis: "The readout above, the pill straddling the bottom edge: the words on one side of the element, the actions on the other, and nothing between the readout and the thing it describes. At the top of the viewport the readout goes below the pill.",
+    chrome: ({ rect, lines, state, stage, W }) => {
+      const sel = state === "selected"; const t = tipFor(stage);
+      const cy = rect.top + rect.h - 17;
+      const cx = clampL(rect.left + rect.w / 2 - 66, 132);
+      const pill = sel ? `<div class="cluster card-m" style="left:${cx}px;top:${cy}px">${igroup(["copy", "shot", "edit", "parent"], t, { below: true })}</div>` : "";
+      const y = stage === "c" ? `top:${rect.top + rect.h + 24}px;` : above(rect);
+      return pill + card(clampL(rect.left, W), y, W, readout(lines, { crumb: "clamp" }) + cap2(sel));
+    } },
+  { id: "13D", fam: "Overlay", handle: "Right edge, vertical", w: { hov: 260, sel: 300 }, ol: "ants15",
+    thesis: "The pill turns vertical and straddles the selection's right edge, centred on it; the readout keeps the top. A vertical pill covers less of a wide element than a horizontal one, and reads as a handle on its side.",
+    chrome: ({ rect, lines, state, stage, W }) => {
+      const sel = state === "selected"; const t = tipFor(stage);
+      const px = Math.min(rect.left + rect.w - 17, VW - M - 34);
+      const py = Math.max(M, Math.min(rect.top + rect.h / 2 - 66, H - M - 132));
+      const pill = sel ? `<div class="cluster card-m v" style="left:${px}px;top:${py}px">${igroup(["copy", "shot", "edit", "parent"], t, { v: true, left: true })}</div>` : "";
+      const w = Math.min(W, Math.max(200, px - rect.left - 10));
+      return pill + card(clampL(rect.left, stage === "c" ? W : w), place(rect, stage), stage === "c" ? W : w, readout(lines, { crumb: "clamp" }) + cap2(sel));
+    } },
+];
+for (const d of DIRECTIONS) { d.ol = d.ol || "ants2"; d.mat = "glass"; }
+
+/* ===== stages ===== */
+function stageHtml(d, key) {
+  const st = STAGES[key];
+  const rect = (d.rects && d.rects[key]) || st.sel;
+  const W = st.state === "hover" ? (d.w && d.w.hov) || 240 : Math.min((d.w && d.w.sel) || 480, VW - 2 * M - Math.min(rect.left, VW - 2 * M - 200));
+  const host = st.host || st.hostFn(rect);
+  const chrome = d.chrome({ rect, lines: st.lines, state: st.state, stage: key, W });
+  return `<div class="stage t" data-ol="${d.ol}" data-mat="${d.mat}">${host}${olHtml(rect, st.state)}${chrome}</div>`;
+}
+const cap = (title, note) => `<p class="cell-cap"><span><b>${title}</b> ${note}</span></p>`;
+const tipspec = () => `<div class="tipspec t"><span class="lbl">as they read on hover</span>${["copy", "shot", "edit", "parent"].map((k) => ib(k, { tip: true })).join("")}</div>`;
+function section(d, i, all) {
+  const first = i === 0 || all[i - 1].fam !== d.fam;
+  const last = i === all.length - 1 || all[i + 1].fam !== d.fam;
+  return `<section class="d" id="d${d.id}">
+    <div class="d-head"><span class="d-num">${d.id}</span><h2>${d.fam} · ${d.handle}</h2><p class="thesis">${d.thesis}</p></div>
+    <div class="grid2">
+      ${["h", "s", "b", "c"].map((k) => `<div>${cap(STAGES[k].title, STAGES[k].note)}<div class="frame">${stageHtml(d, k)}</div></div>`).join("")}
+    </div>
+    ${last ? tipspec() : ""}
+  </section>`;
+}
+document.getElementById("directions").innerHTML = DIRECTIONS.map((d, i) => section(d, i, DIRECTIONS)).join("");
+document.getElementById("jump").innerHTML = DIRECTIONS.map((d) => `<a href="#d${d.id}" title="${d.handle}">${d.id}</a>`).join("");
+const ro = new ResizeObserver((entries) => { for (const e of entries) e.target.style.setProperty("--k", (e.contentRect.width / 560).toFixed(4)); });
+document.querySelectorAll(".frame").forEach((f) => ro.observe(f));
+</script>
+</body>
+</html>
