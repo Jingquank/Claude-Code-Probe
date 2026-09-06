@@ -335,8 +335,15 @@ try {
     } catch { return false; }
   }, "the browser to expose CDP", 15000);
 
-  const targets = await (await fetch(`http://127.0.0.1:${DEBUG_PORT}/json/list`)).json();
-  const page = targets.find((t) => t.type === "page");
+  // /json/version answers before the first tab exists — Aside in particular
+  // takes a beat — so wait for a page target rather than taking the first
+  // entry of a list that may not have one yet.
+  let page;
+  await waitFor(async () => {
+    const targets = await (await fetch(`http://127.0.0.1:${DEBUG_PORT}/json/list`)).json();
+    page = targets.find((t) => t.type === "page");
+    return Boolean(page);
+  }, "the browser to open a page target", 15000);
   ws = await connect(page.webSocketDebuggerUrl);
   await send(ws, "Page.enable");
   await send(ws, "Runtime.enable");
