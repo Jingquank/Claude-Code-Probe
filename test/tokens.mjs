@@ -194,7 +194,7 @@ function contrast(fg, bg) {
 }
 
 // `floor` fails the run; `target` only warns. Since 2.0 every text token has
-// floor and target at 4.5 — the sub-AA grey that DESIGN.md §8 recorded is gone
+// floor and target at 4.5 — the sub-AA grey that DESIGN.md §3 recorded is gone
 // with the 1.x hierarchy, so there is nothing left to merely warn about. The
 // non-text pairs sit at the 3:1 bar WCAG sets for UI components: text-4 is a
 // disabled tone and never prose, the accent doubles as a border and icon

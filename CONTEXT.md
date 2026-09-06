@@ -24,7 +24,9 @@ _Avoid_: Probe Mode — the name until 2.0, when the product became Pointee.
 
 **Selection** — one element is locked in, and the toolbar is showing. The
 extension has exactly one selection at a time. Its truthiness *is* the state:
-there is no separate flag.
+there is no separate flag. Drawn as *slow ants* since 2.0: the hover's dashed
+outline come up to the accent at the ring weight and crawling — chosen in
+round two of the brand directions over a ring, corner brackets and a glow.
 
 **Redline** — held-Option spacing measurement. A sub-mode of Selection: it
 cannot be entered without one, and every path that drops the selection ends it.

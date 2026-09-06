@@ -1,6 +1,6 @@
 # Privacy Policy — Pointee
 
-**Last updated:** August 7, 2026
+**Last updated:** September 6, 2026
 
 ## Overview
 
@@ -108,7 +108,7 @@ sends no telemetry and has no backend.
 
 Pointee stores exactly one kind of thing: **your own settings**, saved with `chrome.storage.local` as a handful of short preference values:
 
-- **`theme`** — which colour scheme you picked, e.g. `terracotta-dark`.
+- **`theme`** — which colour scheme you picked, e.g. `dark`.
 - **Measuring preferences** — the `redline*` keys from Settings → Measuring: unit, precision, pill placement, guides, overlay quieting, zero pills.
 - **Editing preferences** — the `edit*` keys from Settings → Editing: which groups the panel shows, how design tokens are displayed, and the off-by-default deep shader capture toggle.
 - **Copying preferences** — the `copy*` keys from Settings → Copying: which header fields ride along in a copied payload, and how much HTML comes with them.

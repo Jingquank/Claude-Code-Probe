@@ -7,7 +7,10 @@
 ╚═╝      ╚═════╝ ╚═╝╚═╝  ╚═══╝   ╚═╝   ╚══════╝╚══════╝
 ```
 
-Point at any element. Copy it. Paste it into Claude Code.
+Point at any element. Copy it. Paste it into your coding agent.
+
+Pointee names no agent. Claude Code, Cursor, Codex — anything that reads a prompt reads
+the pointer it copies.
 
 ## Install
 
@@ -26,8 +29,8 @@ Then load it: `chrome://extensions` → Developer mode → Load unpacked → sel
 ## How it works
 
 1. Click the extension icon to enter Point Mode
-2. Hover over elements — a wireframe outline highlights what you're pointing at
-3. Click to select — a toolbar appears
+2. Hover over elements — a dashed outline and the box-model bands show what you're pointing at
+3. Click to select — the outline starts to crawl and a toolbar appears
 4. Pick what to copy:
 
 | | What you get |
@@ -37,15 +40,17 @@ Then load it: `chrome://extensions` → Developer mode → Load unpacked → sel
 | **Edit** | Opens a panel that tunes the element live, and copies what changed |
 | **Select Parent** | Moves the selection up one level in the DOM — click again to keep climbing |
 
-Paste into Claude Code and it knows exactly which element you mean.
+Paste it into your agent and it knows exactly which element you mean.
 
 ### Editing an element
 
-The pencil opens a panel beside the element — an inspector column of the
-properties worth reaching for: type, spacing, size, fill, border, shadow. Every
-number can be typed, arrow-keyed, or dragged sideways to scrub, and the page
-updates under your hands. Drag the panel's header to move it out of the way;
-`‹` goes back to the selection.
+The pencil opens a panel attached to the element's edge — an inspector column of
+the properties worth reaching for: type, spacing, size, fill, border, shadow.
+Every number can be typed, arrow-keyed, or dragged sideways to scrub, and the
+page updates under your hands. The panel follows the element until you drag it
+by its header, after which it floats where you put it and a dashed run ties it
+back; `‹` goes back to the selection. The footer shows the keys that work here:
+**⌘Z** undo, **⇧⌘Z** redo, **Esc** back.
 
 **It steps your design tokens, not just pixels.** If a heading is set to
 `var(--title-sm)`, the panel says so and offers the rungs either side — press
@@ -88,7 +93,7 @@ Then **copy**, and you get the usual source pointer plus what changed:
 <article class="card">…</article>
 ```
 
-The before-value is there on purpose: it's how Claude Code finds the
+The before-value is there on purpose: it's how the agent finds the
 declaration to change.
 
 While the panel is open the page is inert — clicks and menus over it are
@@ -140,19 +145,19 @@ measuring continues from it — walk a row of siblings without ever releasing th
 A gear sits in the top-right corner for as long as Point Mode is on — whether or not
 anything is selected. It opens the settings page in a tab.
 
-The page is a spec sheet — dotted-leader rows in collapsible sections, with a preview
-rail that answers whichever section you're in: the probe chrome while you pick a theme,
-a measuring vignette while you tune redlines, the edit panel while you tune editing, the
-clipboard payload itself while you tune copying. Hovering a row spotlights the part of
-the preview that row controls.
+The page has a sidebar that maps its four sections, cards of dotted-leader rows, and a
+preview rail that answers whichever section you're in: Pointee's own chrome while you
+pick a theme, a measuring vignette while you tune redlines, the edit panel while you
+tune editing, the clipboard payload itself while you tune copying. Hovering a row
+spotlights the part of the preview that row controls; pointing at a sidebar link
+previews its section.
 
 **Appearance** — the theme. Eight of them.
 
 | | |
 |---|---|
-| Terracotta Dark | the default — unchanged from before there was a switch |
-| Terracotta Light | same accent, light ground |
-| System | follows your OS, and switches when it does |
+| System | the default — follows your OS, and switches when it does |
+| Light · Dark | Pointee's own pair: warm neutrals under a vermilion accent |
 | Dracula · Monokai · Nord · Solarized Dark · Tokyo Night | |
 
 The info panel already colours tag, `#id` and `.class` separately, which is the same
@@ -271,6 +276,8 @@ view. `test/` holds the rig that proves it:
 | `test/edit-color.mjs` | Edit Mode's colour conversions — round trips bounded by 8-bit quantisation |
 | `test/edit-deltas.mjs` | the delta block's shape — token-first sides, fixed order, stable output |
 | `test/edit-audit.mjs` | proves every host-page write still lives in one section of `content.js` |
+| `test/tether.mjs` | the tether solver and the panel's attachment — nothing may enter the element's box |
+| `test/tokens.mjs` | the token contract — no literals, every theme complete, every text token above AA |
 | `test/harness.html` | browser harness: simulate, or sweep the real extension and reconcile |
 | `test/edit-harness.html` | runs the real `content.js` against a fake page — Edit Mode without a rebuild |
 | `test/PLACEMENT-PLAN.md` | why the placement works the way it does |
@@ -283,6 +290,8 @@ node test/edit-tokens.mjs                # design-token reverse lookup
 node test/edit-color.mjs                 # picker colour maths
 node test/edit-deltas.mjs                # what the Edit panel copies
 node test/edit-audit.mjs                 # host-page writes stay in one place
+node test/tether.mjs                     # tether geometry and panel attachment
+node icons/generate-icons.mjs            # icons/ from assets/icon.svg, via headless Chromium
 
 python3 -m http.server 8765              # then open /test/harness.html
                                          # or /test/edit-harness.html — press "p"
@@ -301,19 +310,19 @@ simulation. Run it after touching placement.
 ### Design tokens
 
 Every colour, typeface, radius, shadow and duration lives in `tokens.css` as a CSS
-custom property. A theme is one block of 19 declarations; nothing else changes.
-[DESIGN.md](DESIGN.md) is the contract — what the two token tiers are, why placement
-geometry deliberately stays in JavaScript, and which three values are never themed.
+custom property. A theme is one block of 21 declarations; nothing else changes. The
+typefaces — Geist Sans for words, Geist Mono for values — ship in `fonts/` and are
+never fetched. [DESIGN.md](DESIGN.md) is the design system: the brand, the type scale,
+the palettes, the tokens, the motion, each surface, and the rules that don't move.
 
 ```sh
-node test/tokens.mjs    # 71 checks
+node test/tokens.mjs    # 88 checks
 ```
 
 It fails the run on a colour literal left in `content.css`, a theme missing one of the
-19, a `var(--pnt-…)` nothing declares, a badge colour that has drifted from its theme,
-or text that can't be read against its own surface. Warnings are real too: the
-de-emphasised 10px grey is below WCAG AA in most themes, which DESIGN.md explains
-rather than hides.
+21, a `var(--pnt-…)` nothing declares, a badge colour that has drifted from its theme,
+or a text token that can't be read against its own surface — every text tone clears
+WCAG AA, as a floor rather than a target.
 
 ## Privacy
 
