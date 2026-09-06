@@ -144,7 +144,6 @@
     minLabelHeight: 24,
     narrowToolbar: 470, // the .pnt-compact breakpoint
     radiusFallback: 4, // assumed corner radius when the element is square
-    maxSweepDiagonal: 2600, // past this the spun outline degrades to .pnt-plain
     redlinePillOffset: 8, // pill center sits this far perpendicular to its line
     redlineGuideOvershoot: 4, // dashed guide runs this far past the measurement line
     redlinePillMargin: 14, // pill centers are clamped this far inside the viewport
@@ -690,20 +689,13 @@
     overlayContainer = document.createElement("div");
     overlayContainer.id = "pnt-overlay-container";
 
-    const ids = ["pnt-margin-box", "pnt-bloom", "pnt-padding-box", "pnt-content-box", "pnt-border-box"];
+    // The three box-model bands. The 1.x sweep ring and bloom are gone: the
+    // selection is the same dashed outline as the hover, heavier and crawling.
+    const ids = ["pnt-margin-box", "pnt-padding-box", "pnt-content-box"];
     for (const id of ids) {
       const div = document.createElement("div");
       div.id = id;
       overlayContainer.appendChild(div);
-    }
-
-    // the two spinners carry the gradient; they share a duration and start
-    // together, so the bloom stays in phase with the stroke
-    for (const [parentId, spinId] of [["pnt-border-box", "pnt-sweep-spin"], ["pnt-bloom", "pnt-bloom-spin"]]) {
-      const spin = document.createElement("div");
-      spin.id = spinId;
-      spin.className = "pnt-spin";
-      overlayContainer.querySelector("#" + parentId).appendChild(spin);
     }
 
     const ants = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -850,12 +842,6 @@
       rect.height - border.top - border.bottom - padding.top - padding.bottom
     );
 
-    // Sweep ring — sits 2px outside the element, so its radius grows to match
-    positionBox("pnt-border-box", rect.top - 2, rect.left - 2, rect.width + 4, rect.height + 4);
-
-    // Inner bloom — exactly the element's box
-    positionBox("pnt-bloom", rect.top, rect.left, rect.width, rect.height);
-
     applyRadiiToOverlay(el, rect, border);
 
     // Label content, then one pass that places both it and the toolbar
@@ -872,26 +858,7 @@
       if (node) applyRadii(node, radii, offset);
     };
     setRadii("pnt-margin-box", 0);
-    setRadii("pnt-bloom", 0);
-    setRadii("pnt-border-box", 2);
     setRadii("pnt-padding-box", -thickest);
-
-    // One square, large enough to cover the box's diagonal at any rotation, spun
-    // by transform — so the gradient rotates without repainting on every frame.
-    // Past a point that square would be a huge layer for no visible gain (Select
-    // Parent walks up to <body> routinely), so those fall back to a plain stroke.
-    const diagonal = Math.ceil(Math.hypot(rect.width + 4, rect.height + 4));
-    const oversized = diagonal > GEOMETRY.maxSweepDiagonal;
-    if (overlayContainer) overlayContainer.classList.toggle("pnt-plain", oversized);
-
-    if (!oversized) {
-      for (const id of ["pnt-sweep-spin", "pnt-bloom-spin"]) {
-        const spin = document.getElementById(id);
-        if (!spin) continue;
-        spin.style.width = diagonal + "px";
-        spin.style.height = diagonal + "px";
-      }
-    }
 
     // Marching dashes: the svg starts 2px out so a 2px stroke centred on the
     // element's edge is fully inside it

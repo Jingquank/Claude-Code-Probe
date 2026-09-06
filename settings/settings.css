@@ -10,9 +10,9 @@
    theme-specific values. */
 
 :root {
-  --sp-ground: var(--pnt-surface);
-  --sp-raised: color-mix(in srgb, var(--pnt-surface) 94%, var(--pnt-text));
-  --sp-hairline: color-mix(in srgb, var(--pnt-surface) 84%, var(--pnt-text));
+  --sp-ground: var(--pnt-surface-0);
+  --sp-raised: color-mix(in srgb, var(--pnt-surface-0) 94%, var(--pnt-text-1));
+  --sp-hairline: color-mix(in srgb, var(--pnt-surface-0) 84%, var(--pnt-text-1));
   --sp-pad: 22px;
   /* Sections glide open and closed (::details-content height below); this is
      what lets `height: auto` interpolate. */
@@ -26,7 +26,7 @@ html, body { height: 100%; }
 body {
   margin: 0;
   background: var(--sp-ground);
-  color: var(--pnt-text);
+  color: var(--pnt-text-1);
   font: var(--pnt-text-base)/var(--pnt-leading-base) var(--pnt-font);
   -webkit-font-smoothing: antialiased;
 }
@@ -61,16 +61,16 @@ body {
   font-size: var(--pnt-text-lg);
   font-weight: var(--pnt-weight-bold);
   text-transform: uppercase;
-  letter-spacing: var(--pnt-tracking-wide);
-  color: var(--pnt-text);
+  letter-spacing: var(--pnt-tracking-caps);
+  color: var(--pnt-text-1);
 }
 
 .sp-version {
   margin: 0;
   font-size: var(--pnt-text-sm);
   text-transform: uppercase;
-  letter-spacing: var(--pnt-tracking-wide);
-  color: var(--pnt-text-muted);
+  letter-spacing: var(--pnt-tracking-caps);
+  color: var(--pnt-text-3);
 }
 
 /* ===== Two columns =====
@@ -166,7 +166,7 @@ body {
   border-radius: var(--pnt-radius-xs);
 }
 
-.sp-summary:hover .sp-legend { color: var(--pnt-text-dim); }
+.sp-summary:hover .sp-legend { color: var(--pnt-text-2); }
 
 /* Drawn caret, not a glyph: rotates from "pointing right" (closed) to
    "pointing down" (open). */
@@ -175,8 +175,8 @@ body {
   width: 6px;
   height: 6px;
   margin-top: -3px;
-  border-right: 1.5px solid var(--pnt-text-muted);
-  border-bottom: 1.5px solid var(--pnt-text-muted);
+  border-right: 1.5px solid var(--pnt-text-3);
+  border-bottom: 1.5px solid var(--pnt-text-3);
   transform: rotate(45deg);
   transition: transform var(--pnt-duration);
 }
@@ -217,14 +217,14 @@ details:not([open]) > .sp-summary .sp-caret {
   font-weight: var(--pnt-weight-medium);
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--pnt-text-muted);
+  color: var(--pnt-text-3);
 }
 
 .sp-tag {
   font-size: var(--pnt-text-sm);
   font-weight: var(--pnt-weight-medium);
   text-transform: uppercase;
-  letter-spacing: var(--pnt-tracking-wide);
+  letter-spacing: var(--pnt-tracking-caps);
   color: var(--pnt-accent);
   border: 1px solid rgb(from var(--pnt-accent) r g b / 0.4);
   border-radius: var(--pnt-radius-xs);
@@ -236,10 +236,10 @@ details:not([open]) > .sp-summary .sp-caret {
   max-width: 62ch;
   font-size: var(--pnt-text-sm);
   line-height: var(--pnt-leading-base);
-  color: var(--pnt-text-muted);
+  color: var(--pnt-text-3);
 }
 
-.sp-sub strong { color: var(--pnt-text-dim); font-weight: var(--pnt-weight-medium); }
+.sp-sub strong { color: var(--pnt-text-2); font-weight: var(--pnt-weight-medium); }
 
 .sp-hr { border: 0; border-top: 1px solid var(--sp-hairline); margin: 0; }
 
@@ -257,13 +257,13 @@ details:not([open]) > .sp-summary .sp-caret {
   align-items: center;
   gap: var(--pnt-sm);
   padding: var(--pnt-gap-base) var(--pnt-md) var(--pnt-gap-base) var(--pnt-sm);
-  border: 1px solid var(--pnt-sep);
+  border: 1px solid var(--pnt-border-2);
   border-radius: 20px;
   background: transparent;
-  color: var(--pnt-text-dim);
+  color: var(--pnt-text-2);
   font: var(--pnt-weight-medium) var(--pnt-text-sm)/var(--pnt-leading-tight) var(--pnt-font);
   text-transform: uppercase;
-  letter-spacing: var(--pnt-tracking-wide);
+  letter-spacing: var(--pnt-tracking-caps);
   cursor: pointer;
   transition: background var(--pnt-duration), border-color var(--pnt-duration),
               color var(--pnt-duration), transform var(--pnt-duration-fast) ease;
@@ -273,7 +273,7 @@ details:not([open]) > .sp-summary .sp-caret {
 
 .sp-pill:hover {
   border-color: rgb(from var(--pnt-accent) r g b / 0.6);
-  color: var(--pnt-text);
+  color: var(--pnt-text-1);
 }
 
 .sp-pill:focus-visible {
@@ -297,11 +297,11 @@ details:not([open]) > .sp-summary .sp-caret {
   height: 10px;
   border-radius: var(--pnt-radius-xs);
   overflow: hidden;
-  box-shadow: inset 0 0 0 1px rgb(from var(--pnt-text) r g b / 0.18);
+  box-shadow: inset 0 0 0 1px rgb(from var(--pnt-text-1) r g b / 0.18);
 }
 
 .sp-sw > i { flex: 1; }
-.sp-sw > i:nth-child(1) { background: var(--pnt-surface); }
+.sp-sw > i:nth-child(1) { background: var(--pnt-surface-0); }
 .sp-sw > i:nth-child(2) { background: var(--pnt-accent); }
 .sp-sw > i:nth-child(3) { background: var(--pnt-syntax-id); }
 .sp-sw > i:nth-child(4) { background: var(--pnt-syntax-class); }
@@ -310,7 +310,7 @@ details:not([open]) > .sp-summary .sp-caret {
 .sp-sw-split { display: flex; }
 .sp-sw-split > span { display: flex; flex: 1; }
 .sp-sw-split > span > i { flex: 1; }
-.sp-sw-split > span > i:nth-child(1) { background: var(--pnt-surface); }
+.sp-sw-split > span > i:nth-child(1) { background: var(--pnt-surface-0); }
 .sp-sw-split > span > i:nth-child(2) { background: var(--pnt-accent); }
 
 /* The note fades in with a 2px rise and fades back out; settings.js toggles
@@ -349,8 +349,8 @@ details:not([open]) > .sp-summary .sp-caret {
   font-size: var(--pnt-text-sm);
   font-weight: var(--pnt-weight-medium);
   text-transform: uppercase;
-  letter-spacing: var(--pnt-tracking-wide);
-  color: var(--pnt-text-faint);
+  letter-spacing: var(--pnt-tracking-caps);
+  color: var(--pnt-text-3);
 }
 
 .sp-spec {
@@ -372,26 +372,26 @@ details:not([open]) > .sp-summary .sp-caret {
   max-width: 62ch;
   font-size: var(--pnt-text-sm);
   line-height: var(--pnt-leading-base);
-  color: var(--pnt-text-faint);
+  color: var(--pnt-text-3);
 }
 
-.sp-note strong { color: var(--pnt-text-muted); }
+.sp-note strong { color: var(--pnt-text-3); }
 
 .sp-note code {
   font-family: var(--pnt-font-mono);
-  color: var(--pnt-text-muted);
+  color: var(--pnt-text-3);
 }
 
 .sp-spec-label {
   flex: none;
   font-size: var(--pnt-text-base);
-  color: var(--pnt-text);
+  color: var(--pnt-text-1);
 }
 
 .sp-spec-leader {
   flex: 1;
   min-width: 24px;
-  border-top: 1px dotted var(--pnt-sep);
+  border-top: 1px dotted var(--pnt-border-2);
   margin-top: 2px;
 }
 
@@ -399,7 +399,7 @@ details:not([open]) > .sp-summary .sp-caret {
 .sp-seg {
   display: inline-flex;
   flex: none;
-  border: 1px solid var(--pnt-sep);
+  border: 1px solid var(--pnt-border-2);
   border-radius: var(--pnt-radius-sm);
   overflow: hidden;
 }
@@ -407,10 +407,10 @@ details:not([open]) > .sp-summary .sp-caret {
 .sp-seg button {
   border: 0;
   background: transparent;
-  color: var(--pnt-text-muted);
+  color: var(--pnt-text-3);
   font: var(--pnt-weight-medium) var(--pnt-text-sm)/var(--pnt-leading-tight) var(--pnt-font);
   text-transform: uppercase;
-  letter-spacing: var(--pnt-tracking-wide);
+  letter-spacing: var(--pnt-tracking-caps);
   padding: var(--pnt-gap-base) var(--pnt-md);
   cursor: pointer;
   transition: background var(--pnt-duration), color var(--pnt-duration),
@@ -419,9 +419,9 @@ details:not([open]) > .sp-summary .sp-caret {
 
 .sp-seg button:active { transform: scale(0.97); }
 
-.sp-seg button + button { border-left: 1px solid var(--pnt-sep); }
+.sp-seg button + button { border-left: 1px solid var(--pnt-border-2); }
 
-.sp-seg button:hover { color: var(--pnt-text); }
+.sp-seg button:hover { color: var(--pnt-text-1); }
 
 .sp-seg button:focus-visible {
   outline: 2px solid var(--pnt-accent);
@@ -439,7 +439,7 @@ details:not([open]) > .sp-summary .sp-caret {
    than a chosen value's. */
 .sp-seg-act button[aria-pressed="true"] {
   background: color-mix(in srgb, var(--pnt-accent) 22%, transparent);
-  color: var(--pnt-text);
+  color: var(--pnt-text-1);
 }
 
 /* The payload bar's chips: the same control one size down, so they read as
@@ -459,7 +459,7 @@ details:not([open]) > .sp-summary .sp-caret {
   padding: 0;
   border: 0;
   border-radius: 9px;
-  background: var(--pnt-sep);
+  background: var(--pnt-border-2);
   cursor: pointer;
   transition: background var(--pnt-duration), transform var(--pnt-duration-fast) ease;
 }
@@ -474,7 +474,7 @@ details:not([open]) > .sp-summary .sp-caret {
   width: 13px;
   height: 13px;
   border-radius: 50%;
-  background: var(--pnt-text-muted);
+  background: var(--pnt-text-3);
   transition: left var(--pnt-duration), background var(--pnt-duration);
 }
 
@@ -495,8 +495,8 @@ details:not([open]) > .sp-summary .sp-caret {
   background: transparent;
   font: var(--pnt-weight-medium) var(--pnt-text-sm)/var(--pnt-leading-tight) var(--pnt-font);
   text-transform: uppercase;
-  letter-spacing: var(--pnt-tracking-wide);
-  color: var(--pnt-text-muted);
+  letter-spacing: var(--pnt-tracking-caps);
+  color: var(--pnt-text-3);
   cursor: pointer;
   transition: color var(--pnt-duration), transform var(--pnt-duration-fast) ease;
 }
@@ -522,11 +522,11 @@ details:not([open]) > .sp-summary .sp-caret {
   padding-top: var(--pnt-lg);
   border-top: 1px solid var(--sp-hairline);
   font-size: var(--pnt-text-sm);
-  color: var(--pnt-text-faint);
+  color: var(--pnt-text-3);
 }
 
 .sp-footer p { margin: 0; }
-.sp-footer a { color: var(--pnt-text-muted); }
+.sp-footer a { color: var(--pnt-text-3); }
 .sp-footer a:hover { color: var(--pnt-accent); }
 
 /* ===== The preview =====
@@ -588,15 +588,15 @@ details:not([open]) > .sp-summary .sp-caret {
 .sp-pay-q {
   font-size: var(--pnt-text-sm);
   text-transform: uppercase;
-  letter-spacing: var(--pnt-tracking-wide);
-  color: var(--pnt-text-faint);
+  letter-spacing: var(--pnt-tracking-caps);
+  color: var(--pnt-text-3);
 }
 
 .sp-pay-count {
   margin-left: auto;
   font-size: var(--pnt-text-sm);
   font-variant-numeric: tabular-nums;
-  color: var(--pnt-text-faint);
+  color: var(--pnt-text-3);
 }
 
 .sp-pay-out {
@@ -606,18 +606,18 @@ details:not([open]) > .sp-summary .sp-caret {
   overflow: auto;
   border: 1px solid var(--sp-hairline);
   border-radius: var(--pnt-radius-sm);
-  background: var(--pnt-surface);
+  background: var(--pnt-surface-0);
   font: var(--pnt-text-sm)/var(--pnt-leading-base) var(--pnt-font);
-  color: var(--pnt-text-muted);
+  color: var(--pnt-text-3);
   /* The payload is copied as-is, so it is shown as-is: a line that would wrap
      in a prompt wraps here, rather than being hidden behind a scrollbar. */
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
-.sp-pay-out .sp-pay-fence { color: var(--pnt-text-faint); }
+.sp-pay-out .sp-pay-fence { color: var(--pnt-text-3); }
 .sp-pay-out .sp-pay-tag { color: var(--pnt-accent); }
-.sp-pay-out .sp-pay-empty { color: var(--pnt-text-faint); }
+.sp-pay-out .sp-pay-empty { color: var(--pnt-text-3); }
 
 /* The row under the pointer lights up the line it writes — the same lesson the
    vignette's spotlight teaches, in the only register text has. */
@@ -629,7 +629,7 @@ details:not([open]) > .sp-summary .sp-caret {
 
 .sp-pay-out [data-field].sp-pay-hi {
   background: color-mix(in srgb, var(--pnt-accent) 22%, transparent);
-  color: var(--pnt-text);
+  color: var(--pnt-text-1);
 }
 
 .sp-pay-note {
@@ -637,10 +637,10 @@ details:not([open]) > .sp-summary .sp-caret {
   min-height: 2lh;
   font-size: var(--pnt-text-sm);
   line-height: var(--pnt-leading-base);
-  color: var(--pnt-text-faint);
+  color: var(--pnt-text-3);
 }
 
-.sp-pay-note b { color: var(--pnt-text-muted); font-weight: var(--pnt-weight-medium); }
+.sp-pay-note b { color: var(--pnt-text-3); font-weight: var(--pnt-weight-medium); }
 .sp-pay-warn { color: var(--pnt-accent); }
 .sp-pay-warn b { color: var(--pnt-accent); }
 
@@ -677,9 +677,9 @@ details:not([open]) > .sp-summary .sp-caret {
   font-size: var(--pnt-text-sm);
   font-weight: var(--pnt-weight-medium);
   text-transform: uppercase;
-  letter-spacing: var(--pnt-tracking-wide);
-  color: var(--pnt-text-faint);
-  border-bottom: 1px dotted var(--pnt-sep);
+  letter-spacing: var(--pnt-tracking-caps);
+  color: var(--pnt-text-3);
+  border-bottom: 1px dotted var(--pnt-border-2);
   padding-bottom: 2px;
 }
 
@@ -713,7 +713,7 @@ details:not([open]) > .sp-summary .sp-caret {
   background: conic-gradient(
     transparent 0deg,
     var(--pnt-accent) 90deg,
-    var(--pnt-accent-light) 180deg,
+    var(--pnt-accent-hover) 180deg,
     var(--pnt-accent) 270deg,
     transparent 360deg
   );
@@ -732,7 +732,7 @@ details:not([open]) > .sp-summary .sp-caret {
   gap: var(--pnt-gap-pair);
   padding: var(--pnt-md) var(--pnt-btn-x);
   border-radius: var(--pnt-radius-md);
-  background: color-mix(in srgb, var(--pnt-surface) 93%, var(--pnt-accent));
+  background: color-mix(in srgb, var(--pnt-surface-0) 93%, var(--pnt-accent));
 }
 
 .pnt-mock #pnt-label,
@@ -812,7 +812,7 @@ details:not([open]) > .sp-summary .sp-caret {
 /* The live panel fills this from the element's own colour; the specimen has no
    element, so it stands in with the theme's ink — the swatch is showing that a
    colour is there, not which one. */
-.ep-mock .pnt-edit-swatch i { background: var(--pnt-text-dim); }
+.ep-mock .pnt-edit-swatch i { background: var(--pnt-text-2); }
 
 /* The two settings act on the specimen the way they act on the live panel:
    "relevant" drops a group the element does not have, and the token control
@@ -830,7 +830,7 @@ details:not([open]) > .sp-summary .sp-caret {
   background: transparent;
 }
 .ep-mock[data-tokens="token"] #pnt-edit-panel [data-ep-row="token"] .pnt-edit-input {
-  color: var(--pnt-text-faint);
+  color: var(--pnt-text-3);
 }
 .ep-mock[data-tokens="token"] #pnt-edit-panel [data-ep-row="token"] .pnt-edit-unit {
   display: none;
@@ -866,8 +866,8 @@ details:not([open]) > .sp-summary .sp-caret {
   top: 4px;
   font-size: var(--pnt-text-sm);
   text-transform: uppercase;
-  letter-spacing: var(--pnt-tracking-wide);
-  color: var(--pnt-text-faint);
+  letter-spacing: var(--pnt-tracking-caps);
+  color: var(--pnt-text-3);
 }
 
 .sv-sel {
@@ -889,7 +889,7 @@ details:not([open]) > .sp-summary .sp-caret {
   top: 46px;
   width: 96px;
   height: 70px;
-  border: 1px solid rgb(from var(--pnt-text-faint) r g b / 0.55);
+  border: 1px solid rgb(from var(--pnt-text-3) r g b / 0.55);
   border-radius: var(--pnt-radius-sm);
 }
 
@@ -935,7 +935,7 @@ details:not([open]) > .sp-summary .sp-caret {
   letter-spacing: var(--pnt-tracking-num);
   font-variant-numeric: tabular-nums;
   text-transform: uppercase;
-  color: var(--pnt-text-faint);
+  color: var(--pnt-text-3);
 }
 
 .sv-title {
@@ -945,8 +945,8 @@ details:not([open]) > .sp-summary .sp-caret {
   display: grid;
   gap: 2px;
   padding: var(--pnt-gap-base) var(--pnt-md);
-  background: var(--pnt-surface);
-  border: 1px solid var(--pnt-sep);
+  background: var(--pnt-surface-0);
+  border: 1px solid var(--pnt-border-2);
   border-radius: var(--pnt-radius-xs);
   font-size: var(--pnt-text-sm);
   text-transform: uppercase;
@@ -955,7 +955,7 @@ details:not([open]) > .sp-summary .sp-caret {
 .sv-title b {
   font-weight: var(--pnt-weight-bold);
   letter-spacing: 0.12em;
-  color: var(--pnt-text-dim);
+  color: var(--pnt-text-2);
 }
 
 .sv-pill {
@@ -1002,7 +1002,7 @@ details:not([open]) > .sp-summary .sp-caret {
   font-size: var(--pnt-text-sm);
   letter-spacing: var(--pnt-tracking-num);
   font-variant-numeric: tabular-nums;
-  color: var(--pnt-text-muted);
+  color: var(--pnt-text-3);
   text-transform: none;
 }
 
@@ -1011,10 +1011,10 @@ details:not([open]) > .sp-summary .sp-caret {
 .sp-element-title {
   font-size: var(--pnt-text-lg);
   font-weight: var(--pnt-weight-bold);
-  color: var(--pnt-text);
+  color: var(--pnt-text-1);
 }
 
-.sp-element-body { font-size: var(--pnt-text-base); color: var(--pnt-text-muted); }
+.sp-element-body { font-size: var(--pnt-text-base); color: var(--pnt-text-3); }
 
 /* The page's complete motion inventory dies here, zeroed rather than
    softened — same contract as content.css's block. */

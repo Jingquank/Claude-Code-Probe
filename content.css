@@ -26,93 +26,42 @@
               opacity var(--pnt-duration) ease;
 }
 
-/* Hover — box-model hints, with the outline itself drawn as marching dashes.
-   The padding band borrows the id colour so the two bands stay distinguishable
-   in every theme without needing tokens of their own. */
-#pnt-margin-box  { border: 1px dashed rgb(from var(--pnt-accent) r g b / 0.3); }
-#pnt-padding-box { border: 1px dashed rgb(from var(--pnt-syntax-id) r g b / 0.3); }
+/* Hover — the box-model bands and a quiet dashed outline around the element.
+   The margin band is a neutral, the padding band the accent, so the two stay
+   distinguishable in every theme without tokens of their own. */
+#pnt-margin-box  { border: 1px dashed rgb(from var(--pnt-text-3) r g b / 0.55); }
+#pnt-padding-box { border: 1px dashed rgb(from var(--pnt-accent) r g b / 0.4); }
 #pnt-content-box { border: none; }
 
 /* An SVG path rather than a border, so the dashes travel around the corner arc
-   instead of breaking at it — and so per-corner radii come out right. */
+   instead of breaking at it — and so per-corner radii come out right. Still on
+   hover; on selection the same path comes up to the full accent at the ring
+   weight and starts to crawl. Slow ants — chosen in round two of the brand
+   directions over a ring, corner brackets and a glow. The 1.x sweep and bloom
+   are gone: a rotating gradient behind the thing you are judging was motion
+   competing with it. */
 #pnt-ants { overflow: visible; }
 #pnt-ants path {
   fill: none;
-  stroke: rgb(from var(--pnt-accent) r g b / 0.85);
-  stroke-width: var(--pnt-ring);
-  stroke-dasharray: 7 5;
-  animation: pnt-march 0.55s linear infinite;
+  stroke: rgb(from var(--pnt-accent) r g b / 0.7);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 5;
+  transition: stroke var(--pnt-duration) var(--pnt-ease),
+              stroke-width var(--pnt-duration) var(--pnt-ease);
 }
-@keyframes pnt-march { to { stroke-dashoffset: -12; } }
 
-/* Selected — a gradient sweeping the stroke, and the same gradient blurred inward.
-   Both are one oversized square spun by transform: composited, so the cost doesn't
-   grow with the element. */
-#pnt-border-box,
-#pnt-bloom { display: none; }
+#pnt-overlay-container.pnt-selected #pnt-ants path {
+  stroke: var(--pnt-accent);
+  stroke-width: var(--pnt-ring);
+  animation: pnt-march 1.6s linear infinite;
+}
+@keyframes pnt-march { to { stroke-dashoffset: -22; } }
 
-#pnt-overlay-container.pnt-selected #pnt-ants { display: none; }
-#pnt-overlay-container.pnt-selected #pnt-border-box,
-#pnt-overlay-container.pnt-selected #pnt-bloom { display: block; }
+/* Selected — the bands stand down; the outline is the whole statement. */
 #pnt-overlay-container.pnt-selected #pnt-margin-box,
 #pnt-overlay-container.pnt-selected #pnt-padding-box {
   border-color: transparent;
 }
-
-#pnt-border-box {
-  padding: var(--pnt-ring);
-  overflow: hidden;
-  -webkit-mask: linear-gradient(var(--pnt-mask) 0 0) content-box, linear-gradient(var(--pnt-mask) 0 0);
-  -webkit-mask-composite: xor;
-  mask: linear-gradient(var(--pnt-mask) 0 0) content-box, linear-gradient(var(--pnt-mask) 0 0);
-  mask-composite: exclude;
-}
-
-#pnt-bloom {
-  overflow: hidden;
-  -webkit-mask: radial-gradient(closest-side, transparent 25%, var(--pnt-mask) 95%);
-  mask: radial-gradient(closest-side, transparent 25%, var(--pnt-mask) 95%);
-}
-
-.pnt-spin {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  animation: pnt-spin 10s linear infinite;
-  will-change: transform;
-}
-
-@keyframes pnt-spin {
-  from { transform: translate(-50%, -50%) rotate(0deg); }
-  to   { transform: translate(-50%, -50%) rotate(360deg); }
-}
-
-#pnt-sweep-spin {
-  background: conic-gradient(
-    transparent 0deg,
-    var(--pnt-accent) 90deg,
-    var(--pnt-accent-light) 180deg,
-    var(--pnt-accent) 270deg,
-    transparent 360deg
-  );
-}
-
-#pnt-bloom-spin {
-  background: conic-gradient(
-    transparent 0deg,
-    rgb(from var(--pnt-accent) r g b / 0.75) 90deg,
-    rgb(from var(--pnt-accent-light) r g b / 0.6) 180deg,
-    rgb(from var(--pnt-accent) r g b / 0.75) 270deg,
-    transparent 360deg
-  );
-  filter: blur(16px);
-}
-
-/* Elements too big for the effect to read (a whole page, say) get a plain stroke
-   rather than a spun square the size of the document */
-#pnt-overlay-container.pnt-plain #pnt-sweep-spin { display: none; }
-#pnt-overlay-container.pnt-plain #pnt-border-box { background: var(--pnt-accent); }
-#pnt-overlay-container.pnt-plain #pnt-bloom { display: none; }
 
 /* Everything that moves on its own has to stop here — the marquee, the ants,
    the sweep, the flash, the loading spinner. Anything animated must be listed;
@@ -120,7 +69,6 @@
    it. */
 @media (prefers-reduced-motion: reduce) {
   #pnt-ants path,
-  .pnt-spin,
   .pnt-spinner,
   #pnt-label .pnt-marquee-inner,
   #pnt-edit-flash.pnt-edit-flashing {
@@ -219,7 +167,7 @@
   transform: translate(-50%, -50%);
   background: var(--pnt-accent);
   color: var(--pnt-on-accent);
-  font: var(--pnt-weight-medium) var(--pnt-text-sm)/1 var(--pnt-font);
+  font: var(--pnt-weight-medium) var(--pnt-text-sm)/1 var(--pnt-font-mono);
   letter-spacing: var(--pnt-tracking-num);
   font-variant-numeric: tabular-nums;
   padding: var(--pnt-gap-tight) var(--pnt-xs);
@@ -228,15 +176,12 @@
 }
 
 /* Quiet overlay — an opt-in preference (redlineQuietOverlay). While measuring,
-   the box-model tints, bloom, and sweep accents stand down so nothing painted
-   sits under the measurement lines; the marching-ants outline stays, because
-   you must still see what you're measuring from. Opacity, so the container's
-   own transition fades them out and back. */
+   the box-model bands stand down so nothing painted sits under the measurement
+   lines; the ants stay, because you must still see what you're measuring from.
+   Opacity, so the container's own transition fades them out and back. */
 .pnt-redline-quiet.pnt-redlining #pnt-margin-box,
 .pnt-redline-quiet.pnt-redlining #pnt-padding-box,
-.pnt-redline-quiet.pnt-redlining #pnt-content-box,
-.pnt-redline-quiet.pnt-redlining #pnt-bloom,
-.pnt-redline-quiet.pnt-redlining .pnt-spin {
+.pnt-redline-quiet.pnt-redlining #pnt-content-box {
   opacity: 0;
 }
 
@@ -355,17 +300,12 @@
 }
 
 /* ===== Edit Mode =====
-   The same hush, for the same reasons, plus one of its own: the beam. The
-   sweep is a "look here" animation, and while you are tuning an element the
-   answer to "which one" is settled — a rotating gradient behind live controls
-   is just motion competing with the thing you are judging.
-
-   The box used to stay, flattened to a solid stroke. It no longer does. The
-   panel writes border-width, border-color, border-radius and box-shadow, and a
-   ring drawn 2px outside the element sits on top of all four — you cannot
+   The same hush, for the same reasons, plus one of its own: the outline goes.
+   The panel writes border-width, border-color, border-radius and box-shadow,
+   and ants drawn 2px outside the element sit on top of all four — you cannot
    judge a 2px stroke through an accent stroke, or watch a corner round under
-   one. The whole box goes, and the tether takes over the job of saying which
-   element this panel belongs to, working only in the space outside it. */
+   one. The whole outline goes, and the tether takes over the job of saying
+   which element this panel belongs to, working only in the space outside it. */
 .pnt-editing #pnt-label,
 .pnt-editing #pnt-toolbar {
   visibility: hidden;
@@ -376,14 +316,13 @@
   pointer-events: none !important;
 }
 /* Scoped through the container *and* .pnt-selected on purpose: the rule that
-   turns these on for a selection is `#pnt-overlay-container.pnt-selected
-   #pnt-bloom` at (2,1,0), so a plain `.pnt-editing #pnt-bloom` at (1,1,0)
-   loses and the bloom keeps rotating behind the panel. Matching the shape and
-   adding the mode class makes it (2,2,0) — a win on specificity rather than on
-   source order, which would break the first time these sections were reordered. */
-.pnt-editing #pnt-overlay-container.pnt-selected #pnt-sweep-spin,
-.pnt-editing #pnt-overlay-container.pnt-selected #pnt-bloom,
-.pnt-editing #pnt-overlay-container.pnt-selected #pnt-border-box {
+   turns the ants up for a selection is `#pnt-overlay-container.pnt-selected
+   #pnt-ants path` at (2,1,1), so a plain `.pnt-editing #pnt-ants` at (1,1,0)
+   would lose and the ants would keep crawling behind the panel. Matching the
+   shape and adding the mode class makes this a win on specificity rather than
+   on source order, which would break the first time these sections were
+   reordered. */
+.pnt-editing #pnt-overlay-container.pnt-selected #pnt-ants {
   display: none;
 }
 /* The box-model tints go with it. They are drawn on the element's own padding
@@ -805,7 +744,7 @@
   z-index: var(--pnt-z-chrome);
   box-sizing: border-box;
   font-family: var(--pnt-font);
-  color: var(--pnt-text);
+  color: var(--pnt-text-1);
   background: var(--pnt-glass);
   -webkit-backdrop-filter: blur(var(--pnt-blur)) saturate(1.15);
   backdrop-filter: blur(var(--pnt-blur)) saturate(1.15);
@@ -948,7 +887,7 @@
   flex: none;
   width: 9px;
   height: 9px;
-  border: 1px dashed var(--pnt-text-faint);
+  border: 1px dashed var(--pnt-text-3);
   border-radius: 50%;
 }
 
@@ -959,7 +898,7 @@
   box-sizing: border-box;
   display: block;
   font-family: var(--pnt-font);
-  color: var(--pnt-text);
+  color: var(--pnt-text-1);
   padding: var(--pnt-gap-section) var(--pnt-md) var(--pnt-md);
   overflow-y: auto;
   min-height: 0;
@@ -1033,8 +972,8 @@
 }
 
 #pnt-edit-panel .pnt-edit-dot.pnt-edit-on:hover {
-  background: var(--pnt-text);
-  border-color: var(--pnt-text);
+  background: var(--pnt-text-1);
+  border-color: var(--pnt-text-1);
 }
 
 #pnt-edit-panel .pnt-edit-numwrap {
@@ -1082,7 +1021,7 @@
   text-align: right;
   font: var(--pnt-weight-medium) var(--pnt-text-base)/1.3 var(--pnt-font-mono);
   font-variant-numeric: tabular-nums;
-  color: var(--pnt-text);
+  color: var(--pnt-text-1);
   background: transparent;
   border: 0;
   padding: 0;
@@ -1095,7 +1034,7 @@
 #pnt-edit-panel .pnt-edit-unit {
   all: initial;
   font: var(--pnt-text-micro)/1.3 var(--pnt-font-mono);
-  color: var(--pnt-text-faint);
+  color: var(--pnt-text-3);
   flex: none;
 }
 
@@ -1103,7 +1042,7 @@
    is still auto. The number shown is real, it just isn't a decision anyone
    made, so it reads quieter than one that was. */
 #pnt-edit-panel .pnt-edit-num.pnt-edit-untouched .pnt-edit-input {
-  color: var(--pnt-text-faint);
+  color: var(--pnt-text-3);
 }
 
 /* Token-only mode. The number stays in the layout rather than being removed,
@@ -1115,7 +1054,7 @@
   background: transparent;
 }
 
-#pnt-edit-panel .pnt-edit-num.pnt-edit-quiet .pnt-edit-input { color: var(--pnt-text-faint); }
+#pnt-edit-panel .pnt-edit-num.pnt-edit-quiet .pnt-edit-input { color: var(--pnt-text-3); }
 #pnt-edit-panel .pnt-edit-num.pnt-edit-quiet .pnt-edit-unit { display: none; }
 
 #pnt-edit-panel .pnt-edit-auto {
@@ -1123,10 +1062,10 @@
   box-sizing: border-box;
   flex: none;
   padding: 2px var(--pnt-xs);
-  border: 1px solid var(--pnt-sep);
+  border: 1px solid var(--pnt-border-2);
   border-radius: var(--pnt-radius-sm);
   background: transparent;
-  color: var(--pnt-text-muted);
+  color: var(--pnt-text-3);
   font: var(--pnt-weight-medium) 9px/1.4 var(--pnt-font-sans);
   letter-spacing: var(--pnt-tracking-caps);
   text-transform: uppercase;
@@ -1165,7 +1104,7 @@
   width: 15px;
   height: 20px;
   background: transparent;
-  color: var(--pnt-text-muted);
+  color: var(--pnt-text-3);
   font: var(--pnt-weight-bold) var(--pnt-text-sm)/1 var(--pnt-font);
   cursor: pointer;
   transition: background var(--pnt-duration), color var(--pnt-duration);
@@ -1193,14 +1132,14 @@
   background: transparent;
 }
 
-#pnt-edit-panel .pnt-edit-tok.pnt-edit-offscale b { color: var(--pnt-text-faint); }
+#pnt-edit-panel .pnt-edit-tok.pnt-edit-offscale b { color: var(--pnt-text-3); }
 
 #pnt-edit-panel .pnt-edit-seg {
   all: initial;
   box-sizing: border-box;
   display: inline-flex;
   flex: none;
-  border: 1px solid var(--pnt-sep);
+  border: 1px solid var(--pnt-border-2);
   border-radius: var(--pnt-radius-sm);
   overflow: hidden;
 }
@@ -1214,14 +1153,14 @@
   width: 22px;
   height: 20px;
   background: transparent;
-  color: var(--pnt-text-muted);
+  color: var(--pnt-text-3);
   cursor: pointer;
   font: var(--pnt-text-sm)/1 var(--pnt-font);
   transition: background var(--pnt-duration), color var(--pnt-duration);
 }
 
 #pnt-edit-panel .pnt-edit-seg button + button {
-  border-left: 1px solid var(--pnt-sep);
+  border-left: 1px solid var(--pnt-border-2);
 }
 
 #pnt-edit-panel .pnt-edit-seg button[aria-checked="true"] {
@@ -1249,7 +1188,7 @@
   border: 1px solid var(--pnt-border-2);
   border-radius: var(--pnt-radius-sm);
   background: transparent;
-  color: var(--pnt-text-muted);
+  color: var(--pnt-text-3);
   font: var(--pnt-text-sm)/1 var(--pnt-font);
   cursor: pointer;
   transition: border-color var(--pnt-duration), color var(--pnt-duration);
@@ -1263,10 +1202,10 @@
 
 #pnt-edit-panel .pnt-edit-side .pnt-edit-label {
   padding-left: var(--pnt-md);
-  color: var(--pnt-text-faint);
+  color: var(--pnt-text-3);
 }
 
-#pnt-edit-panel .pnt-edit-parent .pnt-edit-label { color: var(--pnt-text-dim); }
+#pnt-edit-panel .pnt-edit-parent .pnt-edit-label { color: var(--pnt-text-2); }
 
 #pnt-edit-panel .pnt-edit-add {
   all: initial;
@@ -1276,7 +1215,7 @@
   border: 1px dashed var(--pnt-border-2);
   border-radius: var(--pnt-radius-sm);
   background: transparent;
-  color: var(--pnt-text-muted);
+  color: var(--pnt-text-3);
   font: var(--pnt-text-sm)/1.4 var(--pnt-font);
   text-align: center;
   cursor: pointer;
@@ -1333,7 +1272,7 @@
   all: initial;
   font: var(--pnt-text-sm)/1.4 var(--pnt-font);
   font-variant-numeric: tabular-nums;
-  color: var(--pnt-text-dim);
+  color: var(--pnt-text-2);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1384,7 +1323,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--pnt-text-dim);
+  color: var(--pnt-text-2);
   font: var(--pnt-weight-medium) var(--pnt-text-sm)/1.4 var(--pnt-font);
 }
 
@@ -1399,14 +1338,14 @@
   justify-content: center;
   border-radius: var(--pnt-radius-sm);
   background: transparent;
-  color: var(--pnt-text-dim);
+  color: var(--pnt-text-2);
   font: var(--pnt-text-base)/1 var(--pnt-font);
   cursor: pointer;
 }
 
 #pnt-color-picker .pnt-edit-popclose:hover {
-  background: rgb(from var(--pnt-text) r g b / 0.08);
-  color: var(--pnt-text);
+  background: rgb(from var(--pnt-text-1) r g b / 0.08);
+  color: var(--pnt-text-1);
 }
 
 #pnt-color-picker .pnt-edit-palette {
@@ -1463,7 +1402,7 @@
 #pnt-color-picker .pnt-edit-palcap span {
   all: initial;
   flex: none;
-  color: var(--pnt-text-dim);
+  color: var(--pnt-text-2);
   font: var(--pnt-text-sm)/1.4 var(--pnt-font);
   font-variant-numeric: tabular-nums;
 }
@@ -1556,7 +1495,7 @@
   border: 1px solid var(--pnt-border-1);
   border-radius: var(--pnt-radius-sm);
   background: var(--pnt-surface-1);
-  color: var(--pnt-text);
+  color: var(--pnt-text-1);
   font: var(--pnt-weight-medium) var(--pnt-text-base)/1.3 var(--pnt-font-mono);
   font-variant-numeric: tabular-nums;
 }
@@ -1575,7 +1514,7 @@
   border: 1px solid var(--pnt-border-2);
   border-radius: var(--pnt-radius-sm);
   background: transparent;
-  color: var(--pnt-text-dim);
+  color: var(--pnt-text-2);
   font: var(--pnt-text-base)/1 var(--pnt-font);
   cursor: pointer;
 }
@@ -1828,7 +1767,7 @@
   border-radius: var(--pnt-radius-sm);
 }
 
-#pnt-edit-panel .pnt-adv-summary:hover .pnt-adv-legend { color: var(--pnt-text-dim); }
+#pnt-edit-panel .pnt-adv-summary:hover .pnt-adv-legend { color: var(--pnt-text-2); }
 
 /* Drawn caret, not a glyph — the settings page's, at panel scale. Points
    right closed, down open. */
@@ -1839,8 +1778,8 @@
   width: 5px;
   height: 5px;
   margin-top: -3px;
-  border-right: 1.5px solid var(--pnt-text-muted);
-  border-bottom: 1.5px solid var(--pnt-text-muted);
+  border-right: 1.5px solid var(--pnt-text-3);
+  border-bottom: 1.5px solid var(--pnt-text-3);
   transform: rotate(45deg);
   transition: transform var(--pnt-duration);
 }
@@ -1860,7 +1799,7 @@
   all: initial;
   font: var(--pnt-text-sm)/1.4 var(--pnt-font);
   font-variant-numeric: tabular-nums;
-  color: var(--pnt-text-faint);
+  color: var(--pnt-text-3);
   margin-left: auto;
   white-space: nowrap;
   overflow: hidden;
@@ -1893,7 +1832,7 @@
   all: initial;
   display: block;
   font: var(--pnt-text-sm)/1.5 var(--pnt-font);
-  color: var(--pnt-text-faint);
+  color: var(--pnt-text-3);
   margin: 2px 0 var(--pnt-gap-base);
 }
 
@@ -1923,7 +1862,7 @@
 }
 
 #pnt-edit-panel .pnt-adv-driven .pnt-edit-row:not(.pnt-edit-dirty) .pnt-edit-input {
-  color: var(--pnt-text-dim);
+  color: var(--pnt-text-2);
 }
 
 /* A shader that drew once and stopped, or one the page rebuilt out from
@@ -1969,7 +1908,7 @@
   width: 100%;
   min-width: 0;
   font: var(--pnt-weight-medium) var(--pnt-text-base)/1.3 var(--pnt-font-sans);
-  color: var(--pnt-text);
+  color: var(--pnt-text-1);
   background: transparent;
   border: 0;
   padding: 0;
@@ -2124,7 +2063,7 @@
   all: initial;
   font: var(--pnt-text-micro)/1.4 var(--pnt-font-sans);
   font-style: normal;
-  color: var(--pnt-text-dim);
+  color: var(--pnt-text-2);
   white-space: nowrap;
 }
 
@@ -2132,7 +2071,7 @@
   all: initial;
   box-sizing: border-box;
   font: var(--pnt-text-sm)/1 var(--pnt-font);
-  color: var(--pnt-text-faint);
+  color: var(--pnt-text-3);
   cursor: pointer;
   padding: 2px 3px;
 }
@@ -2178,9 +2117,9 @@
   flex: none;
   display: grid;
   place-items: center;
-  border: 1px solid var(--pnt-sep);
+  border: 1px solid var(--pnt-border-2);
   border-radius: var(--pnt-radius-sm);
-  color: var(--pnt-text-dim);
+  color: var(--pnt-text-2);
   font: 9px/1 var(--pnt-font);
   cursor: pointer;
   background: transparent;
@@ -2200,7 +2139,7 @@
   box-sizing: border-box;
   width: 220px;
   font-family: var(--pnt-font);
-  color: var(--pnt-text);
+  color: var(--pnt-text-1);
   background: var(--pnt-glass);
   -webkit-backdrop-filter: blur(var(--pnt-blur)) saturate(1.15);
   backdrop-filter: blur(var(--pnt-blur)) saturate(1.15);
@@ -2224,7 +2163,7 @@
 #pnt-text-editor .pnt-txted-head button {
   all: initial;
   font: 11px/1 var(--pnt-font);
-  color: var(--pnt-text-dim);
+  color: var(--pnt-text-2);
   cursor: pointer;
   padding: 2px 4px;
 }
@@ -2241,7 +2180,7 @@
   border: 1px solid var(--pnt-border-1);
   border-radius: var(--pnt-radius-sm);
   background: var(--pnt-surface-1);
-  color: var(--pnt-text);
+  color: var(--pnt-text-1);
   font: var(--pnt-text-base)/1.5 var(--pnt-font-sans);
   padding: 5px 6px;
   cursor: text !important;
@@ -2257,7 +2196,7 @@
   all: initial;
   display: block;
   font: var(--pnt-text-micro)/1.4 var(--pnt-font-mono);
-  color: var(--pnt-text-faint);
+  color: var(--pnt-text-3);
   text-align: right;
   margin-top: 3px;
 }

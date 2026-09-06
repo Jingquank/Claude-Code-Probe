@@ -148,31 +148,6 @@
   --pnt-picker-black: #000;
   --pnt-hue-ramp: linear-gradient(to right,
     #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%);
-
-  /* ---- Pre-2.0 names, resolved onto the new roster. ----
-     content.css and settings.css still speak the 1.x vocabulary until Phase 3
-     restyles each surface; these keep the tree green and the chrome rendering
-     in between. Every alias here is deleted when its last consumer goes.
-     text-faint deliberately lands on text-3, which clears AA: the 10px grey
-     that failed it in seven of eight themes is retired, not carried. */
-  --pnt-surface: var(--pnt-surface-0);
-  --pnt-text: var(--pnt-text-1);
-  --pnt-text-dim: var(--pnt-text-2);
-  --pnt-text-muted: var(--pnt-text-3);
-  --pnt-text-faint: var(--pnt-text-3);
-  --pnt-sep: var(--pnt-border-2);
-  --pnt-accent-dark: var(--pnt-accent-hover);
-  --pnt-accent-light: color-mix(in srgb, var(--pnt-accent) 45%, var(--pnt-text-1));
-  --pnt-error: var(--pnt-danger);
-  --pnt-on-error: var(--pnt-on-danger);
-  --pnt-shadow-card: var(--pnt-shadow-1);
-  --pnt-shadow-bar: var(--pnt-shadow-1);
-  --pnt-tracking-wide: var(--pnt-tracking-caps);
-  /* The mascot is gone from the brand; its rules leave with it in Phase 3. */
-  --pnt-clawd-body: var(--pnt-accent);
-  --pnt-clawd-leg: var(--pnt-text-3);
-  --pnt-clawd-eye: #141413;
-  --pnt-clawd-shadow: rgb(0 0 0 / 0.15);
 }
 
 /* ===== Tier 2: themes =====
