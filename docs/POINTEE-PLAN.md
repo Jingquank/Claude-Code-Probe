@@ -1,5 +1,14 @@
 # Pointee 2.0 — rebrand and UI overhaul
 
+> **Status, 2026-09-06.** Phases 1–6 are done on `feat/pointee`: both rounds
+> ran (`test/brand-direction-prototypes.html`, `test/brand-direction-round-two.html`)
+> and chose Vermilion with restrained motion; the rename, the bundled fonts, the
+> 21-token themes, every surface, the settings page, the icon pipeline and the
+> docs are in, with `npm test` green including the browser suite. The manifest
+> and package read 2.0.0. Left for the author: draw the mark and re-run
+> `node icons/generate-icons.mjs`; rename the repository; update the store
+> listing (§9). The ADRs stand as written, 0002 superseded by 0003.
+
 Branch `feat/pointee`, off `main` at 1.5.0. Written 2026-09-05 after a
 decision-by-decision interview; every row in §1 was put to the author and
 answered. This document is the plan. `CONTEXT.md` holds the vocabulary,

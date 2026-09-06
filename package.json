@@ -1,7 +1,7 @@
 {
   "name": "pointee",
-  "version": "1.4.0",
-  "description": "Inspect, highlight, and copy any element on any webpage.",
+  "version": "2.0.0",
+  "description": "Point at any element, copy a source pointer for your coding agent, edit it live.",
   "scripts": {
     "postinstall": "node scripts/postinstall.js",
     "build": "./build.sh",
@@ -11,7 +11,14 @@
     "type": "git",
     "url": "https://github.com/Jingquank/Claude-Code-Probe.git"
   },
-  "keywords": ["browser-extension", "devtools", "inspector", "chrome-extension", "coding-agent", "design-tokens"],
+  "keywords": [
+    "browser-extension",
+    "devtools",
+    "inspector",
+    "chrome-extension",
+    "coding-agent",
+    "design-tokens"
+  ],
   "author": "Jingquank",
   "license": "MIT"
 }
