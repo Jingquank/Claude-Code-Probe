@@ -12,7 +12,7 @@ SRC_DIRS="icons lib settings fonts"
 
 for f in $SRC_FILES; do cp "$f" dist/chrome/; done
 for d in $SRC_DIRS; do cp -r "$d" dist/chrome/; done
-rm -f dist/chrome/icons/generate-icons.js
+rm -f dist/chrome/icons/generate-icons.mjs
 
 (cd dist/chrome && zip -qr ../pointee-chrome.zip . -x ".*")
 echo "Chrome build: dist/pointee-chrome.zip"
