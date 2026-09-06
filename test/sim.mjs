@@ -1,9 +1,14 @@
 // Headless runner for the placement matrix.
-//   node test/sim.mjs                 compare current vs proposed
+//   node test/sim.mjs                 compare current vs proposed, all four layouts
 //   node test/sim.mjs 1440x900 390x844   pick viewports
 //   node test/sim.mjs --detail        per-case geometry for failures
+//
+// The "current" column is the 1.1.0 two-positioner kept as the before
+// picture; "proposed" is what ships — computeChromeLayout, mirrored as
+// layoutChrome — run once per selection layout. Any failure in a proposed
+// column fails the run.
 
-import { runSim, runSimV2 } from "./placement.mjs";
+import { runSim, runSimV2, LAYOUTS } from "./placement.mjs";
 
 const argv = process.argv.slice(2);
 const detail = argv.includes("--detail");
@@ -23,10 +28,11 @@ const VIEWPORTS = sizes.length
 const pad = (s, n) => String(s).padEnd(n);
 const tally = { before: {}, after: {} };
 let totals = { before: 0, after: 0, cases: 0 };
+const perLayout = Object.fromEntries(LAYOUTS.map((l) => [l, { fail: 0, cases: 0 }]));
 
 for (const [vw, vh] of VIEWPORTS) {
   const before = runSim(vw, vh);
-  const after = runSimV2(vw, vh);
+  const after = runSimV2(vw, vh, "edge");
   const byId = Object.fromEntries(before.map((r) => [r.id, r]));
 
   const bFail = before.filter((r) => r.verdict === "FAIL").length;
@@ -38,7 +44,7 @@ for (const [vw, vh] of VIEWPORTS) {
 
   console.log(`\n${"=".repeat(84)}`);
   console.log(`VIEWPORT ${vw}x${vh}    current ${before.length - bFail}/${before.length} pass` +
-              `    proposed ${after.length - aFail}/${after.length} pass`);
+              `    proposed (edge) ${after.length - aFail}/${after.length} pass`);
   console.log("=".repeat(84));
   console.log(`${pad("case", 20)} ${pad("current", 34)} ${pad("proposed", 20)} strategy`);
   console.log("-".repeat(84));
@@ -57,11 +63,27 @@ for (const [vw, vh] of VIEWPORTS) {
                   `bar top=${f(r.toolbar.top)} vis=${Math.round(r.toolbarVisible * 100)}%`);
     }
   }
+
+  // The other three layouts are one card each; only their failures are listed.
+  for (const layout of LAYOUTS) {
+    const res = runSimV2(vw, vh, layout);
+    const fails = res.filter((r) => r.verdict === "FAIL");
+    perLayout[layout].fail += fails.length;
+    perLayout[layout].cases += res.length;
+    if (layout !== "edge") {
+      console.log(`  ${pad(layout, 8)} ${res.length - fails.length}/${res.length} pass` +
+        (fails.length ? `   ! ${fails.map((r) => `${r.id} ${r.flags.join(",")} (${r.strategy})`).join("; ")}` : ""));
+    }
+  }
 }
 
 console.log(`\n${"=".repeat(84)}`);
 console.log(`TOTAL   current ${totals.cases - totals.before}/${totals.cases} pass` +
-            `    proposed ${totals.cases - totals.after}/${totals.cases} pass`);
+            `    proposed (edge) ${totals.cases - totals.after}/${totals.cases} pass`);
+for (const layout of LAYOUTS) {
+  const { fail, cases } = perLayout[layout];
+  console.log(`        ${pad(layout, 8)} ${cases - fail}/${cases} pass`);
+}
 console.log("=".repeat(84));
 const flags = [...new Set([...Object.keys(tally.before), ...Object.keys(tally.after)])];
 for (const f of flags.sort()) {
@@ -69,7 +91,13 @@ for (const f of flags.sort()) {
 }
 
 // Which strategy each case ended up needing, at a representative size
-console.log(`\nSTRATEGY MIX @ 1440x900`);
+console.log(`\nSTRATEGY MIX @ 1440x900 (edge)`);
 const mix = {};
-for (const r of runSimV2(1440, 900)) mix[r.strategy] = (mix[r.strategy] || 0) + 1;
+for (const r of runSimV2(1440, 900, "edge")) mix[r.strategy] = (mix[r.strategy] || 0) + 1;
 for (const [s, n] of Object.entries(mix).sort((a, b) => b[1] - a[1])) console.log(`  ${pad(s, 20)} ${n}`);
+
+const failed = LAYOUTS.reduce((n, l) => n + perLayout[l].fail, 0);
+if (failed) {
+  console.log(`\nsim: ${failed} proposed placements fail`);
+  process.exit(1);
+}

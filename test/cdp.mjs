@@ -187,7 +187,7 @@ const HELPERS = `
       el.dispatchEvent(new MouseEvent("click", { bubbles: true, clientX: r.left + dx, clientY: r.top + dy }));
       return el;
     },
-    edit: () => document.querySelector("#pnt-toolbar .pnt-bar button.pnt-icon-btn").click(),
+    edit: () => document.querySelector('#pnt-toolbar button[data-action="edit"]').click(),
     esc: () => document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })),
     undo: (shift) => document.dispatchEvent(
       new KeyboardEvent("keydown", { key: "z", metaKey: true, shiftKey: !!shift, bubbles: true })),

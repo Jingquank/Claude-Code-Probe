@@ -110,6 +110,7 @@
     <div><kbd>s</kbd> run simulation (no extension needed)</div>
     <div><kbd>r</kbd> run live sweep (point mode must be ON)</div>
     <div><kbd>n</kbd>/<kbd>p</kbd> next / prev case &nbsp; <kbd>g</kbd> go to current</div>
+    <div><kbd>l</kbd> cycle the simulated layout (live reads the extension's)</div>
     <div><kbd>d</kbd> dump JSON to console &nbsp; <kbd>h</kbd> hide HUD</div>
   </div>
   <div id="summary">Press <kbd>s</kbd> to simulate, or turn on point mode and press <kbd>r</kbd>.</div>
@@ -127,10 +128,15 @@
 // runSimV2 is the algorithm content.js implements. This imported runSim — the
 // superseded two-positioner version — so simulate mode was comparing the live
 // chrome against a reference that has not been shipped since 1.1.0.
-import { CASES, caseRect, evaluate, runSimV2 as simulate } from "./placement.mjs";
+import { CASES, LAYOUTS, caseRect, evaluate, runSimV2 as simulate } from "./placement.mjs";
 
 const vpw = () => document.documentElement.clientWidth;
 const vph = () => document.documentElement.clientHeight;
+
+// The extension writes its selection layout onto <html> as pnt-layout-<id>
+// while Point Mode is on, so a live sweep can read which one it is checking.
+const detectLayout = () =>
+  LAYOUTS.find((l) => document.documentElement.classList.contains("pnt-layout-" + l)) || null;
 
 // ===================================================================
 // Stage — one slot per case, with a viewport of slack above and below
@@ -246,12 +252,16 @@ async function runLive() {
     await wait(240);                // let the toolbar's minWidth rAF and the 150ms glide settle
 
     const label = boxOf(document.getElementById("pnt-label"));
-    const toolbar = boxOf(document.getElementById("pnt-toolbar"));
+    const toolbarEl = document.getElementById("pnt-toolbar");
+    // Inside the label the actions are part of its box, and the label's
+    // verdict is theirs — the same null the simulation passes for those layouts.
+    const inside = !!toolbarEl && !!toolbarEl.closest("#pnt-label");
+    const toolbar = inside ? null : boxOf(toolbarEl);
 
-    if (!label || !toolbar) {
+    if (!label || !toolbarEl || (!inside && !toolbar)) {
       results.push({
         id: c.id, name: c.name, rect, label, toolbar, verdict: "FAIL",
-        flags: [!label && "NO_LABEL", !toolbar && "NO_TOOLBAR"].filter(Boolean),
+        flags: [!label && "NO_LABEL", !toolbarEl && "NO_TOOLBAR"].filter(Boolean),
       });
       continue;
     }
@@ -298,14 +308,16 @@ function render(results, mode) {
     `<b>${mode}</b> · ${results.length - fails - skips}/${results.length} pass` +
     (fails ? ` · <span style="color:#e0785a">${fails} fail</span>` : "") +
     (skips ? ` · ${skips} skipped` : "") +
-    `<br><span style="color:#6f6c64">viewport ${vpw()}×${vph()}</span>`;
+    `<br><span style="color:#6f6c64">viewport ${vpw()}×${vph()} · layout ${mode === "LIVE" ? (detectLayout() || "?") : state.layout}</span>`;
 
   rowsEl.innerHTML = results.map((r, i) => {
     const px = (n) => Math.round(n);
-    const nums = r.label && r.toolbar
+    const nums = r.label
       ? `label ${px(r.label.top)},${px(r.label.left)} ${px(r.label.w ?? r.label.width)}×${px(r.label.h ?? r.label.height)} · vis ${Math.round((r.labelVisible ?? 0) * 100)}%<br>` +
-        `bar ${px(r.toolbar.top)},${px(r.toolbar.left)} · vis ${Math.round((r.toolbarVisible ?? 0) * 100)}%` +
-        (r.overlapPx ? ` · overlap ${r.overlapPx}px²` : "")
+        (r.toolbar
+          ? `bar ${px(r.toolbar.top)},${px(r.toolbar.left)} · vis ${Math.round((r.toolbarVisible ?? 0) * 100)}%` +
+            (r.overlapPx ? ` · overlap ${r.overlapPx}px²` : "")
+          : "actions inside the label")
       : "";
     return `<div class="row ${i === cursor ? "active" : ""}">
       <div>
@@ -325,7 +337,7 @@ function render(results, mode) {
 // Wiring
 // ===================================================================
 
-const state = { sim: null, live: null };
+const state = { sim: null, live: null, layout: detectLayout() || "edge" };
 
 function dump() {
   console.log("=== PROBE HARNESS ===");
@@ -360,11 +372,19 @@ window.addEventListener("keydown", (e) => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   switch (e.key.toLowerCase()) {
     case "s":
-      state.sim = simulate(vpw(), vph());
+      state.sim = simulate(vpw(), vph(), state.layout);
       render(state.sim, "SIMULATED");
       dump();
       break;
+    case "l":
+      state.layout = LAYOUTS[(LAYOUTS.indexOf(state.layout) + 1) % LAYOUTS.length];
+      state.sim = simulate(vpw(), vph(), state.layout);
+      render(state.sim, "SIMULATED");
+      break;
     case "r":
+      // Reconcile against the layout the extension is actually in.
+      state.layout = detectLayout() || state.layout;
+      state.sim = simulate(vpw(), vph(), state.layout);
       summaryEl.textContent = "Running live sweep…";
       runLive().then((res) => {
         state.live = res;
@@ -390,13 +410,13 @@ window.addEventListener("resize", () => {
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(() => {
     buildStage();
-    state.sim = simulate(vpw(), vph());
+    state.sim = simulate(vpw(), vph(), state.layout);
     render(state.sim, "SIMULATED");
   }, 200);
 });
 
 buildStage();
-state.sim = simulate(vpw(), vph());
+state.sim = simulate(vpw(), vph(), state.layout);
 render(state.sim, "SIMULATED");
 
 // Entry points for automation

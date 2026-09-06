@@ -9,6 +9,7 @@
   let labelEl = null;
   let toolbarEl = null;
   let parentButtonEl = null;
+  let tipEl = null; // the tooltip root — one node names every icon-only action
   let toastEl = null;
   let toastTimer = null;
   let rafId = null;
@@ -87,6 +88,7 @@
     "pnt-overlay-container",
     "pnt-label",
     "pnt-toolbar",
+    "pnt-tip",
     "pnt-settings-btn",
     "pnt-toast",
     "pnt-edit-panel",
@@ -143,6 +145,7 @@
     pair: 6,
     minLabelHeight: 24,
     narrowToolbar: 470, // the .pnt-compact breakpoint
+    straddleInset: 6, // On the edge: the pill's left sits this far in from the element's
     radiusFallback: 4, // assumed corner radius when the element is square
     redlinePillOffset: 8, // pill center sits this far perpendicular to its line
     redlineGuideOvershoot: 4, // dashed guide runs this far past the measurement line
@@ -218,6 +221,59 @@
   // Follow the OS live, but only while "system" is selected.
   darkQuery.addEventListener("change", () => {
     if (themePref === "system" && probeActive) applyTheme();
+  });
+
+  // ===== Selection layout =====
+  // Where the toolbar sits relative to the info label — the one preference
+  // that changes the *shape* of the selection chrome rather than a value in
+  // it. Chosen in two design rounds (test/selection-chrome-*.html); the four
+  // survivors, default first:
+  //   edge    a pill of four icons riding the element's bottom edge
+  //   beside  a spine of icons down the label's left, one per readout line
+  //   under   a strip of icons under the identity line
+  //   bottom  a labelled bar along the label's bottom; the card is as wide as it
+  // The readout is the same in all four. Mirrored in settings/settings.js —
+  // change both.
+  const CHROME_PREFS = {
+    selectionLayout: ["edge", "beside", "under", "bottom"],
+  };
+  const chromePrefs = {};
+  for (const key of Object.keys(CHROME_PREFS)) chromePrefs[key] = CHROME_PREFS[key][0];
+
+  function setChromePref(key, value) {
+    const roster = CHROME_PREFS[key];
+    if (roster) chromePrefs[key] = roster.includes(value) ? value : roster[0];
+  }
+
+  // The layout lands as pnt-layout-<id> on <html>, which every layout block in
+  // content.css keys off — the same shape as the theme attribute. It goes up
+  // with activation and comes down with it, so a page is never left classed.
+  function applyLayoutClass() {
+    const root = document.documentElement;
+    for (const id of CHROME_PREFS.selectionLayout) root.classList.remove(`pnt-layout-${id}`);
+    if (probeActive) root.classList.add(`pnt-layout-${chromePrefs.selectionLayout}`);
+  }
+
+  chrome.storage?.local.get(Object.keys(CHROME_PREFS), (stored) => {
+    if (!stored) return;
+    for (const key of Object.keys(CHROME_PREFS)) {
+      if (key in stored) setChromePref(key, stored[key]);
+    }
+    applyLayoutClass();
+  });
+
+  // A change with something selected redraws that selection in the new
+  // layout, in place — the same no-reload contract the theme keeps. The label
+  // is rewritten first (its hints move with the layout), then the toolbar is
+  // rebuilt and mounted where the new layout says.
+  chrome.storage?.onChanged.addListener((changes, area) => {
+    if (area !== "local" || !changes.selectionLayout) return;
+    setChromePref("selectionLayout", changes.selectionLayout.newValue);
+    applyLayoutClass();
+    if (probeActive && selectedElement) {
+      updateOverlay(selectedElement, { instant: true });
+      showToolbar(selectedElement);
+    }
   });
 
   // ===== Redline Preferences =====
@@ -493,6 +549,7 @@
   function activate() {
     probeActive = true;
     applyTheme();
+    applyLayoutClass();
     document.documentElement.classList.add("pnt-point-active");
     createOverlay();
     createSettingsButton();
@@ -532,6 +589,7 @@
     lastMouseX = -1;
     lastMouseY = -1;
     document.documentElement.classList.remove("pnt-point-active");
+    applyLayoutClass();
     document.removeEventListener("mousemove", onMouseMove, true);
     document.removeEventListener("click", onClick, true);
     document.removeEventListener("keydown", onKeyDown, true);
@@ -755,8 +813,17 @@
     labelEl.id = "pnt-label";
     labelEl.style.display = "none";
 
+    // The tooltip root: one node that names whichever icon-only action is
+    // under the pointer or focused, positioned from that button's rect. Its
+    // own root rather than a child of the card, so showing it can never move
+    // the chrome — see showTip().
+    tipEl = document.createElement("div");
+    tipEl.id = "pnt-tip";
+    tipEl.setAttribute("role", "tooltip");
+
     document.documentElement.appendChild(overlayContainer);
     document.documentElement.appendChild(labelEl);
+    document.documentElement.appendChild(tipEl);
   }
 
   function removeOverlay() {
@@ -767,6 +834,10 @@
     if (labelEl) {
       labelEl.remove();
       labelEl = null;
+    }
+    if (tipEl) {
+      tipEl.remove();
+      tipEl = null;
     }
     // The redline and tether nodes went down with the container; drop the refs
     redlineEl = null;
@@ -898,8 +969,13 @@
     return x * y;
   }
 
-  // `toolbar` is null while merely hovering — then the label is placed alone.
-  function computeChromeLayout(rect, label, toolbar, vw, vh) {
+  // `toolbar` is null while merely hovering, and in the layouts that mount
+  // the actions inside the label — then the label is placed alone.
+  // `label.minH` is how far the label may shrink before it hides: with the
+  // actions inside, the readout yields and the actions never do.
+  // `opts.straddle` is the On-the-edge rule: the toolbar is a pill riding the
+  // element's bottom edge, and the label places itself around it.
+  function computeChromeLayout(rect, label, toolbar, vw, vh, opts) {
     const M = GEOMETRY.margin, GAP = GEOMETRY.gap, PAIR = GEOMETRY.pair;
 
     const T = toolbar
@@ -911,7 +987,7 @@
     // disappearing once not even one line will fit.
     const room = vh - 2 * M - (T.hidden ? 0 : T.h + PAIR);
     const labelH = Math.min(label.h, Math.max(0, room));
-    const labelHidden = labelH < GEOMETRY.minLabelHeight;
+    const labelHidden = labelH < Math.max(GEOMETRY.minLabelHeight, label.minH || 0);
     const L = { w: label.w, h: labelHidden ? 0 : labelH, hidden: labelHidden };
 
     // Whichever boxes are actually shown stack into one unit.
@@ -955,6 +1031,29 @@
     // Scrolled entirely out of view — dock to the edge it disappeared behind.
     if (vis.bottom < vis.top || vis.right < vis.left) return dock(rect.bottom < 0);
 
+    // On the edge: the pill's centre line on the element's bottom edge, its
+    // left a straddleInset in from the element's left — whenever the whole
+    // pill is on screen there. The label then goes above the element, else
+    // below the pill, else inside the element's top: the first that fits and
+    // clears the pill. When none does, or the edge is off screen, the pill
+    // takes the slot the toolbar gets below, so it is never clipped.
+    if (opts && opts.straddle && !T.hidden) {
+      const half = T.h / 2;
+      if (rect.bottom - half >= M && rect.bottom + half <= vh - M) {
+        const tb = mk(T, rect.bottom - half, rect.left + GEOMETRY.straddleInset);
+        const around = (top, left, strategy) => {
+          const lb = mk(L, top, left);
+          return ok(lb, tb) && (lb.hidden || overlapArea(lb, tb) === 0)
+            ? { strategy: strategy, label: lb, toolbar: tb } : null;
+        };
+        const r =
+          around(vis.top - GAP - L.h, vis.left, "straddle-above") ||
+          around(tb.top + T.h + GAP, vis.left, "straddle-below") ||
+          around(vis.top + GAP, vis.left + GAP, "straddle-inside");
+        if (r) return r;
+      }
+    }
+
     // The ordinary case, and the one that reads best: label above, actions below.
     const outsideSplit = () => {
       const lb = mk(L, vis.top - GAP - L.h, vis.left);
@@ -990,6 +1089,22 @@
     for (const button of buttons) button.style.minWidth = button.offsetWidth + "px";
   }
 
+  // Along the bottom, the card is exactly as wide as its bar: the bar is
+  // measured at its natural width and the label locked to it, so the readout
+  // clips inside the bar's width rather than the bar stretching to the
+  // readout's. Cleared in every other layout, where the readout sets the width.
+  function lockCardWidth() {
+    if (!labelEl) return;
+    labelEl.style.width = "";
+    if (chromePrefs.selectionLayout !== "bottom" || !toolbarEl || toolbarEl.parentNode !== labelEl) return;
+    const bar = toolbarEl.querySelector(".pnt-bar");
+    bar.style.width = "max-content";
+    const w = bar.offsetWidth;
+    bar.style.width = "";
+    // Plus the label's own border, which sits outside the bar (border-box).
+    labelEl.style.width = (w + labelEl.offsetWidth - labelEl.clientWidth) + "px";
+  }
+
   // Below the breakpoint the buttons collapse to icons, which changes their
   // natural width — so the locks have to be recomputed when it flips.
   function updateToolbarDensity(vw) {
@@ -998,6 +1113,7 @@
     if (toolbarEl.classList.contains("pnt-compact") === narrow) return;
     toolbarEl.classList.toggle("pnt-compact", narrow);
     lockButtonWidths();
+    lockCardWidth();
   }
 
   // `instant` skips the glide on both boxes — for viewport tracking, where
@@ -1019,18 +1135,33 @@
     // pass that hid it must not leave it unmeasurable, or it could never come
     // back when the viewport grows — and a max-height left over from an earlier
     // pass would be mistaken for its real height.
-    labelEl.style.display = "block";
+    labelEl.style.display = "";
     labelEl.style.maxHeight = "";
     labelEl.style.overflow = "";
-    const label = { w: labelEl.offsetWidth, h: labelEl.offsetHeight };
-    const toolbar = toolbarEl ? { w: toolbarEl.offsetWidth, h: toolbarEl.offsetHeight } : null;
+    hideTip(); // it named a button that is about to move
 
-    const layout = computeChromeLayout(el.getBoundingClientRect(), label, toolbar, vw, vh);
+    // With the actions mounted inside the card the solver sees one box, and
+    // the readout is what yields: the label may shrink to everything but its
+    // body, and no further, so the buttons are never the part that clips.
+    const inside = !!toolbarEl && toolbarEl.parentNode === labelEl;
+    const body = inside ? labelEl.querySelector(".pnt-label-content") : null;
+    const label = {
+      w: labelEl.offsetWidth,
+      h: labelEl.offsetHeight,
+      minH: body ? labelEl.offsetHeight - body.offsetHeight : 0,
+    };
+    const toolbar = toolbarEl && !inside
+      ? { w: toolbarEl.offsetWidth, h: toolbarEl.offsetHeight }
+      : null;
+
+    const layout = computeChromeLayout(el.getBoundingClientRect(), label, toolbar, vw, vh, {
+      straddle: !!toolbar && chromePrefs.selectionLayout === "edge",
+    });
 
     if (instant) labelEl.classList.add("pnt-no-transition");
     if (toolbarInstant && toolbarEl) toolbarEl.classList.add("pnt-no-transition");
 
-    labelEl.style.display = layout.label.hidden ? "none" : "block";
+    labelEl.style.display = layout.label.hidden ? "none" : "";
     if (!layout.label.hidden) {
       labelEl.style.top = layout.label.top + "px";
       labelEl.style.left = layout.label.left + "px";
@@ -1042,7 +1173,7 @@
       }
     }
 
-    if (toolbarEl) {
+    if (toolbarEl && !inside) {
       toolbarEl.style.top = layout.toolbar.top + "px";
       toolbarEl.style.left = layout.toolbar.left + "px";
     }
@@ -1219,24 +1350,50 @@
       if (ancestor.id) break; // ID is unique enough, stop
       ancestor = ancestor.parentElement;
     }
+    // The keyboard hints travel with the layout, as prototyped: the strip
+    // carries its own (see showToolbar), the bar's ride the breadcrumb row,
+    // and the pill's and the spine's are a caption under the readout — which
+    // is also where the bar's go when there is no breadcrumb to ride.
+    const selected = el === selectedElement;
+    const layout = chromePrefs.selectionLayout;
+    const hintsInCrumb = selected && layout === "bottom" && crumbs.length > 0;
+    const hintsInCaption = selected && (layout === "edge" || layout === "beside" ||
+      (layout === "bottom" && crumbs.length === 0));
+
     let line3 = "";
     if (crumbs.length > 0) {
       const path = crumbs.join('<span class="pnt-label-sep"> › </span>');
-      line3 = `<div class="pnt-label-line pnt-label-marquee pnt-line-breadcrumb"><span class="pnt-label-breadcrumb pnt-marquee-inner">${path}<span class="pnt-label-sep">&nbsp;&nbsp;&nbsp;·&nbsp;&nbsp;&nbsp;</span>${path}</span></div>`;
+      line3 = `<div class="pnt-label-line pnt-line-breadcrumb"><span class="pnt-label-marquee"><span class="pnt-label-breadcrumb pnt-marquee-inner">${path}<span class="pnt-label-sep">&nbsp;&nbsp;&nbsp;·&nbsp;&nbsp;&nbsp;</span>${path}</span></span>${hintsInCrumb ? `<span class="pnt-hints">${HINTS_HTML}</span>` : ""}</div>`;
     }
 
-    // Update only the content wrapper, so the node the layout pass measures is stable
-    let contentWrap = labelEl.querySelector(".pnt-label-content");
-    if (!contentWrap) {
-      contentWrap = document.createElement("div");
-      contentWrap.className = "pnt-label-content";
-      labelEl.appendChild(contentWrap);
+    // Three parts — head, body, caption — rather than one wrapper, so the
+    // toolbar can mount between them (the strip sits under the identity) and
+    // survive every rewrite: a Select Parent hop rewrites the readout while
+    // the buttons stay exactly where they are. The nodes the layout pass
+    // measures are created once and kept.
+    const part = (cls, after) => {
+      let node = labelEl.querySelector(`:scope > .${cls}`);
+      if (!node) {
+        node = document.createElement("div");
+        node.className = cls;
+        if (after) after.after(node); else labelEl.appendChild(node);
+      }
+      return node;
+    };
+    const head = part("pnt-label-head");
+    const body = part("pnt-label-content", head.nextElementSibling?.id === "pnt-toolbar" ? head.nextElementSibling : head);
+    head.innerHTML = `<div class="pnt-label-line pnt-line-identity">${line1}</div>`;
+    body.innerHTML = lineT + line2 + lineV + line3;
+
+    const caption = labelEl.querySelector(":scope > .pnt-label-hints");
+    if (hintsInCaption) {
+      (caption || part("pnt-label-hints", body)).innerHTML = HINTS_HTML;
+    } else if (caption) {
+      caption.remove();
     }
-    contentWrap.innerHTML =
-      `<div class="pnt-label-line pnt-line-identity">${line1}</div>` + lineT + line2 + lineV + line3;
 
     // Visible so it can be measured; layoutChrome does the placing.
-    labelEl.style.display = "block";
+    labelEl.style.display = "";
   }
 
   // ===== Redline =====
@@ -7156,6 +7313,7 @@
     if (e.key === "Escape") {
       e.preventDefault();
       e.stopImmediatePropagation();
+      hideTip();
 
       // Stages out: text editor → picker → editing → selected → probe off.
       // Each Escape gives back exactly one layer, so nothing is ever lost by
@@ -7218,74 +7376,147 @@
   }
 
   // ===== Toolbar =====
+  // The keyboard ladder, made visible. Only what is actually bound: Option
+  // measures from the selection, Escape steps back out. Copy, Screenshot and
+  // Edit have no shortcut, so they carry no chip — a hint that lies is worse
+  // than none. Where the chips sit is the layout's business (see updateLabel).
+  const HINTS_HTML = `<kbd class="pnt-kbd">⌥</kbd><span>measure</span><kbd class="pnt-kbd">esc</kbd>`;
+
+  // The four actions, in the one order they ever appear. Edit and Select
+  // Parent are in the accent: one opens a mode, the other moves the
+  // selection — neither copies anything. Actions read selectedElement at
+  // click time so they follow Select Parent hops.
+  const ACTIONS = [
+    { id: "copy", label: "Copy Code", icon: "code", run: (btnEl) => copyElement(selectedElement, btnEl) },
+    { id: "shot", label: "Screenshot", icon: "camera", run: (btnEl) => copyScreenshot(selectedElement, btnEl) },
+    { id: "edit", label: "Edit", icon: "edit", accent: true, run: () => enterEditMode() },
+    { id: "parent", label: "Select Parent", icon: "parent", accent: true, run: () => selectParent() },
+  ];
+
+  // One node, built once per selection; the layout decides where it mounts.
+  // Every button carries its label as a <span> — content.css shows it only in
+  // the bar above the compact breakpoint — and as data-tip for the tooltip,
+  // so an icon-only button still names itself.
   function showToolbar(el) {
-    removeToolbar();
+    removeToolbar(true);
 
     toolbarEl = document.createElement("div");
     toolbarEl.id = "pnt-toolbar";
 
-    // Copy actions live in the bar; Select Parent is a sibling button beside it.
-    // Both are flex children of #pnt-toolbar with align-items:stretch, so the
-    // button always matches the bar's height without hard-coded padding.
     const bar = document.createElement("div");
     bar.className = "pnt-bar";
 
-    // Actions read selectedElement at click time so they follow "Select Parent" hops.
-    // Edit is icon-only: it opens a mode rather than performing an action, and the
-    // two labelled buttons beside it are what the bar is for.
-    const buttons = [
-      { label: "Copy Code", icon: ICONS.code, action: (btnEl) => copyElement(selectedElement, btnEl) },
-      { label: "Screenshot", icon: ICONS.camera, action: (btnEl) => copyScreenshot(selectedElement, btnEl) },
-      { label: "Edit", icon: ICONS.edit, iconOnly: true, action: () => enterEditMode() },
-    ];
-
-    for (const btn of buttons) {
+    for (const action of ACTIONS) {
       const button = document.createElement("button");
-      button.dataset.origHtml = btn.icon + (btn.iconOnly ? "" : `<span>${btn.label}</span>`);
+      button.dataset.action = action.id;
+      button.dataset.tip = action.label;
+      button.setAttribute("aria-label", action.label);
+      if (action.accent) button.className = "pnt-accent-btn";
+      button.dataset.origHtml = ICONS[action.icon] + `<span>${action.label}</span>`;
       button.innerHTML = button.dataset.origHtml;
-      if (btn.iconOnly) {
-        button.className = "pnt-icon-btn";
-        button.title = btn.label;
-        button.setAttribute("aria-label", btn.label);
-      }
       button.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        btn.action(button);
+        action.run(button);
       });
       bar.appendChild(button);
+      if (action.id === "parent") parentButtonEl = button;
     }
 
-    // The keyboard ladder, made visible. Only what is actually bound: Option
-    // measures from the selection, Escape steps back out. Copy, Screenshot and
-    // Edit have no shortcut, so they carry no chip — a hint that lies is worse
-    // than none. Hidden at compact density with the labels.
+    // The strip's hints, at its right end. Present in every layout, shown
+    // only Under the name — the others put theirs in the label.
     const hints = document.createElement("span");
     hints.className = "pnt-hints";
     hints.setAttribute("aria-hidden", "true");
-    hints.innerHTML = `<kbd class="pnt-kbd">⌥</kbd><span>measure</span><kbd class="pnt-kbd">esc</kbd>`;
+    hints.innerHTML = HINTS_HTML;
     bar.appendChild(hints);
 
-    parentButtonEl = document.createElement("button");
-    parentButtonEl.className = "pnt-parent-btn";
-    parentButtonEl.innerHTML = ICONS.parent + `<span>Select Parent</span>`;
-    parentButtonEl.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      selectParent();
-    });
-
     toolbarEl.appendChild(bar);
-    toolbarEl.appendChild(parentButtonEl);
 
-    document.documentElement.appendChild(toolbarEl);
+    // Tooltips: delegated, so the four buttons share one pair of listeners
+    // and the tip root can be positioned from whichever fired.
+    const over = (e) => {
+      const button = e.target.closest("button[data-tip]");
+      if (button) showTip(button);
+    };
+    const out = (e) => {
+      const button = e.target.closest("button[data-tip]");
+      if (button && !button.contains(e.relatedTarget)) hideTip();
+    };
+    toolbarEl.addEventListener("pointerover", over);
+    toolbarEl.addEventListener("pointerout", out);
+    toolbarEl.addEventListener("focusin", over);
+    toolbarEl.addEventListener("focusout", out);
+
+    mountToolbar();
     updateParentButton();
 
     // Lock widths before placing: the toolbar has to be measured at its final
     // size, or it gets positioned against a width that then changes under it.
     updateToolbarDensity(document.documentElement.clientWidth);
     lockButtonWidths();
+    lockCardWidth();
     layoutChrome(el, { newToolbar: true });
+  }
+
+  // Where the node goes is the whole difference between the layouts. Inside
+  // the label for the spine, the strip and the bar — so the solver sees one
+  // box and the buttons ride with the readout — and its own fixed root for the
+  // pill, which is placed on the element's edge by the solver's straddle rule.
+  function mountToolbar() {
+    const layout = chromePrefs.selectionLayout;
+    const head = labelEl && labelEl.querySelector(":scope > .pnt-label-head");
+    labelEl.classList.toggle("pnt-with-actions", layout !== "edge");
+    if (layout === "beside") labelEl.prepend(toolbarEl);
+    else if (layout === "under" && head) head.after(toolbarEl);
+    else if (layout === "under" || layout === "bottom") labelEl.appendChild(toolbarEl);
+    else document.documentElement.appendChild(toolbarEl);
+  }
+
+  // ===== Tooltip =====
+  // Shown for a button whose label is not on screen — an icon in the pill,
+  // the spine, the strip, or the bar at compact density. Above the button,
+  // centred, kept inside the viewport, or below it when the top has no room;
+  // beside a spine button — to its right, else its left — so it covers no
+  // readout line. Never inside the card, so it never moves the chrome.
+  function showTip(button) {
+    const text = button.dataset.tip;
+    if (!tipEl || !text) return;
+    const label = button.querySelector("span");
+    if (label && label.offsetWidth > 0) return hideTip(); // the label already says it
+
+    const M = GEOMETRY.margin, GAP = GEOMETRY.gap;
+    const vw = document.documentElement.clientWidth;
+    const vh = document.documentElement.clientHeight;
+    tipEl.textContent = text;
+    tipEl.classList.add("pnt-tip-on");
+    const r = button.getBoundingClientRect();
+    const w = tipEl.offsetWidth, h = tipEl.offsetHeight;
+    let top, left, side;
+    if (chromePrefs.selectionLayout === "beside") {
+      top = Math.max(M, Math.min(r.top + r.height / 2 - h / 2, vh - M - h));
+      left = r.right + GAP;
+      side = "right";
+      if (left + w > vw - M) {
+        left = Math.max(M, r.left - GAP - w);
+        side = "left";
+      }
+    } else {
+      top = r.top - GAP - h;
+      side = "above";
+      if (top < M) {
+        top = Math.min(r.bottom + GAP, vh - M - h);
+        side = "below";
+      }
+      left = Math.max(M, Math.min(r.left + r.width / 2 - w / 2, vw - w - M));
+    }
+    tipEl.style.top = top + "px";
+    tipEl.style.left = left + "px";
+    tipEl.dataset.side = side;
+  }
+
+  function hideTip() {
+    if (tipEl) tipEl.classList.remove("pnt-tip-on");
   }
 
   // ===== Select Parent =====
@@ -7301,9 +7532,7 @@
     const disabled = !getSelectableParent(selectedElement);
     parentButtonEl.disabled = disabled;
     parentButtonEl.classList.toggle("pnt-button-disabled", disabled);
-    parentButtonEl.title = disabled
-      ? "No parent element to select"
-      : "Select this element's parent";
+    parentButtonEl.dataset.tip = disabled ? "No parent element to select" : "Select Parent";
   }
 
   function selectParent() {
@@ -7314,14 +7543,26 @@
     hoveredElement = parent;
     updateOverlay(parent); // glides both boxes to the parent's geometry
     updateParentButton();
+    // The bar may have moved under the pointer; the tip it named is stale.
+    hideTip();
   }
 
-  function removeToolbar() {
+  // `rebuilding` is showToolbar's own call: the label was just rewritten for
+  // the new selection, hints included, and keeps them. Every other caller is
+  // ending the selection, and the label outlives it as the hover readout —
+  // so the hints and the width lock, which were the selection's, go too.
+  function removeToolbar(rebuilding) {
+    hideTip();
     if (toolbarEl) {
       toolbarEl.remove();
       toolbarEl = null;
     }
     parentButtonEl = null;
+    if (labelEl && !rebuilding) {
+      labelEl.classList.remove("pnt-with-actions");
+      labelEl.style.width = "";
+      for (const node of labelEl.querySelectorAll(".pnt-hints, .pnt-label-hints")) node.remove();
+    }
   }
 
   // ===== Selector Builder =====
@@ -8072,7 +8313,9 @@
   // records one; this refuses rather than trusting that to stay true.
   function setButtonSuccess(btnEl, message) {
     if (!btnEl || !btnEl.dataset.origHtml) return;
-    btnEl.innerHTML = `<span>${message}</span>`;
+    // The check in front so an icon-only button (every layout but the bar)
+    // still shows that something happened once the label is hidden.
+    btnEl.innerHTML = ICONS.check + `<span>${message}</span>`;
     btnEl.disabled = true;
     setTimeout(() => {
       if (btnEl && btnEl.dataset.origHtml) {
