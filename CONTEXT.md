@@ -44,14 +44,19 @@ navigate away mid-drag.
 element": each property is tracked separately, because each is a separate line
 in the block and a separate thing to undo.
 
-**Edit panel** — the draggable control surface. An *inspector column*: one
-narrow column of titled groups, chosen over eleven alternatives in
-`test/edit-ui-prototypes.html`.
+**Edit panel** — the control surface. An *inspector column*: one narrow
+column of titled groups, chosen over eleven alternatives in
+`test/edit-ui-prototypes.html`. Since 2.0 it is *attached*: flush against the
+selected element's facing edge, a tick's length away, and it goes where the
+element goes. It *floats* — draggable, as it always was — only when there is
+no room beside the element.
 
 **Tether** — what says "this panel edits that element" in Edit Mode, once the
-selection box has been taken away. Four ticks at the element's edge midpoints
-plus a dashed run from the panel to the tick on the facing edge. Chosen over
-eleven alternatives in `test/edit-association-prototypes.html`.
+selection box has been taken away. Four ticks at the element's edge midpoints,
+and — only while the panel floats — a dashed run from the panel to the tick on
+the facing edge. An attached panel needs no run: the tick it sits against is
+the association. Chosen over eleven alternatives in
+`test/edit-association-prototypes.html`.
 
 The box had to go, and the reason is the whole design: the panel writes
 `border-width`, `border-color`, `border-radius` and `box-shadow`, and the box is

@@ -20,12 +20,12 @@ record, and `DESIGN.md` — rewritten in Phase 6 — becomes the standing contra
 | Typeface | **Geist Sans + Geist Mono, bundled.** Sans for labels and controls, mono for values, tokens and selectors. No Google Fonts import, no privacy paragraph, no CSP fallback. ADR 0001. |
 | Type scale | **12px base.** 11 secondary, 12 body and controls, 13 titles; 10 survives only as tracked-caps micro-labels in the typography grid. Pixels, never rem — the chrome sits on pages whose root size it does not control. |
 | Themes | **Dark, Light, System (default)** designed first, then Dracula, Monokai, Nord, Solarized Dark and Tokyo Night re-derived from their published palettes. Terracotta is retired; stored `terracotta-*` preferences map to the new pair. |
-| Accent | Chosen in the round: each of the ten directions commits to one and shows it doing the functional jobs — selection, badge, active state, redlines, tether, icon — over a real-looking page in both themes. |
+| Accent | **Vermilion** — `#d13a1d` on the light theme, `#f0452b` on the dark. Chosen in round two after the author asked for a red-orange; kept clear of terracotta by saturation, never clay. Danger moves to a crimson so nothing is mistaken for the accent. |
 | Scope | Every surface may be restyled *and* re-laid-out, and structure is open (label and toolbar may merge, the panel may dock, settings may become one page). Interactions, the keyboard ladder, storage and the copy payload do not change. A direction that changes the chrome's piece count reopens the placement spec and its sweep — accepted. |
 | Fixed qualities | Every direction carries all four: hairline borders over heavy shadows; translucent, blurred panels; near-neutral surfaces with colour only where it means something; monoline icons and visible keyboard hints. |
 | Varied axes | Radius, dark surface tone, motion character, selection vocabulary, toolbar form, panel form, label structure, settings architecture, icon, accent. Each value appears in at least two directions. |
 | Round format | One gallery page, ten sections, real CSS, both themes, published as an artifact and committed as `test/brand-direction-prototypes.html` — the seventh round in this repo's record. |
-| Libraries | **`motion` vendored into `lib/` as a classic script, nothing else, no bundler.** ADR 0002. |
+| Libraries | **None.** `motion` was vendored on the assumption of springs; the chosen motion is restrained, 180 ms eased, which CSS carries. ADR 0003 supersedes 0002. |
 | Release | Rename the existing store listing in place, rename the GitHub repo to `pointee`, ship as **2.0.0**. |
 | Docs | `DESIGN.md` rewritten as a design system in the same voice; README re-cut with a POINTEE banner; PRIVACY, CONTEXT and PLACEMENT-PLAN renamed and corrected. |
 
@@ -39,9 +39,9 @@ overhaul is judged against them rather than around them.
   storage keys, and every byte of the copy payload stay as they are.
 - **Solvers stay pure and in JavaScript.** `computeChromeLayout`,
   `computeRedline` and `computeTether` take their constants from `GEOMETRY`
-  and their preferences as arguments. Spring parameters for the new motion join
-  them as a `MOTION` object under the same rule: values the code reasons about
-  live in JS, values that only paint live in `tokens.css`.
+  and their preferences as arguments. Motion is eased, not sprung, so its
+  durations and curve are paint and live in `tokens.css`; nothing in JS reasons
+  about them.
 - **One door.** Every host-page write stays in the Edit Apply section, and
   `test/edit-audit.mjs` keeps proving it — with `PNT_SHADER_SET` and
   `PNT_SHADER_CLEAR` pinned where `CCP_` was.
@@ -103,6 +103,17 @@ Label structure alternates across the ten between stacked rows, chips and a
 two-column readout; each icon is a distinct mark that survives 16px. No accent
 in the warm-orange band, on purpose.
 
+**Chosen — round two, 2026-09-06.** Direction 07 won round one. The author
+asked for a red-orange accent in place of mint, a new handle, each theme paired
+with its own kind of page, and the icon left to them; `test/brand-direction-
+round-two.html` re-cut 07 accordingly and added a playable motion stage. From
+it: **Vermilion** (`#d13a1d` / `#f0452b`), **restrained** motion (180 ms eased
+entrances, 140 ms exits, no spring), the direction henceforth called
+**Vermilion**. Kept from 07: light designed first, radius 10 / 14, blur 16,
+pill toolbar, attached panel, stacked-row label, slow ants, sidebar settings.
+Neutrals warmed to lean toward the accent. The icon slot stays empty until the
+author draws one.
+
 **Choosing.** A hybrid is a legitimate answer — "03's material with 06's
 toolbar" — and is recorded as such. The winner is named in a commit, its
 terms enter `CONTEXT.md`, its values become the reference theme in
@@ -140,14 +151,13 @@ one commit, verified by `npm test`:
 
 ### 4.3 Motion
 
-- `lib/motion.min.js` (13.2.0, UMD, `window.Motion`), fetched by the
-  postinstall script when missing and committed — the html2canvas pattern.
-- Manifest and `background.js` injection order: html2canvas, motion, content.
-- A `MOTION` object beside `GEOMETRY`: spring presets and durations the code
-  reasons about. Every `Motion.animate` call goes through one helper that
-  returns immediately under `prefers-reduced-motion`.
-- The five harnesses that load `content.js` directly load `lib/motion.min.js`
-  before it.
+- CSS only. Two durations and one curve as tokens: `--pnt-duration` 180 ms for
+  entrances and glides, `--pnt-duration-exit` 140 ms for departures, `--pnt-ease`
+  `cubic-bezier(.2, .7, .2, 1)`. A departure never overshoots.
+- Entrances through `@starting-style` on the label, toolbar, panel, picker and
+  toast; glides through transitions on position, as today.
+- Every transition and animation listed in the `prefers-reduced-motion` block,
+  as today. No library, no `MOTION` object — ADR 0003.
 
 ### 4.4 Tokens
 
@@ -279,7 +289,7 @@ The `/pick-ui-library` step, applied honestly to a vanilla content script with n
 
 | Task | Pick | Why |
 |---|---|---|
-| Springs, interruptible transitions | **motion** (vendored UMD) | The only need CSS cannot meet. ADR 0002. |
+| Transitions and entrances | CSS | The chosen motion is eased, not sprung; `@starting-style` and transitions cover it. `motion` was vendored for springs and is withdrawn — ADR 0003. |
 | Toasts | keep our own | Sonner is React. One toast, positioned by the solver. |
 | Dialogs, menus, popovers | keep our own | base-ui is React; the panel and picker already own focus and dismissal. |
 | Command palette | not applicable | No palette in the product. |
