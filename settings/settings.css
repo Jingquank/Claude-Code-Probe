@@ -4,19 +4,14 @@
    rendered inline as a preview instead of pinned to the viewport.
 
    Everything here is expressed in --pnt-* tokens, so the page follows the theme
-   you are choosing. Two grounds are derived from the surface rather than being
-   declared per theme: mixing toward --pnt-text lifts a dark surface and darkens
-   a light one, which gives a usable two-tone in either direction with no
-   theme-specific values. */
+   you are choosing. The grounds are the theme's own surfaces: surface-0 for the
+   page, surface-1 for the rail and the section cards, border-1 for hairlines. */
 
 :root {
   --sp-ground: var(--pnt-surface-0);
-  --sp-raised: color-mix(in srgb, var(--pnt-surface-0) 94%, var(--pnt-text-1));
-  --sp-hairline: color-mix(in srgb, var(--pnt-surface-0) 84%, var(--pnt-text-1));
+  --sp-raised: var(--pnt-surface-1);
+  --sp-hairline: var(--pnt-border-1);
   --sp-pad: 22px;
-  /* Sections glide open and closed (::details-content height below); this is
-     what lets `height: auto` interpolate. */
-  interpolate-size: allow-keywords;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -31,15 +26,14 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* 12-column sheet at 1200px: the controls span 5 columns (500px), the
-   preview the remaining 7 (700px). Seven columns of preview is what lets
-   the toolbar render at full width — it clears the 470px compact breakpoint
-   with room to spare for the rail's padding. */
+/* Three columns: the sidebar map, the settings, the preview. The controls
+   take 5 parts and the preview 7, which is what lets the toolbar render at
+   full width — it clears the 470px compact breakpoint with room to spare. */
 .sp {
   display: flex;
   flex-direction: column;
   min-height: 100%;
-  max-width: 1200px;
+  max-width: 1360px;
   margin: 0 auto;
   /* The rail collapses under the settings column on a narrow window. A container
      query rather than a media query because the wrapper is max-width capped, so
@@ -47,29 +41,97 @@ body {
   container-type: inline-size;
 }
 
-/* ===== Header ===== */
-.sp-header {
-  display: flex;
-  align-items: baseline;
-  gap: var(--pnt-md);
-  padding: var(--sp-pad) var(--sp-pad) var(--pnt-lg);
-  border-bottom: 1px solid var(--sp-hairline);
+/* ===== Sidebar =====
+   The page's map. Sticky, so the section links stay in reach while the
+   settings scroll; the footer sits at its foot with the version. */
+.sp-nav {
+  align-self: stretch;
+  border-right: 1px solid var(--sp-hairline);
 }
 
-.sp-header h1 {
+.sp-nav-in {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pnt-lg);
+  min-height: 100vh;
+  padding: var(--sp-pad) var(--pnt-lg);
+}
+
+.sp-wordmark {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   margin: 0;
+  padding: 0 var(--pnt-md);
+}
+
+.sp-wordmark b {
   font-size: var(--pnt-text-lg);
   font-weight: var(--pnt-weight-bold);
-  text-transform: uppercase;
-  letter-spacing: var(--pnt-tracking-caps);
+  letter-spacing: -0.01em;
   color: var(--pnt-text-1);
 }
 
-.sp-version {
-  margin: 0;
+.sp-wordmark span {
   font-size: var(--pnt-text-sm);
-  text-transform: uppercase;
-  letter-spacing: var(--pnt-tracking-caps);
+  color: var(--pnt-text-3);
+}
+
+.sp-nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sp-nav-list a {
+  display: flex;
+  align-items: center;
+  gap: var(--pnt-gap-section);
+  height: 30px;
+  padding: 0 var(--pnt-md);
+  border-radius: var(--pnt-radius-md);
+  color: var(--pnt-text-2);
+  font-weight: var(--pnt-weight-medium);
+  text-decoration: none;
+  transition: background var(--pnt-duration) var(--pnt-ease),
+              color var(--pnt-duration) var(--pnt-ease);
+}
+
+/* The dot is the marker: quiet on every link, the accent on the current one. */
+.sp-nav-list a::before {
+  content: "";
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--pnt-text-4);
+  transition: background var(--pnt-duration) var(--pnt-ease);
+}
+
+.sp-nav-list a:hover {
+  background: var(--pnt-surface-2);
+  color: var(--pnt-text-1);
+}
+
+.sp-nav-list a[aria-current="true"] {
+  background: var(--pnt-surface-2);
+  color: var(--pnt-text-1);
+}
+
+.sp-nav-list a[aria-current="true"]::before { background: var(--pnt-accent); }
+
+.sp-nav-list a:focus-visible {
+  outline: 2px solid var(--pnt-focus);
+  outline-offset: 1px;
+}
+
+.sp-version {
+  font-family: var(--pnt-font-mono);
   color: var(--pnt-text-3);
 }
 
@@ -80,7 +142,7 @@ body {
 .sp-body {
   flex: 1;
   display: grid;
-  grid-template-columns: 5fr 7fr;
+  grid-template-columns: 200px minmax(0, 5fr) minmax(0, 7fr);
   align-items: start;
   min-height: 0;
 }
@@ -96,6 +158,7 @@ body {
 /* One-time entrance: the two columns settle in two beats, rail 60ms behind.
    @starting-style only applies at first render — neither element ever
    display-toggles afterwards, so this can never replay. */
+.sp-nav,
 .sp-scroll,
 .sp-rail {
   transition: opacity var(--pnt-duration-slow) var(--pnt-ease),
@@ -105,6 +168,7 @@ body {
 .sp-rail { transition-delay: 60ms; }
 
 @starting-style {
+  .sp-nav,
   .sp-scroll,
   .sp-rail {
     opacity: 0;
@@ -137,6 +201,21 @@ body {
    rail fits it again). */
 @container (max-width: 1020px) {
   .sp-body { grid-template-columns: 1fr; }
+  .sp-nav {
+    border-right: 0;
+    border-bottom: 1px solid var(--sp-hairline);
+  }
+  .sp-nav-in {
+    position: static;
+    min-height: 0;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--pnt-md);
+    padding: var(--pnt-md) var(--sp-pad);
+  }
+  .sp-nav-list { flex-direction: row; flex-wrap: wrap; }
+  .sp-footer { margin: 0 0 0 auto; display: flex; gap: var(--pnt-gap-section); }
   .sp-rail {
     border-left: 0;
     border-top: 1px solid var(--sp-hairline);
@@ -145,90 +224,42 @@ body {
 }
 
 /* ===== Section furniture =====
-   Every section is a native <details>: the summary is the collapse control,
-   which brings keyboard and semantics for free. The body carries the section's
-   internal layout — details itself stays display:block, because flexing the
-   details element has historically confused summary rendering. */
-.sp-summary {
-  display: flex;
-  align-items: center;
-  gap: var(--pnt-sm);
-  cursor: pointer;
-  list-style: none;
-  user-select: none;
-}
-
-.sp-summary::-webkit-details-marker { display: none; }
-
-.sp-summary:focus-visible {
-  outline: 2px solid var(--pnt-accent);
-  outline-offset: 2px;
-  border-radius: var(--pnt-radius-xs);
-}
-
-.sp-summary:hover .sp-legend { color: var(--pnt-text-2); }
-
-/* Drawn caret, not a glyph: rotates from "pointing right" (closed) to
-   "pointing down" (open). */
-.sp-caret {
-  flex: none;
-  width: 6px;
-  height: 6px;
-  margin-top: -3px;
-  border-right: 1.5px solid var(--pnt-text-3);
-  border-bottom: 1.5px solid var(--pnt-text-3);
-  transform: rotate(45deg);
-  transition: transform var(--pnt-duration);
-}
-
-details:not([open]) > .sp-summary .sp-caret {
-  transform: rotate(-45deg);
-  margin-top: 0;
+   Each section is a card on the raised ground; the sidebar is the map, so
+   nothing collapses. */
+.sp-section {
+  padding: var(--pnt-xl) 18px;
+  background: var(--sp-raised);
+  border: 1px solid var(--sp-hairline);
+  border-radius: var(--pnt-radius-lg);
+  scroll-margin-top: var(--sp-pad);
 }
 
 .sp-section-body {
   display: flex;
   flex-direction: column;
   gap: var(--pnt-gap-section);
-  padding-top: var(--pnt-gap-section);
+  padding-top: var(--pnt-md);
 }
 
-/* The collapse glides: height interpolates to auto (interpolate-size on :root)
-   while content-visibility handles the discrete end. Pairs with the caret's
-   rotation. Older Chrome ignores ::details-content and snaps, which is the
-   previous behaviour. */
-.sp-section::details-content {
-  height: 0;
-  overflow: clip;
-  transition: height var(--pnt-duration-slow) var(--pnt-ease),
-              content-visibility var(--pnt-duration-slow) allow-discrete;
-}
-
-.sp-section[open]::details-content {
-  height: auto;
-}
-
+/* Legends are the title step: sentence case, bold, the primary tone. */
 .sp-legend {
   display: flex;
   align-items: center;
   gap: var(--pnt-sm);
   margin: 0;
-  font-size: var(--pnt-text-sm);
-  font-weight: var(--pnt-weight-medium);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--pnt-text-3);
+  font-size: var(--pnt-text-lg);
+  font-weight: var(--pnt-weight-bold);
+  letter-spacing: -0.01em;
+  color: var(--pnt-text-1);
 }
 
 .sp-tag {
   font-size: var(--pnt-text-sm);
   font-weight: var(--pnt-weight-medium);
-  text-transform: uppercase;
-  letter-spacing: var(--pnt-tracking-caps);
   color: var(--pnt-accent);
-  border: 1px solid rgb(from var(--pnt-accent) r g b / 0.4);
-  border-radius: var(--pnt-radius-xs);
-  padding: 1px var(--pnt-gap-base);
+  background: var(--pnt-accent-soft);
+  border-radius: 999px;
+  padding: 1px var(--pnt-gap-section);
 }
 
 .sp-sub {
@@ -240,8 +271,6 @@ details:not([open]) > .sp-summary .sp-caret {
 }
 
 .sp-sub strong { color: var(--pnt-text-2); font-weight: var(--pnt-weight-medium); }
-
-.sp-hr { border: 0; border-top: 1px solid var(--sp-hairline); margin: 0; }
 
 /* ===== Theme pills =====
    Content-width and free to wrap, so a row reads as a set of palettes rather
@@ -258,12 +287,10 @@ details:not([open]) > .sp-summary .sp-caret {
   gap: var(--pnt-sm);
   padding: var(--pnt-gap-base) var(--pnt-md) var(--pnt-gap-base) var(--pnt-sm);
   border: 1px solid var(--pnt-border-2);
-  border-radius: 20px;
-  background: transparent;
+  border-radius: 999px;
+  background: var(--sp-ground);
   color: var(--pnt-text-2);
   font: var(--pnt-weight-medium) var(--pnt-text-sm)/var(--pnt-leading-tight) var(--pnt-font);
-  text-transform: uppercase;
-  letter-spacing: var(--pnt-tracking-caps);
   cursor: pointer;
   transition: background var(--pnt-duration), border-color var(--pnt-duration),
               color var(--pnt-duration), transform var(--pnt-duration-fast) ease;
@@ -272,7 +299,7 @@ details:not([open]) > .sp-summary .sp-caret {
 .sp-pill:active { transform: scale(0.97); }
 
 .sp-pill:hover {
-  border-color: rgb(from var(--pnt-accent) r g b / 0.6);
+  border-color: var(--pnt-border-3);
   color: var(--pnt-text-1);
 }
 
@@ -282,9 +309,9 @@ details:not([open]) > .sp-summary .sp-caret {
 }
 
 .sp-pill[aria-checked="true"] {
-  background: var(--pnt-accent);
+  background: var(--pnt-accent-soft);
   border-color: var(--pnt-accent);
-  color: var(--pnt-on-accent);
+  color: var(--pnt-text-1);
 }
 
 /* The swatch carries its own data-pnt-theme, so these stripes resolve against
@@ -346,7 +373,7 @@ details:not([open]) > .sp-summary .sp-caret {
 
 .sp-sheet-cat {
   margin: 0 0 var(--pnt-gap-tight);
-  font-size: var(--pnt-text-sm);
+  font-size: var(--pnt-text-micro);
   font-weight: var(--pnt-weight-medium);
   text-transform: uppercase;
   letter-spacing: var(--pnt-tracking-caps);
@@ -395,42 +422,44 @@ details:not([open]) > .sp-summary .sp-caret {
   margin-top: 2px;
 }
 
-/* Segmented pair — a radiogroup collapsed to two named values. */
+/* Segmented control — a radiogroup collapsed to named values: a sunken group
+   with the chosen value raised on the page ground. */
 .sp-seg {
   display: inline-flex;
   flex: none;
-  border: 1px solid var(--pnt-border-2);
-  border-radius: var(--pnt-radius-sm);
-  overflow: hidden;
+  gap: 2px;
+  padding: 2px;
+  background: var(--pnt-surface-2);
+  border: 1px solid var(--pnt-border-1);
+  border-radius: var(--pnt-radius-md);
 }
 
 .sp-seg button {
   border: 0;
+  border-radius: var(--pnt-radius-sm);
   background: transparent;
   color: var(--pnt-text-3);
   font: var(--pnt-weight-medium) var(--pnt-text-sm)/var(--pnt-leading-tight) var(--pnt-font);
-  text-transform: uppercase;
-  letter-spacing: var(--pnt-tracking-caps);
-  padding: var(--pnt-gap-base) var(--pnt-md);
+  padding: 3px 9px;
   cursor: pointer;
-  transition: background var(--pnt-duration), color var(--pnt-duration),
+  transition: background var(--pnt-duration) var(--pnt-ease),
+              color var(--pnt-duration) var(--pnt-ease),
               transform var(--pnt-duration-fast) ease;
 }
 
 .sp-seg button:active { transform: scale(0.97); }
 
-.sp-seg button + button { border-left: 1px solid var(--pnt-border-2); }
-
 .sp-seg button:hover { color: var(--pnt-text-1); }
 
 .sp-seg button:focus-visible {
-  outline: 2px solid var(--pnt-accent);
+  outline: 2px solid var(--pnt-focus);
   outline-offset: -2px;
 }
 
 .sp-seg button[aria-checked="true"] {
-  background: var(--pnt-accent);
-  color: var(--pnt-on-accent);
+  background: var(--sp-ground);
+  color: var(--pnt-text-1);
+  box-shadow: 0 0 0 1px var(--pnt-border-2);
 }
 
 /* Presets are actions, not a value: pressing one writes a set of switches, and
@@ -445,7 +474,7 @@ details:not([open]) > .sp-summary .sp-caret {
 /* The payload bar's chips: the same control one size down, so they read as
    belonging to the preview rather than to the sheet. */
 .sp-seg-sm button {
-  padding: 2px var(--pnt-gap-base);
+  padding: 1px var(--pnt-sm);
   font-size: var(--pnt-text-sm);
 }
 
@@ -455,11 +484,11 @@ details:not([open]) > .sp-summary .sp-caret {
   position: relative;
   flex: none;
   width: 30px;
-  height: 17px;
+  height: 18px;
   padding: 0;
   border: 0;
   border-radius: 9px;
-  background: var(--pnt-border-2);
+  background: var(--pnt-border-3);
   cursor: pointer;
   transition: background var(--pnt-duration), transform var(--pnt-duration-fast) ease;
 }
@@ -471,20 +500,20 @@ details:not([open]) > .sp-summary .sp-caret {
   position: absolute;
   top: 2px;
   left: 2px;
-  width: 13px;
-  height: 13px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  background: var(--pnt-text-3);
+  background: var(--pnt-surface-0);
   transition: left var(--pnt-duration), background var(--pnt-duration);
 }
 
 .sp-switch:focus-visible {
-  outline: 2px solid var(--pnt-accent);
+  outline: 2px solid var(--pnt-focus);
   outline-offset: 2px;
 }
 
 .sp-switch[aria-checked="true"] { background: var(--pnt-accent); }
-.sp-switch[aria-checked="true"]::after { left: 15px; background: var(--pnt-on-accent); }
+.sp-switch[aria-checked="true"]::after { left: 14px; background: var(--pnt-on-accent); }
 
 /* Quiet text action, spec-sheet register. Disabled means "already there". */
 .sp-reset {
@@ -494,8 +523,6 @@ details:not([open]) > .sp-summary .sp-caret {
   border: 0;
   background: transparent;
   font: var(--pnt-weight-medium) var(--pnt-text-sm)/var(--pnt-leading-tight) var(--pnt-font);
-  text-transform: uppercase;
-  letter-spacing: var(--pnt-tracking-caps);
   color: var(--pnt-text-3);
   cursor: pointer;
   transition: color var(--pnt-duration), transform var(--pnt-duration-fast) ease;
@@ -516,12 +543,14 @@ details:not([open]) > .sp-summary .sp-caret {
   cursor: default;
 }
 
-/* ===== Footer ===== */
+/* ===== Footer (in the sidebar) ===== */
 .sp-footer {
   margin-top: auto;
-  padding-top: var(--pnt-lg);
-  border-top: 1px solid var(--sp-hairline);
+  padding: var(--pnt-lg) var(--pnt-md) 0;
+  display: grid;
+  gap: var(--pnt-xs);
   font-size: var(--pnt-text-sm);
+  line-height: var(--pnt-leading-base);
   color: var(--pnt-text-3);
 }
 
@@ -537,7 +566,7 @@ details:not([open]) > .sp-summary .sp-caret {
    rule it is overriding. */
 .sp-preview {
   position: relative;
-  border-radius: var(--pnt-radius-md);
+  border-radius: var(--pnt-radius-lg);
   /* Blueprint paper, shared by both previews: a faint accent grid over the
      ground, so the anatomy sheet and the measuring drawing sit on the same
      sheet. */
@@ -586,7 +615,7 @@ details:not([open]) > .sp-summary .sp-caret {
 }
 
 .sp-pay-q {
-  font-size: var(--pnt-text-sm);
+  font-size: var(--pnt-text-micro);
   text-transform: uppercase;
   letter-spacing: var(--pnt-tracking-caps);
   color: var(--pnt-text-3);
@@ -674,7 +703,7 @@ details:not([open]) > .sp-summary .sp-caret {
 
 .an-cap {
   margin: 0;
-  font-size: var(--pnt-text-sm);
+  font-size: var(--pnt-text-micro);
   font-weight: var(--pnt-weight-medium);
   text-transform: uppercase;
   letter-spacing: var(--pnt-tracking-caps);
@@ -683,46 +712,22 @@ details:not([open]) > .sp-summary .sp-caret {
   padding-bottom: 2px;
 }
 
-/* The hover specimen: the marching-ants silhouette, held still. */
+/* The hover specimen: the quiet dashed outline, held still. */
 .an-hover {
   display: flex;
   flex-direction: column;
   gap: var(--pnt-gap-pair);
   padding: var(--pnt-md) var(--pnt-btn-x);
-  border: 1.5px dashed var(--pnt-accent);
+  border: 1px dashed rgb(from var(--pnt-accent) r g b / 0.7);
   border-radius: var(--pnt-radius-md);
 }
 
-/* The selection specimen carries the real sweep: the same conic gradient and
-   10s rotation as #pnt-sweep-spin in content.css, scaled to the ring width. */
+/* The selection specimen: the same outline at the ring weight in the full
+   accent — the ants content.css crawls around a live selection, held still
+   here because a preview beside a colour picker should not move. */
 .an-beam {
   position: relative;
   padding: var(--pnt-ring);
-  border-radius: calc(var(--pnt-radius-md) + var(--pnt-ring));
-  overflow: hidden;
-  background: rgb(from var(--pnt-accent) r g b / 0.45);
-}
-
-.an-beam::before {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 220%;
-  aspect-ratio: 1;
-  background: conic-gradient(
-    transparent 0deg,
-    var(--pnt-accent) 90deg,
-    var(--pnt-accent-hover) 180deg,
-    var(--pnt-accent) 270deg,
-    transparent 360deg
-  );
-  animation: sp-sweep 10s linear infinite;
-}
-
-@keyframes sp-sweep {
-  from { transform: translate(-50%, -50%) rotate(0deg); }
-  to   { transform: translate(-50%, -50%) rotate(360deg); }
 }
 
 .an-sel {
@@ -732,7 +737,9 @@ details:not([open]) > .sp-summary .sp-caret {
   gap: var(--pnt-gap-pair);
   padding: var(--pnt-md) var(--pnt-btn-x);
   border-radius: var(--pnt-radius-md);
-  background: color-mix(in srgb, var(--pnt-surface-0) 93%, var(--pnt-accent));
+  outline: var(--pnt-ring) dashed var(--pnt-accent);
+  outline-offset: 2px;
+  background: var(--pnt-surface-0);
 }
 
 .pnt-mock #pnt-label,
@@ -864,7 +871,7 @@ details:not([open]) > .sp-summary .sp-caret {
   position: absolute;
   left: 6px;
   top: 4px;
-  font-size: var(--pnt-text-sm);
+  font-size: var(--pnt-text-micro);
   text-transform: uppercase;
   letter-spacing: var(--pnt-tracking-caps);
   color: var(--pnt-text-3);
@@ -931,7 +938,8 @@ details:not([open]) > .sp-summary .sp-caret {
    block's second line is the live settings caption. */
 .sv-note {
   position: absolute;
-  font-size: var(--pnt-text-sm);
+  font-size: var(--pnt-text-micro);
+  font-family: var(--pnt-font-mono);
   letter-spacing: var(--pnt-tracking-num);
   font-variant-numeric: tabular-nums;
   text-transform: uppercase;
@@ -947,8 +955,8 @@ details:not([open]) > .sp-summary .sp-caret {
   padding: var(--pnt-gap-base) var(--pnt-md);
   background: var(--pnt-surface-0);
   border: 1px solid var(--pnt-border-2);
-  border-radius: var(--pnt-radius-xs);
-  font-size: var(--pnt-text-sm);
+  border-radius: var(--pnt-radius-sm);
+  font-size: var(--pnt-text-micro);
   text-transform: uppercase;
 }
 
@@ -963,7 +971,7 @@ details:not([open]) > .sp-summary .sp-caret {
   transform: translate(-50%, -50%);
   background: var(--pnt-accent);
   color: var(--pnt-on-accent);
-  font: var(--pnt-weight-medium) var(--pnt-text-sm)/1 var(--pnt-font);
+  font: var(--pnt-weight-medium) var(--pnt-text-sm)/1 var(--pnt-font-mono);
   letter-spacing: var(--pnt-tracking-num);
   font-variant-numeric: tabular-nums;
   padding: var(--pnt-gap-tight) var(--pnt-xs);
@@ -1023,12 +1031,13 @@ details:not([open]) > .sp-summary .sp-caret {
   .sp-seg button,
   .sp-switch,
   .sp-switch::after,
-  .sp-caret,
   .sp-reset,
   .sp-saved,
+  .sp-nav,
+  .sp-nav-list a,
+  .sp-nav-list a::before,
   .sp-scroll,
   .sp-rail,
-  .sp-section::details-content,
   .pnt-mock,
   .sp-vig,
   .sp-pay,
@@ -1037,9 +1046,6 @@ details:not([open]) > .sp-summary .sp-caret {
   .sv-sel,
   .sv-guide,
   .sv-pill { transition: none; }
-
-  /* The selection specimen's sweep is the page's one animation. */
-  .an-beam::before { animation: none; }
 }
 
 /* The payload is code and the count is a number; both stay mono now that

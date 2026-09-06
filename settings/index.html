@@ -18,24 +18,46 @@
 <body>
 
 <main class="sp">
-  <header class="sp-header">
-    <h1>Pointee</h1>
-    <p class="sp-version">Settings</p>
-  </header>
-
   <div class="sp-body">
 
-    <!-- Settings column. Scrolls; the preview rail does not. Every section is a
-         native <details>, which is the collapse mechanism: free keyboard
-         support, free semantics, no JS. Open by default — collapsing is for
-         getting a long page out of the way, not a state worth persisting. -->
+    <!--
+      The sidebar is the page's map: one link per section, the current one
+      marked as you scroll (settings.js), and pointing at a link previews that
+      section in the rail — a link carries the same data-focus as its section,
+      so the rail's existing pointer logic needs nothing new.
+
+      The footer links point at the repository rather than at ../PRIVACY.md and
+      ../DESIGN.md: build.sh ships no markdown, so relative links would 404 in
+      the packaged extension even though they resolve when loaded from source.
+    -->
+    <nav class="sp-nav" aria-label="Settings sections">
+      <div class="sp-nav-in">
+        <p class="sp-wordmark"><b>Pointee</b><span>Settings</span></p>
+        <ul class="sp-nav-list">
+          <li><a href="#sec-theme" data-focus="theme">Appearance</a></li>
+          <li><a href="#sec-measure" data-focus="measure">Measuring</a></li>
+          <li><a href="#sec-edit" data-focus="edit">Editing</a></li>
+          <li><a href="#sec-copy" data-focus="copy">Copying</a></li>
+        </ul>
+        <footer class="sp-footer">
+          <p>Stored on this device. Nothing leaves it.</p>
+          <p>
+            <a href="https://github.com/Jingquank/Claude-Code-Probe/blob/main/PRIVACY.md"
+               target="_blank" rel="noreferrer">Privacy</a> ·
+            <a href="https://github.com/Jingquank/Claude-Code-Probe/blob/main/DESIGN.md"
+               target="_blank" rel="noreferrer">Design</a>
+          </p>
+          <p class="sp-version" id="sp-version"></p>
+        </footer>
+      </div>
+    </nav>
+
+    <!-- Settings column. Scrolls; the preview rail does not. Each section is a
+         card; the sidebar is the map, so nothing needs to collapse. -->
     <div class="sp-scroll">
 
-      <details class="sp-section" open data-focus="theme">
-        <summary class="sp-summary">
-          <i class="sp-caret" aria-hidden="true"></i>
-          <h2 class="sp-legend" id="appearance-legend">Appearance</h2>
-        </summary>
+      <section class="sp-section" data-focus="theme" id="sec-theme" aria-labelledby="appearance-legend">
+        <h2 class="sp-legend" id="appearance-legend">Appearance</h2>
         <div class="sp-section-body">
           <p class="sp-sub">
             Theme for the probe's own interface — the selection outline, the info
@@ -46,19 +68,14 @@
           <div class="sp-pills" role="radiogroup" aria-labelledby="appearance-legend" id="theme-pills"></div>
           <p class="sp-saved" id="saved-appearance" role="status" aria-live="polite"></p>
         </div>
-      </details>
-
-      <hr class="sp-hr">
+      </section>
 
       <!-- The measuring sheet. Dense dotted-leader rows in the probe's own
            register: label, leader, control. Two-value choices are segmented
            pairs; booleans are real switches. Hovering a row spotlights the part
            of the vignette in the rail that the row controls (data-hi). -->
-      <details class="sp-section" open data-focus="measure">
-        <summary class="sp-summary">
-          <i class="sp-caret" aria-hidden="true"></i>
-          <h2 class="sp-legend" id="measuring-legend">Measuring</h2>
-        </summary>
+      <section class="sp-section" data-focus="measure" id="sec-measure" aria-labelledby="measuring-legend">
+        <h2 class="sp-legend" id="measuring-legend">Measuring</h2>
         <div class="sp-section-body">
           <p class="sp-sub">
             With an element selected, hold <strong>Option</strong> (Alt on
@@ -120,13 +137,10 @@
           <button type="button" class="sp-reset" id="measure-reset">Reset to defaults</button>
           <p class="sp-saved" id="saved-measuring" role="status" aria-live="polite"></p>
         </div>
-      </details>
+      </section>
 
-      <details class="sp-section" open data-focus="edit">
-        <summary class="sp-summary">
-          <i class="sp-caret" aria-hidden="true"></i>
-          <h2 class="sp-legend" id="editing-legend">Editing</h2>
-        </summary>
+      <section class="sp-section" data-focus="edit" id="sec-edit" aria-labelledby="editing-legend">
+        <h2 class="sp-legend" id="editing-legend">Editing</h2>
         <div class="sp-section-body">
           <p class="sp-sub">
             With an element selected, the pencil in the toolbar opens a panel
@@ -173,19 +187,14 @@
           </div>
           <p class="sp-saved" id="saved-editing" role="status" aria-live="polite"></p>
         </div>
-      </details>
-
-      <hr class="sp-hr">
+      </section>
 
       <!-- The copy sheet. Two axes: which fields ride along in the comment
            header, and how much of the rendered subtree comes with them. The
            rail assembles the real payload from these, so every row's effect is
            legible before anything is copied. -->
-      <details class="sp-section" open data-focus="copy">
-        <summary class="sp-summary">
-          <i class="sp-caret" aria-hidden="true"></i>
-          <h2 class="sp-legend" id="copying-legend">Copying</h2>
-        </summary>
+      <section class="sp-section" data-focus="copy" id="sec-copy" aria-labelledby="copying-legend">
+        <h2 class="sp-legend" id="copying-legend">Copying</h2>
         <div class="sp-section-body">
           <p class="sp-sub">
             What <strong>Copy Code</strong> and the edit panel's copy button put
@@ -332,22 +341,7 @@
           <button type="button" class="sp-reset" id="copy-reset">Reset to defaults</button>
           <p class="sp-saved" id="saved-copying" role="status" aria-live="polite"></p>
         </div>
-      </details>
-
-      <!--
-        These point at the repository rather than at ../PRIVACY.md and
-        ../DESIGN.md: build.sh ships no markdown, so relative links would 404 in
-        the packaged extension even though they resolve when loaded from source.
-      -->
-      <footer class="sp-footer">
-        <p>
-          Your settings are stored on this device and never leave it.
-          <a href="https://github.com/Jingquank/Claude-Code-Probe/blob/main/PRIVACY.md"
-             target="_blank" rel="noreferrer">Privacy</a> ·
-          <a href="https://github.com/Jingquank/Claude-Code-Probe/blob/main/DESIGN.md"
-             target="_blank" rel="noreferrer">Design</a>
-        </p>
-      </footer>
+      </section>
 
     </div>
 

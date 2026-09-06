@@ -684,3 +684,32 @@ store.get([THEME_KEY, ...Object.keys(ALL_PREFS)], (stored) => {
   paintTheme();
   paintPrefs();
 });
+
+// The sidebar marks the section most in view. A pointer over a link already
+// previews its section in the rail — the link carries the section's data-focus
+// and the loop above attached to every [data-focus] alike.
+const navLinks = Array.from(document.querySelectorAll(".sp-nav-list a"));
+const navSections = navLinks
+  .map((a) => document.querySelector(a.getAttribute("href")))
+  .filter(Boolean);
+if ("IntersectionObserver" in window && navSections.length) {
+  const visible = new Map();
+  const observer = new IntersectionObserver((entries) => {
+    for (const e of entries) visible.set(e.target, e.intersectionRatio);
+    let best = navSections[0];
+    for (const s of navSections) {
+      if ((visible.get(s) || 0) > (visible.get(best) || 0)) best = s;
+    }
+    for (const a of navLinks) {
+      if (a.getAttribute("href") === "#" + best.id) a.setAttribute("aria-current", "true");
+      else a.removeAttribute("aria-current");
+    }
+  }, { threshold: [0, 0.25, 0.5, 0.75, 1], rootMargin: "-10% 0px -45% 0px" });
+  navSections.forEach((s) => observer.observe(s));
+}
+
+// The version is the manifest's, when there is a manifest to ask.
+const versionEl = document.getElementById("sp-version");
+if (versionEl && typeof chrome !== "undefined" && chrome.runtime?.getManifest) {
+  versionEl.textContent = chrome.runtime.getManifest().version;
+}
