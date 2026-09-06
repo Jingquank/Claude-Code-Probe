@@ -3,8 +3,15 @@
   "name": "Pointee",
   "version": "1.5.0",
   "description": "Inspect, edit, and copy any element on any webpage — styles, text, design tokens, even WebGL shaders.",
-  "permissions": ["activeTab", "clipboardWrite", "scripting", "storage"],
-  "host_permissions": ["<all_urls>"],
+  "permissions": [
+    "activeTab",
+    "clipboardWrite",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
   "options_ui": {
     "page": "settings/index.html",
     "open_in_tab": true
@@ -23,9 +30,17 @@
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["lib/html2canvas.min.js", "content.js"],
-      "css": ["tokens.css", "content.css"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "lib/html2canvas.min.js",
+        "content.js"
+      ],
+      "css": [
+        "tokens.css",
+        "content.css"
+      ],
       "run_at": "document_idle"
     }
   ],
@@ -33,5 +48,15 @@
     "16": "icons/icon-16.png",
     "48": "icons/icon-48.png",
     "128": "icons/icon-128.png"
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "fonts/*.woff2"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ]
 }

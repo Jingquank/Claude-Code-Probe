@@ -99,11 +99,10 @@ only place a page's WebGL objects are visible from. What it does and does not do
 
 ## Third-Party Services
 
-The extension loads the **Geist Mono** font from Google Fonts via a CSS import. Google's
-privacy policy applies to this font loading: https://policies.google.com/privacy
-
-No other third-party services, APIs, or external resources are used. The extension sends
-no telemetry and has no backend.
+None. The typefaces the extension draws its own interface in (Geist and Geist Mono, under
+the SIL Open Font License) ship inside the extension package and are never fetched from a
+font host. No third-party services, APIs, or external resources are used. The extension
+sends no telemetry and has no backend.
 
 ## Data Storage
 

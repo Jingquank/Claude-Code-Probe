@@ -8,7 +8,7 @@ rm -rf dist
 mkdir -p dist/chrome
 
 SRC_FILES="manifest.json background.js content.js shader-agent.js tokens.css content.css"
-SRC_DIRS="icons lib settings"
+SRC_DIRS="icons lib settings fonts"
 
 for f in $SRC_FILES; do cp "$f" dist/chrome/; done
 for d in $SRC_DIRS; do cp -r "$d" dist/chrome/; done

@@ -18,13 +18,38 @@
    is available unconditionally. This is what keeps a theme to 19 declarations
    instead of ~35 — every accent-at-an-alpha follows the base automatically. */
 
-/* ===== Fonts ===== */
-@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&display=swap');
+/* ===== Fonts =====
+   Geist Sans and Geist Mono ship inside the extension (fonts/, OFL). One
+   declaration serves both contexts: Chrome substitutes __MSG_@@extension_id__
+   in this file whether it arrives as a content-script stylesheet or through
+   the settings page's <link> — verified on github.com, example.com and the
+   options page with node scratch/fontcheck against the loaded extension.
+   Nothing is fetched from a font host any more: no request, no privacy line.
+   The 1.5.0 @import of Google Fonts registered no face at all in the same
+   check, so the mono users saw was always the fallback stack. ADR 0001. */
+@font-face {
+  font-family: "Geist";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("chrome-extension://__MSG_@@extension_id__/fonts/Geist-Variable.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Geist Mono";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("chrome-extension://__MSG_@@extension_id__/fonts/GeistMono-Variable.woff2") format("woff2");
+}
 
 /* ===== Tier 1: theme-invariant scales ===== */
 :root {
-  /* Type. One stack, previously repeated at six sites. */
-  --pnt-font: "Geist Mono", "SF Mono", "Fira Code", "Consolas", monospace;
+  /* Type. Two faces from one family: sans for labels and controls, mono for
+     values, tokens and selectors. --pnt-font is the pre-2.0 name and still
+     points at the mono until every surface has chosen its face. */
+  --pnt-font-sans: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --pnt-font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --pnt-font: var(--pnt-font-mono);
   --pnt-text-lg: 12px;      /* identity line */
   --pnt-text-base: 11px;    /* label body, buttons, toast */
   --pnt-text-sm: 10px;      /* size, props, breadcrumb */
