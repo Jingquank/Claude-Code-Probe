@@ -23,7 +23,7 @@
 
       python3 -m http.server 8765     # then open /test/edit-harness.html
 
-  Press "p" to toggle Probe Mode. Then: click an element, click the pencil.
+  Press "p" to toggle Point Mode. Then: click an element, click the pencil.
 -->
 <link rel="stylesheet" href="../tokens.css">
 <link rel="stylesheet" href="../content.css">
@@ -321,7 +321,7 @@
 </div>
 
 <p class="note">
-  <kbd>p</kbd> toggles Probe Mode. Click an element to select it, then the pencil in
+  <kbd>p</kbd> toggles Point Mode. Click an element to select it, then the pencil in
   the toolbar to edit. <kbd>Esc</kbd> steps back out one layer at a time; hold
   <kbd>Option</kbd> with something selected to measure.
 </p>
@@ -336,10 +336,10 @@
   const listeners = [];
   const changeListeners = [];
   const read = () => {
-    try { return JSON.parse(localStorage.getItem("ccp-harness-store") || "{}"); }
+    try { return JSON.parse(localStorage.getItem("pnt-harness-store") || "{}"); }
     catch { return {}; }
   };
-  const write = (obj) => localStorage.setItem("ccp-harness-store", JSON.stringify(obj));
+  const write = (obj) => localStorage.setItem("pnt-harness-store", JSON.stringify(obj));
 
   window.chrome = {
     runtime: {
@@ -397,11 +397,11 @@
   };
   function setState(next) {
     active = next;
-    for (const fn of listeners) fn({ type: "TOGGLE_PROBE", active });
+    for (const fn of listeners) fn({ type: "TOGGLE_POINT", active });
     hud();
   }
 
-  // "p" toggles. Probe Mode swallows clicks on the page, so a button would be
+  // "p" toggles. Point Mode swallows clicks on the page, so a button would be
   // unclickable the moment it was needed — the same reason the placement
   // harness is keyboard-driven.
   window.addEventListener("keydown", (e) => {
@@ -412,7 +412,7 @@
     }
   }, true);
 
-  window.__ccpHarness = { setState, isActive: () => active };
+  window.__pntHarness = { setState, isActive: () => active };
 
   // ===== Read-only probe, for test/cdp.mjs =====
   // content.js is an IIFE, so an automated test cannot reach inside it to ask
@@ -424,7 +424,7 @@
   // This is a measurement of the *page*, not of the extension's internals, so
   // it cannot drift into agreeing with a broken collector: it counts what is
   // genuinely there, and the assertion is that content.js found it too.
-  window.__ccpProbe = {
+  window.__pntProbe = {
     // The harness rewrites stylesheet hrefs on load to defeat caching, which
     // makes the browser re-fetch them. Until those land, document.styleSheets
     // is briefly empty and any token measurement is meaningless. cdp.mjs waits
@@ -449,7 +449,7 @@
             rules++;
             for (let i = 0; i < rule.style.length; i++) {
               const prop = rule.style[i];
-              if (prop.startsWith("--") && !prop.startsWith("--ccp-")) varNames.add(prop);
+              if (prop.startsWith("--") && !prop.startsWith("--pnt-")) varNames.add(prop);
             }
           }
           if (rule.cssRules && rule.cssRules.length) walk(rule.cssRules);

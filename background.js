@@ -11,7 +11,7 @@ const INJECT_JS = ["lib/html2canvas.min.js", "content.js"];
 const INJECT_CSS = ["tokens.css", "content.css"];
 
 // The badge is browser chrome, not page chrome, so it can't read tokens.css.
-// These mirror --ccp-accent from each theme block; a theme missing from here
+// These mirror --pnt-accent from each theme block; a theme missing from here
 // falls back to the default rather than showing no badge colour.
 const BADGE_ACCENT = {
   "terracotta-dark": "#d97757",
@@ -52,7 +52,7 @@ chrome.action.onClicked.addListener(async (tab) => {
 
   try {
     await chrome.tabs.sendMessage(tab.id, {
-      type: "TOGGLE_PROBE",
+      type: "TOGGLE_POINT",
       active: nowActive,
     });
   } catch {
@@ -67,7 +67,7 @@ chrome.action.onClicked.addListener(async (tab) => {
         files: INJECT_CSS,
       });
       await chrome.tabs.sendMessage(tab.id, {
-        type: "TOGGLE_PROBE",
+        type: "TOGGLE_POINT",
         active: true,
       });
     }
@@ -177,7 +177,7 @@ chrome.storage.onChanged.addListener(async (changes, area) => {
 // sessions, so the worker only has to converge the registered state with the
 // stored preference: once at wake-up, and again whenever the setting changes.
 const DEEP_CAPTURE_KEY = "editDeepShaderCapture";
-const DEEP_CAPTURE_ID = "ccp-shader-early";
+const DEEP_CAPTURE_ID = "pnt-shader-early";
 
 async function syncDeepCapture() {
   try {

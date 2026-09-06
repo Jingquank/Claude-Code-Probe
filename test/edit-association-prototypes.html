@@ -1,5 +1,5 @@
 <meta charset="utf-8">
-<title>Claude Code Probe — Edit-mode association prototypes</title>
+<title>Pointee — Edit-mode association prototypes</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
@@ -160,49 +160,49 @@ h1 {
 /* ============================================================
    THEME TOKENS — the real seven, page-side derivations included
    ============================================================ */
-[data-ccp-theme="terracotta-dark"] {
+[data-pnt-theme="terracotta-dark"] {
   --surface:#141413; --text:#faf9f5; --dim:#c8c5bc; --muted:#8a8780; --faint:#6a6a64;
   --sep:#3a3a35; --accent:#d97757; --accent-dark:#b06848; --on-accent:#1a0d07;
   --shadow-card: 0 8px 24px -8px rgba(0,0,0,.55), 0 2px 6px rgba(20,20,19,.4);
   --shadow-bar: 0 4px 16px rgba(20,20,19,.6);
   --page:#1e1e1c; --page-ink:#c8c5bc; --page-rule:#2e2e2a;
 }
-[data-ccp-theme="terracotta-light"] {
+[data-pnt-theme="terracotta-light"] {
   --surface:#faf9f5; --text:#141413; --dim:#3a3a35; --muted:#6a6a64; --faint:#8a8780;
   --sep:#ddd9cf; --accent:#c2603f; --accent-dark:#9c4a2e; --on-accent:#fff8f4;
   --shadow-card: 0 8px 24px -10px rgba(60,45,35,.28), 0 1px 3px rgba(60,45,35,.14);
   --shadow-bar: 0 4px 14px rgba(60,45,35,.18);
   --page:#ffffff; --page-ink:#3a3a35; --page-rule:#eae7de;
 }
-[data-ccp-theme="dracula"] {
+[data-pnt-theme="dracula"] {
   --surface:#282a36; --text:#f8f8f2; --dim:#cfd0e0; --muted:#8b93bd; --faint:#6272a4;
   --sep:#44475a; --accent:#bd93f9; --accent-dark:#9a6ee0; --on-accent:#1a1626;
   --shadow-card: 0 8px 24px -8px rgba(0,0,0,.6), 0 2px 6px rgba(20,20,30,.45);
   --shadow-bar: 0 4px 16px rgba(20,20,30,.65);
   --page:#21222c; --page-ink:#cfd0e0; --page-rule:#343746;
 }
-[data-ccp-theme="monokai"] {
+[data-pnt-theme="monokai"] {
   --surface:#272822; --text:#f8f8f2; --dim:#d9d8cd; --muted:#9d9a86; --faint:#75715e;
   --sep:#3e3d32; --accent:#f92672; --accent-dark:#cc1f5d; --on-accent:#2a0512;
   --shadow-card: 0 8px 24px -8px rgba(0,0,0,.6), 0 2px 6px rgba(20,20,15,.45);
   --shadow-bar: 0 4px 16px rgba(20,20,15,.65);
   --page:#1e1f1a; --page-ink:#d9d8cd; --page-rule:#32332b;
 }
-[data-ccp-theme="nord"] {
+[data-pnt-theme="nord"] {
   --surface:#2e3440; --text:#eceff4; --dim:#d8dee9; --muted:#9aa5bb; --faint:#7b88a1;
   --sep:#3b4252; --accent:#88c0d0; --accent-dark:#5e81ac; --on-accent:#16202b;
   --shadow-card: 0 8px 24px -8px rgba(0,0,0,.5), 0 2px 6px rgba(20,25,35,.4);
   --shadow-bar: 0 4px 16px rgba(20,25,35,.6);
   --page:#272c36; --page-ink:#d8dee9; --page-rule:#343b48;
 }
-[data-ccp-theme="solarized-dark"] {
+[data-pnt-theme="solarized-dark"] {
   --surface:#002b36; --text:#eee8d5; --dim:#93a1a1; --muted:#7d9095; --faint:#586e75;
   --sep:#073642; --accent:#cb4b16; --accent-dark:#a53c11; --on-accent:#1a0700;
   --shadow-card: 0 8px 24px -8px rgba(0,0,0,.55), 0 2px 6px rgba(0,20,25,.45);
   --shadow-bar: 0 4px 16px rgba(0,20,25,.65);
   --page:#01212b; --page-ink:#93a1a1; --page-rule:#062b35;
 }
-[data-ccp-theme="tokyo-night"] {
+[data-pnt-theme="tokyo-night"] {
   --surface:#1a1b26; --text:#c0caf5; --dim:#a9b1d6; --muted:#7b83a8; --faint:#565f89;
   --sep:#292e42; --accent:#bb9af7; --accent-dark:#9a78d8; --on-accent:#16111f;
   --shadow-card: 0 8px 24px -8px rgba(0,0,0,.6), 0 2px 6px rgba(15,15,25,.45);
@@ -438,7 +438,7 @@ h1 {
 <main class="wrap">
 
   <div class="masthead">
-    <p class="eyebrow">Claude Code Probe · prototypes</p>
+    <p class="eyebrow">Pointee · prototypes</p>
     <h1>Twelve ways to say "this panel edits that element"</h1>
     <p class="lede">The selection box is a ring drawn 2px outside the element. In Edit
       Mode that ring sits on top of the exact pixels being tuned — <b>border width,
@@ -468,7 +468,7 @@ h1 {
         outside the element. The canonical answer, and the one everybody pictures when
         they hear "connect them" — a physical line you can trace with a finger.</p>
     </div>
-    <div class="viewport" data-ccp-theme="terracotta-dark" data-proto="1"></div>
+    <div class="viewport" data-pnt-theme="terracotta-dark" data-proto="1"></div>
     <dl class="tradeoff">
       <dt>Wins</dt><dd class="win">Unambiguous at any distance and in any direction. The terminal dot lands in dead space, so a 1px border and a 20px radius both stay perfectly readable underneath.</dd>
       <dt>Costs</dt><dd>A curve crossing the page cuts through whatever content lies between, and on a busy page it reads as one more thing drawn on top. Needs a live rect: editing padding or width moves the anchor.</dd>
@@ -487,12 +487,12 @@ h1 {
         axis-relation solver and the dashed guide is already a rendered primitive. Reads
         as a spec drawing rather than a UI flourish.</p>
     </div>
-    <div class="viewport" data-ccp-theme="nord" data-proto="2"></div>
+    <div class="viewport" data-pnt-theme="nord" data-proto="2"></div>
     <dl class="tradeoff">
       <dt>Wins</dt><dd class="win">Continuous with Redline mode, so the tool gains no new visual language. Axis-aligned segments hide inside a page's own grid far better than a diagonal curve.</dd>
       <dt>Costs</dt><dd>Two long runs cover more ground than one short curve, and the elbow can land on content in a way a bezier arcs over.</dd>
       <dt>Off-screen</dt><dd>Hides outright. The elbow's whole legibility is knowing where both ends are.</dd>
-      <dt>Reuses</dt><dd><code>computeRedline()</code> at content.js:1128, <code>.ccp-redline-guide-h/v</code> at content.css:137.</dd>
+      <dt>Reuses</dt><dd><code>computeRedline()</code> at content.js:1128, <code>.pnt-redline-guide-h/v</code> at content.css:137.</dd>
     </dl>
   </section>
 
@@ -506,12 +506,12 @@ h1 {
         Nothing at all approaches the perimeter, and the association carries a name
         rather than just a direction.</p>
     </div>
-    <div class="viewport" data-ccp-theme="terracotta-light" data-proto="3"></div>
+    <div class="viewport" data-pnt-theme="terracotta-light" data-proto="3"></div>
     <dl class="tradeoff">
       <dt>Wins</dt><dd class="win">The only spanning approach that also answers "which element <em>is</em> it" — <code>div.skill-card</code> is right there. Keeps a wide berth from the box.</dd>
       <dt>Costs</dt><dd>Needs whitespace to put the caption in, and dense pages have none; the caption then either overlaps content or drifts far enough to be ambiguous.</dd>
       <dt>Off-screen</dt><dd>The caption pins itself to the viewport edge and the leader drops — identity survives, geometry doesn't.</dd>
-      <dt>Note</dt><dd>Recovers the information the hushed <code>#ccp-label</code> stops showing in edit mode.</dd>
+      <dt>Note</dt><dd>Recovers the information the hushed <code>#pnt-label</code> stops showing in edit mode.</dd>
     </dl>
   </section>
 
@@ -526,7 +526,7 @@ h1 {
         and re-aiming as either moves. Nothing crosses the gap; the panel simply looks
         at what it owns. Zero pixels are drawn anywhere near the element.</p>
     </div>
-    <div class="viewport" data-ccp-theme="tokyo-night" data-proto="4"></div>
+    <div class="viewport" data-pnt-theme="tokyo-night" data-proto="4"></div>
     <dl class="tradeoff">
       <dt>Wins</dt><dd class="win">The lowest-footprint approach that still has a direction. The page is never drawn on — not near the element, not between them. Immune to every rect problem, since it only needs a bearing.</dd>
       <dt>Costs</dt><dd>A bearing is not an address. With two similar cards along the same ray it genuinely cannot disambiguate, and the user has to follow the aim by eye.</dd>
@@ -545,7 +545,7 @@ h1 {
         is carried entirely by motion over time — the resting state is literally empty
         page.</p>
     </div>
-    <div class="viewport" data-ccp-theme="monokai" data-proto="5"></div>
+    <div class="viewport" data-pnt-theme="monokai" data-proto="5"></div>
     <dl class="tradeoff">
       <dt>Wins</dt><dd class="win">The purest possible obedience to the constraint: at rest there is nothing on screen to obstruct anything. Ties the signal to consequence — you see the link exactly when you change something.</dd>
       <dt>Costs</dt><dd>Glance away mid-session and there is no standing answer to "which one". Fails the user's own "quiet always" half outright, which is precisely why it's worth seeing.</dd>
@@ -566,7 +566,7 @@ h1 {
         That refusal is the entire design: a mark that never traces the corner can never
         be confused with it.</p>
     </div>
-    <div class="viewport" data-ccp-theme="terracotta-dark" data-proto="6"></div>
+    <div class="viewport" data-pnt-theme="terracotta-dark" data-proto="6"></div>
     <dl class="tradeoff">
       <dt>Wins</dt><dd class="win">Reads instantly as "this box" while touching none of it, and the square corners stay visually independent of the radius you're scrubbing — you can watch 0→24px with the marks completely still.</dd>
       <dt>Costs</dt><dd>Four objects instead of one, and on a small element the brackets crowd until they nearly close into the ring we're trying to get away from.</dd>
@@ -585,7 +585,7 @@ h1 {
         it, and midpoints stay maximally far from the corners — the most delicate part
         of what's being edited.</p>
     </div>
-    <div class="viewport" data-ccp-theme="dracula" data-proto="7"></div>
+    <div class="viewport" data-pnt-theme="dracula" data-proto="7"></div>
     <dl class="tradeoff">
       <dt>Wins</dt><dd class="win">The quietest of the exterior family. Deliberately puts its marks at the point on each edge furthest from any corner, so radius work is never visually crowded.</dd>
       <dt>Costs</dt><dd>Weakest bounding read of the three exterior options — four ticks describe a cross, and the eye has to infer the rectangle.</dd>
@@ -603,7 +603,7 @@ h1 {
         breathing slowly. This is today's box moved just far enough out to be legal —
         included on purpose as the baseline the other eleven have to beat.</p>
     </div>
-    <div class="viewport" data-ccp-theme="solarized-dark" data-proto="8"></div>
+    <div class="viewport" data-pnt-theme="solarized-dark" data-proto="8"></div>
     <dl class="tradeoff">
       <dt>Wins</dt><dd class="win">Strongest possible bounding read, and no learning curve — it is the vocabulary users already have. The breath replaces the sweep as the "alive" signal at a fraction of the visual cost.</dd>
       <dt>Costs</dt><dd class="flag">Its constant radius visibly disagrees with the element's own once you scrub radius past ~12px, which is either honest separation or an irritating mismatch. It also still fully encircles, so it competes with shadow work all round the box.</dd>
@@ -624,7 +624,7 @@ h1 {
         column of the active cell. Association by projection, from as far away as it is
         possible to get.</p>
     </div>
-    <div class="viewport" data-ccp-theme="terracotta-light" data-proto="9"></div>
+    <div class="viewport" data-pnt-theme="terracotta-light" data-proto="9"></div>
     <dl class="tradeoff">
       <dt>Wins</dt><dd class="win">Nothing is drawn within a hundred pixels of the element, and it still communicates position <em>and</em> size on both axes. Borrows a read every spreadsheet user already owns.</dd>
       <dt>Costs</dt><dd>Indirect — you read two projections and intersect them mentally. Vertically stacked elements of equal width project identically.</dd>
@@ -646,7 +646,7 @@ h1 {
         corner. Two matching objects; the eye pairs them the way it pairs a footnote with
         its marker.</p>
     </div>
-    <div class="viewport" data-ccp-theme="tokyo-night" data-proto="10"></div>
+    <div class="viewport" data-pnt-theme="tokyo-night" data-proto="10"></div>
     <dl class="tradeoff">
       <dt>Wins</dt><dd class="win">Cheapest thing on the page — one chip in dead space above the corner. No path to route, no rect to trace, nothing that can collide with content between the two.</dd>
       <dt>Costs</dt><dd>Requires a deliberate scan to find the matching chip; it never grabs you. And it marks one corner only, so it says "here" without saying "this big".</dd>
@@ -666,7 +666,7 @@ h1 {
         on every change. The association isn't spatial at all — it's "what you see in the
         panel is what you're editing". The page is never touched by a single pixel.</p>
     </div>
-    <div class="viewport" data-ccp-theme="monokai" data-proto="11"></div>
+    <div class="viewport" data-pnt-theme="monokai" data-proto="11"></div>
     <dl class="tradeoff">
       <dt>Wins</dt><dd class="win">The only approach that draws <em>nothing</em> on the page — perfect compliance with the constraint by construction, and the only one that still works with the element scrolled entirely out of view. Doubles as a before/after read at a glance.</dd>
       <dt>Costs</dt><dd class="flag">Confirms identity but not <em>location</em> — with two similar cards it tells you what you're editing without telling you where. At thumbnail scale a 1px border change is nearly invisible, which is exactly the edit it most needs to show.</dd>
@@ -687,7 +687,7 @@ h1 {
         it, nothing points at it; it is simply the only thing in the room that is off
         the ground.</p>
     </div>
-    <div class="viewport" data-ccp-theme="nord" data-proto="12"></div>
+    <div class="viewport" data-pnt-theme="nord" data-proto="12"></div>
     <dl class="tradeoff">
       <dt>Wins</dt><dd class="win">Feels physical rather than annotated — the least "tool chrome" of the twelve. The glow occupies the gap outside the border without any hard edge for the eye to mistake for a stroke.</dd>
       <dt>Costs</dt><dd class="flag">Collides head-on with the Shadow group, one of the six editable inventories. Tuning <code>shadow-blur</code> against a tinted glow of our own is genuinely confusing — the strongest single objection to any approach here.</dd>
@@ -1304,7 +1304,7 @@ function firePulse(state) {
 
   if (still) {
     /* Motion goes, information stays: hold the chord and both ends briefly,
-       the way #ccp-edit-flash keeps opacity 1 instead of vanishing. */
+       the way #pnt-edit-flash keeps opacity 1 instead of vanishing. */
     const chord = svg("path", { class: "as-line", d: `M ${a.x} ${a.y} L ${b.x} ${b.y}`, opacity: 1 });
     const dot = svg("circle", { class: "as-fill", cx: b.x, cy: b.y, r: 4, opacity: 1 });
     layer.append(chord, dot);
@@ -1486,7 +1486,7 @@ function buildThemeDots(vpEl) {
     b.title = name;
     b.style.background = `linear-gradient(135deg, ${bg} 50%, ${accent} 50%)`;
     b.addEventListener("click", () => {
-      vpEl.dataset.ccpTheme = name;
+      vpEl.dataset.pntTheme = name;
       const st = STATES.get(vpEl);
       if (st) draw(st);
     });

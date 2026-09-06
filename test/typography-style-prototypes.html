@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Claude Code Probe — Type styles, round three</title>
+<title>Pointee — Type styles, round three</title>
 <!--
   Round three. Rounds one and two picked the layout (the 3×2 mini-grid with
   ticks, bloom and caption — V8). The grilling then settled how composite
@@ -84,13 +84,13 @@ h1 { font-family:var(--mono); font-weight:500; font-size:clamp(1.75rem,4.5vw,var
 /* ============================================================
    THEME TOKENS
    ============================================================ */
-[data-ccp-theme="terracotta-dark"] { --surface:#141413; --text:#faf9f5; --dim:#c8c5bc; --muted:#8a8780; --faint:#6a6a64; --sep:#3a3a35; --accent:#d97757; --on-accent:#1a0d07; --shadow-card:0 8px 24px -8px rgba(0,0,0,.55),0 2px 6px rgba(20,20,19,.4); --page:#1e1e1c; --page-ink:#c8c5bc; }
-[data-ccp-theme="terracotta-light"] { --surface:#faf9f5; --text:#141413; --dim:#3a3a35; --muted:#6a6a64; --faint:#8a8780; --sep:#ddd9cf; --accent:#c2603f; --on-accent:#fff8f4; --shadow-card:0 8px 24px -10px rgba(60,45,35,.28),0 1px 3px rgba(60,45,35,.14); --page:#ffffff; --page-ink:#3a3a35; }
-[data-ccp-theme="dracula"] { --surface:#282a36; --text:#f8f8f2; --dim:#cfd0e0; --muted:#8b93bd; --faint:#6272a4; --sep:#44475a; --accent:#bd93f9; --on-accent:#1a1626; --shadow-card:0 8px 24px -8px rgba(0,0,0,.6),0 2px 6px rgba(20,20,30,.45); --page:#21222c; --page-ink:#cfd0e0; }
-[data-ccp-theme="nord"] { --surface:#2e3440; --text:#eceff4; --dim:#d8dee9; --muted:#9aa5bb; --faint:#7b88a1; --sep:#3b4252; --accent:#88c0d0; --on-accent:#16202b; --shadow-card:0 8px 24px -8px rgba(0,0,0,.5),0 2px 6px rgba(20,25,35,.4); --page:#272c36; --page-ink:#d8dee9; }
-[data-ccp-theme="solarized-dark"] { --surface:#002b36; --text:#eee8d5; --dim:#93a1a1; --muted:#7d9095; --faint:#586e75; --sep:#073642; --accent:#cb4b16; --on-accent:#1a0700; --shadow-card:0 8px 24px -8px rgba(0,0,0,.55),0 2px 6px rgba(0,20,25,.45); --page:#01212b; --page-ink:#93a1a1; }
-[data-ccp-theme="tokyo-night"] { --surface:#1a1b26; --text:#c0caf5; --dim:#a9b1d6; --muted:#7b83a8; --faint:#565f89; --sep:#292e42; --accent:#bb9af7; --on-accent:#16111f; --shadow-card:0 8px 24px -8px rgba(0,0,0,.6),0 2px 6px rgba(15,15,25,.45); --page:#16161e; --page-ink:#a9b1d6; }
-[data-ccp-theme="monokai"] { --surface:#272822; --text:#f8f8f2; --dim:#d9d8cd; --muted:#9d9a86; --faint:#75715e; --sep:#3e3d32; --accent:#f92672; --on-accent:#2a0512; --shadow-card:0 8px 24px -8px rgba(0,0,0,.6),0 2px 6px rgba(20,20,15,.45); --page:#1e1f1a; --page-ink:#d9d8cd; }
+[data-pnt-theme="terracotta-dark"] { --surface:#141413; --text:#faf9f5; --dim:#c8c5bc; --muted:#8a8780; --faint:#6a6a64; --sep:#3a3a35; --accent:#d97757; --on-accent:#1a0d07; --shadow-card:0 8px 24px -8px rgba(0,0,0,.55),0 2px 6px rgba(20,20,19,.4); --page:#1e1e1c; --page-ink:#c8c5bc; }
+[data-pnt-theme="terracotta-light"] { --surface:#faf9f5; --text:#141413; --dim:#3a3a35; --muted:#6a6a64; --faint:#8a8780; --sep:#ddd9cf; --accent:#c2603f; --on-accent:#fff8f4; --shadow-card:0 8px 24px -10px rgba(60,45,35,.28),0 1px 3px rgba(60,45,35,.14); --page:#ffffff; --page-ink:#3a3a35; }
+[data-pnt-theme="dracula"] { --surface:#282a36; --text:#f8f8f2; --dim:#cfd0e0; --muted:#8b93bd; --faint:#6272a4; --sep:#44475a; --accent:#bd93f9; --on-accent:#1a1626; --shadow-card:0 8px 24px -8px rgba(0,0,0,.6),0 2px 6px rgba(20,20,30,.45); --page:#21222c; --page-ink:#cfd0e0; }
+[data-pnt-theme="nord"] { --surface:#2e3440; --text:#eceff4; --dim:#d8dee9; --muted:#9aa5bb; --faint:#7b88a1; --sep:#3b4252; --accent:#88c0d0; --on-accent:#16202b; --shadow-card:0 8px 24px -8px rgba(0,0,0,.5),0 2px 6px rgba(20,25,35,.4); --page:#272c36; --page-ink:#d8dee9; }
+[data-pnt-theme="solarized-dark"] { --surface:#002b36; --text:#eee8d5; --dim:#93a1a1; --muted:#7d9095; --faint:#586e75; --sep:#073642; --accent:#cb4b16; --on-accent:#1a0700; --shadow-card:0 8px 24px -8px rgba(0,0,0,.55),0 2px 6px rgba(0,20,25,.45); --page:#01212b; --page-ink:#93a1a1; }
+[data-pnt-theme="tokyo-night"] { --surface:#1a1b26; --text:#c0caf5; --dim:#a9b1d6; --muted:#7b83a8; --faint:#565f89; --sep:#292e42; --accent:#bb9af7; --on-accent:#16111f; --shadow-card:0 8px 24px -8px rgba(0,0,0,.6),0 2px 6px rgba(15,15,25,.45); --page:#16161e; --page-ink:#a9b1d6; }
+[data-pnt-theme="monokai"] { --surface:#272822; --text:#f8f8f2; --dim:#d9d8cd; --muted:#9d9a86; --faint:#75715e; --sep:#3e3d32; --accent:#f92672; --on-accent:#2a0512; --shadow-card:0 8px 24px -8px rgba(0,0,0,.6),0 2px 6px rgba(20,20,15,.45); --page:#1e1f1a; --page-ink:#d9d8cd; }
 
 /* ============================================================
    PANEL ANATOMY (round-two vocabulary, plus the style row)
@@ -163,7 +163,7 @@ h1 { font-family:var(--mono); font-weight:500; font-size:clamp(1.75rem,4.5vw,var
 <body>
 
 <nav class="topbar"><div class="wrap topbar-in">
-  <p class="topbar-title">CCP · type styles · round three</p>
+  <p class="topbar-title">PNT · type styles · round three</p>
   <div class="jump"><a href="#s1">1</a><a href="#s2">2</a><a href="#s3">3</a><a href="#s4">4</a></div>
 </div></nav>
 
@@ -194,7 +194,7 @@ h1 { font-family:var(--mono); font-weight:500; font-size:clamp(1.75rem,4.5vw,var
         (owned by the style), weight and tracking stay plain (loose values).
         Click ‹ › — one class swap moves two cells, one undo entry, one delta line.</p>
     </div>
-    <div class="viewport" data-ccp-theme="terracotta-dark">
+    <div class="viewport" data-pnt-theme="terracotta-dark">
       <div class="viewport-bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">skills.example.dev/catalog</span><span class="dots"></span></div>
       <div class="stage">
@@ -248,7 +248,7 @@ h1 { font-family:var(--mono); font-weight:500; font-size:clamp(1.75rem,4.5vw,var
         the drift mark. Clicking the chip conforms: every constituent back to the
         style's values, one gesture, one delta line. The cell dots never change meaning.</p>
     </div>
-    <div class="viewport" data-ccp-theme="tokyo-night">
+    <div class="viewport" data-pnt-theme="tokyo-night">
       <div class="viewport-bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">skills.example.dev/catalog</span><span class="dots"></span></div>
       <div class="stage">
@@ -302,7 +302,7 @@ h1 { font-family:var(--mono); font-weight:500; font-size:clamp(1.75rem,4.5vw,var
         the style row looks identical. Stepping writes three custom properties
         instead of swapping one class — same gesture, same single undo entry.</p>
     </div>
-    <div class="viewport" data-ccp-theme="nord">
+    <div class="viewport" data-pnt-theme="nord">
       <div class="viewport-bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">skills.example.dev/catalog</span><span class="dots"></span></div>
       <div class="stage">
@@ -355,7 +355,7 @@ h1 { font-family:var(--mono); font-weight:500; font-size:clamp(1.75rem,4.5vw,var
         isn't there, because a section that exists only when relevant never
         renders an empty shell.</p>
     </div>
-    <div class="viewport" data-ccp-theme="terracotta-light">
+    <div class="viewport" data-pnt-theme="terracotta-light">
       <div class="viewport-bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">skills.example.dev/catalog</span><span class="dots"></span></div>
       <div class="stage">
@@ -424,7 +424,7 @@ for (const vp of document.querySelectorAll(".viewport")) {
   for (const t of THEMES) {
     const b = document.createElement("button");
     b.className = "tdot"; b.style.background = SW[t]; b.title = t;
-    b.addEventListener("click", () => vp.setAttribute("data-ccp-theme", t));
+    b.addEventListener("click", () => vp.setAttribute("data-pnt-theme", t));
     dots.appendChild(b);
   }
 }

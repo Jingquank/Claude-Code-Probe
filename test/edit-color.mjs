@@ -231,7 +231,7 @@ check("parse · rejects what it cannot know", (fail) => {
     "", "   ", "red", "transparent", "currentColor", "inherit",
     "#ff", "#fffff", "#fffffff", "#gggggg",
     "color(display-p3 1 0 0)", "oklch(70% 0.1 30)", "hsl(20, 50%, 40%)",
-    "rgb(1, 2)", "rgb()", "var(--ccp-accent)", "url(x.png)",
+    "rgb(1, 2)", "rgb()", "var(--pnt-accent)", "url(x.png)",
     null, undefined, 42, {},
   ];
   for (const input of rejects) {

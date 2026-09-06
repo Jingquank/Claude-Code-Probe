@@ -3,7 +3,7 @@
 // Settings page: the theme, plus the six measuring (redline) preferences.
 //
 // The theme roster carries no colours — each pill's swatch is stamped with its
-// own data-ccp-theme and styled through the --ccp-* tokens, so the palette on
+// own data-pnt-theme and styled through the --pnt-* tokens, so the palette on
 // screen is literally the palette that gets applied. Adding a theme means one
 // block in tokens.css and one line here.
 //
@@ -275,13 +275,13 @@ function swatchMarkup(id) {
   if (id === "system") {
     return (
       '<span class="sp-sw sp-sw-split" aria-hidden="true">' +
-      '<span data-ccp-theme="terracotta-dark"><i></i><i></i></span>' +
-      '<span data-ccp-theme="terracotta-light"><i></i><i></i></span>' +
+      '<span data-pnt-theme="terracotta-dark"><i></i><i></i></span>' +
+      '<span data-pnt-theme="terracotta-light"><i></i><i></i></span>' +
       "</span>"
     );
   }
   return (
-    `<span class="sp-sw" data-ccp-theme="${id}" aria-hidden="true">` +
+    `<span class="sp-sw" data-pnt-theme="${id}" aria-hidden="true">` +
     "<i></i><i></i><i></i><i></i></span>"
   );
 }
@@ -295,7 +295,7 @@ function renderPills() {
 }
 
 function paintTheme() {
-  document.documentElement.dataset.ccpTheme = resolveTheme(current);
+  document.documentElement.dataset.pntTheme = resolveTheme(current);
   for (const pill of pillHost.querySelectorAll(".sp-pill")) {
     const on = pill.dataset.theme === current;
     pill.setAttribute("aria-checked", String(on));
@@ -489,7 +489,7 @@ function announce(noteEl, text) {
   clearTimeout(savedTimers.get(noteEl));
   savedTimers.set(noteEl, setTimeout(() => {
     noteEl.classList.remove("sp-saved-in");
-    // The text outlives the class by one fade (--ccp-duration), so the note
+    // The text outlives the class by one fade (--pnt-duration), so the note
     // doesn't blank out mid-transition.
     savedTimers.set(noteEl, setTimeout(() => {
       noteEl.textContent = "";

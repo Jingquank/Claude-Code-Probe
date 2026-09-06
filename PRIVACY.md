@@ -1,14 +1,14 @@
-# Privacy Policy — Claude Code Probe
+# Privacy Policy — Pointee
 
 **Last updated:** August 7, 2026
 
 ## Overview
 
-Claude Code Probe is a browser extension that lets developers inspect and copy element information from web pages. Your privacy is important to us, and this extension is designed to operate entirely on your device with no data collection whatsoever.
+Pointee is a browser extension that lets developers inspect and copy element information from web pages. Your privacy is important to us, and this extension is designed to operate entirely on your device with no data collection whatsoever.
 
 ## Data Collection
 
-Claude Code Probe does **not** collect, store, transmit, or share any data. Specifically:
+Pointee does **not** collect, store, transmit, or share any data. Specifically:
 
 - **No personal information** is collected
 - **No browsing history** is recorded or transmitted
@@ -22,7 +22,7 @@ Claude Code Probe does **not** collect, store, transmit, or share any data. Spec
 
 All processing happens locally in your browser:
 
-1. When you activate Probe Mode, the extension reads the DOM of the active tab to display element information (tag names, CSS classes, computed styles, dimensions)
+1. When you activate Point Mode, the extension reads the DOM of the active tab to display element information (tag names, CSS classes, computed styles, dimensions)
 2. When you copy an element, the information is written directly to your system clipboard using the browser's Clipboard API
 3. When you capture a screenshot, the element is rendered to a canvas locally using the bundled html2canvas library, then copied to your clipboard
 
@@ -37,10 +37,10 @@ described in full below.
 
 The extension requests the following permissions, used solely for its core functionality:
 
-- **activeTab** — to read element information on the current page when you activate Probe Mode
+- **activeTab** — to read element information on the current page when you activate Point Mode
 - **clipboardWrite** — to copy element information and screenshots to your clipboard
 - **storage** — to remember your settings on this device: the theme and your measuring, editing and copying preferences. Nothing else is stored, and none of it ever leaves your browser. See *Data Storage* below.
-- **scripting** — to inject the inspector into tabs that were already open when the extension was installed or updated. Without it, those tabs need a reload before Probe Mode works.
+- **scripting** — to inject the inspector into tabs that were already open when the extension was installed or updated. Without it, those tabs need a reload before Point Mode works.
 - **Content script matches (`<all_urls>`)** — to allow the inspector to run on any webpage you choose to inspect
 - **host_permissions (`<all_urls>`)** — to re-request stylesheets the page itself is not allowed to read, so the Edit panel can name the design tokens they define. Only ever used for that. See *Stylesheet fetching* below.
 
@@ -61,7 +61,7 @@ What that means concretely:
   stylesheet list. The extension never invents a URL, follows a link you did not load,
   or requests anything that is not CSS.
 - **Only while the Edit panel is open.** Nothing is fetched during ordinary browsing,
-  during Probe Mode, or in the background.
+  during Point Mode, or in the background.
 - **Without your cookies.** The request is made with `credentials: "omit"`, so it cannot
   become an authenticated request made on your behalf, and the server sees no session.
 - **Nothing is sent.** It is a plain GET for a file. No page content, no URL history, no
@@ -107,7 +107,7 @@ no telemetry and has no backend.
 
 ## Data Storage
 
-Claude Code Probe stores exactly one kind of thing: **your own settings**, saved with `chrome.storage.local` as a handful of short preference values:
+Pointee stores exactly one kind of thing: **your own settings**, saved with `chrome.storage.local` as a handful of short preference values:
 
 - **`theme`** — which colour scheme you picked, e.g. `terracotta-dark`.
 - **Measuring preferences** — the `redline*` keys from Settings → Measuring: unit, precision, pill placement, guides, overlay quieting, zero pills.

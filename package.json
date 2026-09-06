@@ -1,5 +1,5 @@
 {
-  "name": "claude-code-probe",
+  "name": "pointee",
   "version": "1.4.0",
   "description": "Inspect, highlight, and copy any element on any webpage.",
   "scripts": {
@@ -11,7 +11,7 @@
     "type": "git",
     "url": "https://github.com/Jingquank/Claude-Code-Probe.git"
   },
-  "keywords": ["browser-extension", "devtools", "inspector", "claude", "chrome-extension"],
+  "keywords": ["browser-extension", "devtools", "inspector", "chrome-extension", "coding-agent", "design-tokens"],
   "author": "Jingquank",
   "license": "MIT"
 }

@@ -74,23 +74,23 @@
   // file needs in four unrelated places — hit-testing, counting how unique a
   // string is on the page, reading the page's design tokens, walking its
   // stylesheets — and it used to be written out separately at each of them.
-  // That is how --ccp-accent ended up being offered as a fill for the user's
+  // That is how --pnt-accent ended up being offered as a fill for the user's
   // elements: the stylesheet walk was the one site nobody remembered.
   //
   // Adding a new injected root means adding it here and nowhere else.
   const OUR_ROOTS = [
-    "ccp-overlay-container",
-    "ccp-label",
-    "ccp-toolbar",
-    "ccp-settings-btn",
-    "ccp-toast",
-    "ccp-edit-panel",
-    "ccp-color-picker",
-    "ccp-text-editor",
-    "ccp-probe-cell",
+    "pnt-overlay-container",
+    "pnt-label",
+    "pnt-toolbar",
+    "pnt-settings-btn",
+    "pnt-toast",
+    "pnt-edit-panel",
+    "pnt-color-picker",
+    "pnt-text-editor",
+    "pnt-probe-cell",
   ];
   const OUR_CHROME = OUR_ROOTS.map((id) => `#${id}`).join(",");
-  const OUR_PREFIX = "ccp-";
+  const OUR_PREFIX = "pnt-";
 
   // Every form of "is this ours?" the file asks, in one place.
   const isOurs = {
@@ -137,9 +137,9 @@
     gap: 6,
     pair: 6,
     minLabelHeight: 24,
-    narrowToolbar: 470, // the .ccp-compact breakpoint
+    narrowToolbar: 470, // the .pnt-compact breakpoint
     radiusFallback: 4, // assumed corner radius when the element is square
-    maxSweepDiagonal: 2600, // past this the spun outline degrades to .ccp-plain
+    maxSweepDiagonal: 2600, // past this the spun outline degrades to .pnt-plain
     redlinePillOffset: 8, // pill center sits this far perpendicular to its line
     redlineGuideOvershoot: 4, // dashed guide runs this far past the measurement line
     redlinePillMargin: 14, // pill centers are clamped this far inside the viewport
@@ -155,7 +155,7 @@
 
   // ===== Theme =====
   // Stored as a single id in chrome.storage.local and applied by writing
-  // data-ccp-theme onto <html>, which every token block in tokens.css keys off.
+  // data-pnt-theme onto <html>, which every token block in tokens.css keys off.
   // One attribute themes all five injected roots, because custom properties
   // inherit and `all: initial` does not reset them (CSS Cascade 4 §3.2).
   const THEME_KEY = "theme";
@@ -173,7 +173,7 @@
   }
 
   function applyTheme() {
-    document.documentElement.dataset.ccpTheme = resolveTheme(themePref);
+    document.documentElement.dataset.pntTheme = resolveTheme(themePref);
   }
 
   // Read a token from <html>. Only for the handful of values that genuinely have
@@ -363,17 +363,17 @@
   // only JS surface. Held low (removed) whenever redline itself is off.
   function applyRedlineQuiet() {
     document.documentElement.classList.toggle(
-      "ccp-redline-quiet",
+      "pnt-redline-quiet",
       redlining && redlinePrefs.redlineQuietOverlay === "on"
     );
   }
 
-  // Clawd's colours arrive from tokens.css via the .ccp-clawd-* classes rather
+  // Clawd's colours arrive from tokens.css via the .pnt-clawd-* classes rather
   // than fill="" attributes: var() is not resolved inside an SVG presentation
   // attribute, only in a real style rule. See content.css.
 
   // ===== Clawd Mini (for toast loading state) =====
-  const CLAWD_MINI = `<svg viewBox="-4 -4 120 80" width="28" height="20" fill="none" style="flex-shrink:0;overflow:visible"><rect class="ccp-clawd-body" x="8" y="0" width="96" height="56" rx="4"/><rect class="ccp-clawd-body" x="-4" y="25.6" width="12" height="14.4" rx="3"/><rect class="ccp-clawd-body" x="104" y="25.6" width="12" height="14.4" rx="3"/><rect class="ccp-clawd-eye" x="28" y="14" width="8" height="16" rx="2"/><rect class="ccp-clawd-eye" x="76" y="14" width="8" height="16" rx="2"/><rect class="ccp-clawd-leg" x="16" y="56" width="9.6" height="20" rx="2"><animate attributeName="height" values="20;16;20" dur="0.4s" begin="0s" repeatCount="indefinite"/></rect><rect class="ccp-clawd-leg" x="30.4" y="56" width="9.6" height="20" rx="2"><animate attributeName="height" values="20;16;20" dur="0.4s" begin="0.1s" repeatCount="indefinite"/></rect><rect class="ccp-clawd-leg" x="72" y="56" width="9.6" height="20" rx="2"><animate attributeName="height" values="20;16;20" dur="0.4s" begin="0.2s" repeatCount="indefinite"/></rect><rect class="ccp-clawd-leg" x="86.4" y="56" width="9.6" height="20" rx="2"><animate attributeName="height" values="20;16;20" dur="0.4s" begin="0.3s" repeatCount="indefinite"/></rect></svg>`;
+  const CLAWD_MINI = `<svg viewBox="-4 -4 120 80" width="28" height="20" fill="none" style="flex-shrink:0;overflow:visible"><rect class="pnt-clawd-body" x="8" y="0" width="96" height="56" rx="4"/><rect class="pnt-clawd-body" x="-4" y="25.6" width="12" height="14.4" rx="3"/><rect class="pnt-clawd-body" x="104" y="25.6" width="12" height="14.4" rx="3"/><rect class="pnt-clawd-eye" x="28" y="14" width="8" height="16" rx="2"/><rect class="pnt-clawd-eye" x="76" y="14" width="8" height="16" rx="2"/><rect class="pnt-clawd-leg" x="16" y="56" width="9.6" height="20" rx="2"><animate attributeName="height" values="20;16;20" dur="0.4s" begin="0s" repeatCount="indefinite"/></rect><rect class="pnt-clawd-leg" x="30.4" y="56" width="9.6" height="20" rx="2"><animate attributeName="height" values="20;16;20" dur="0.4s" begin="0.1s" repeatCount="indefinite"/></rect><rect class="pnt-clawd-leg" x="72" y="56" width="9.6" height="20" rx="2"><animate attributeName="height" values="20;16;20" dur="0.4s" begin="0.2s" repeatCount="indefinite"/></rect><rect class="pnt-clawd-leg" x="86.4" y="56" width="9.6" height="20" rx="2"><animate attributeName="height" values="20;16;20" dur="0.4s" begin="0.3s" repeatCount="indefinite"/></rect></svg>`;
 
   // ===== SVG Icons =====
   const ICONS = {
@@ -388,38 +388,38 @@
   // ===== Clawd Mascot SVG (mood="happy", from clawd-react) =====
   const CLAWD_SVG = `<svg viewBox="-16 -4 144 104" fill="none" xmlns="http://www.w3.org/2000/svg">
     <!-- Shadow -->
-    <ellipse class="ccp-clawd-shadow" cx="56" cy="91.5" rx="32" ry="4"/>
+    <ellipse class="pnt-clawd-shadow" cx="56" cy="91.5" rx="32" ry="4"/>
     <!-- Body -->
-    <rect class="ccp-clawd-body" x="8" y="0" width="96" height="56" rx="4"/>
+    <rect class="pnt-clawd-body" x="8" y="0" width="96" height="56" rx="4"/>
     <!-- Arm nubs -->
-    <rect class="ccp-clawd-body" x="-4" y="25.6" width="12" height="14.4" rx="3"/>
-    <rect class="ccp-clawd-body" x="104" y="25.6" width="12" height="14.4" rx="3"/>
+    <rect class="pnt-clawd-body" x="-4" y="25.6" width="12" height="14.4" rx="3"/>
+    <rect class="pnt-clawd-body" x="104" y="25.6" width="12" height="14.4" rx="3"/>
     <!-- Eyes -->
-    <rect class="ccp-clawd-eye" x="28" y="14" width="8" height="16" rx="2"/>
-    <rect class="ccp-clawd-eye" x="76" y="14" width="8" height="16" rx="2"/>
+    <rect class="pnt-clawd-eye" x="28" y="14" width="8" height="16" rx="2"/>
+    <rect class="pnt-clawd-eye" x="76" y="14" width="8" height="16" rx="2"/>
     <!-- Legs -->
-    <rect class="ccp-clawd-leg" x="16" y="56" width="9.6" height="20" rx="2">
+    <rect class="pnt-clawd-leg" x="16" y="56" width="9.6" height="20" rx="2">
       <animate attributeName="height" values="20;16;20" dur="0.4s" begin="0s" repeatCount="indefinite"/>
     </rect>
-    <rect class="ccp-clawd-leg" x="30.4" y="56" width="9.6" height="20" rx="2">
+    <rect class="pnt-clawd-leg" x="30.4" y="56" width="9.6" height="20" rx="2">
       <animate attributeName="height" values="20;16;20" dur="0.4s" begin="0.1s" repeatCount="indefinite"/>
     </rect>
-    <rect class="ccp-clawd-leg" x="72" y="56" width="9.6" height="20" rx="2">
+    <rect class="pnt-clawd-leg" x="72" y="56" width="9.6" height="20" rx="2">
       <animate attributeName="height" values="20;16;20" dur="0.4s" begin="0.2s" repeatCount="indefinite"/>
     </rect>
-    <rect class="ccp-clawd-leg" x="86.4" y="56" width="9.6" height="20" rx="2">
+    <rect class="pnt-clawd-leg" x="86.4" y="56" width="9.6" height="20" rx="2">
       <animate attributeName="height" values="20;16;20" dur="0.4s" begin="0.3s" repeatCount="indefinite"/>
     </rect>
     <!-- Sparkles -->
-    <circle class="ccp-clawd-spark" cx="108" cy="8" r="3.5" opacity="0">
+    <circle class="pnt-clawd-spark" cx="108" cy="8" r="3.5" opacity="0">
       <animate attributeName="opacity" values="0;1;0" dur="1.5s" repeatCount="indefinite"/>
       <animate attributeName="r" values="1;3.5;1" dur="1.5s" repeatCount="indefinite"/>
     </circle>
-    <circle class="ccp-clawd-spark" cx="116" cy="-2" r="2.5" opacity="0">
+    <circle class="pnt-clawd-spark" cx="116" cy="-2" r="2.5" opacity="0">
       <animate attributeName="opacity" values="0;1;0" dur="1.5s" begin="0.4s" repeatCount="indefinite"/>
       <animate attributeName="r" values="0.5;2.5;0.5" dur="1.5s" begin="0.4s" repeatCount="indefinite"/>
     </circle>
-    <circle class="ccp-clawd-spark" cx="120" cy="18" r="2" opacity="0">
+    <circle class="pnt-clawd-spark" cx="120" cy="18" r="2" opacity="0">
       <animate attributeName="opacity" values="0;1;0" dur="1.5s" begin="0.8s" repeatCount="indefinite"/>
       <animate attributeName="r" values="0.5;2;0.5" dur="1.5s" begin="0.8s" repeatCount="indefinite"/>
     </circle>
@@ -430,7 +430,7 @@
     if (!rawColor) return "";
     const m = rawColor.match(/^rgba?\([^)]*,\s*([\d.]+)\s*\)$/);
     const alpha = m ? parseFloat(m[1]) : 1;
-    const cls = alpha < 1 ? "ccp-color-swatch ccp-color-swatch-alpha" : "ccp-color-swatch";
+    const cls = alpha < 1 ? "pnt-color-swatch pnt-color-swatch-alpha" : "pnt-color-swatch";
     return `<span class="${cls}" style="background-color:${rawColor}"></span>`;
   }
 
@@ -503,16 +503,16 @@
   // Temporarily strips the override class for a synchronous style read; no paint occurs.
   function getRealCursor(el) {
     const root = document.documentElement;
-    const wasActive = root.classList.contains("ccp-probe-active");
-    if (wasActive) root.classList.remove("ccp-probe-active");
+    const wasActive = root.classList.contains("pnt-point-active");
+    if (wasActive) root.classList.remove("pnt-point-active");
     const cursor = getComputedStyle(el).cursor;
-    if (wasActive) root.classList.add("ccp-probe-active");
+    if (wasActive) root.classList.add("pnt-point-active");
     return cursor;
   }
 
   // ===== Message Listener =====
   chrome.runtime.onMessage.addListener((msg) => {
-    if (msg.type === "TOGGLE_PROBE") {
+    if (msg.type === "TOGGLE_POINT") {
       if (msg.active && !probeActive) {
         activate();
       } else if (!msg.active && probeActive) {
@@ -525,7 +525,7 @@
   function activate() {
     probeActive = true;
     applyTheme();
-    document.documentElement.classList.add("ccp-probe-active");
+    document.documentElement.classList.add("pnt-point-active");
     createOverlay();
     createSettingsButton();
     document.addEventListener("mousemove", onMouseMove, true);
@@ -563,7 +563,7 @@
     hoveredElement = null;
     lastMouseX = -1;
     lastMouseY = -1;
-    document.documentElement.classList.remove("ccp-probe-active");
+    document.documentElement.classList.remove("pnt-point-active");
     document.removeEventListener("mousemove", onMouseMove, true);
     document.removeEventListener("click", onClick, true);
     document.removeEventListener("keydown", onKeyDown, true);
@@ -586,14 +586,14 @@
   }
 
   // ===== Settings Button =====
-  // Pinned to the viewport's top-right corner for as long as probe mode is on.
-  // Mounted here rather than in showToolbar() on purpose: #ccp-toolbar is torn
+  // Pinned to the viewport's top-right corner for as long as point mode is on.
+  // Mounted here rather than in showToolbar() on purpose: #pnt-toolbar is torn
   // down and rebuilt on every click and removed entirely on deselect, so a
   // button living inside it would disappear whenever nothing was selected.
   function createSettingsButton() {
     if (settingsButtonEl) return;
     settingsButtonEl = document.createElement("button");
-    settingsButtonEl.id = "ccp-settings-btn";
+    settingsButtonEl.id = "pnt-settings-btn";
     settingsButtonEl.type = "button";
     settingsButtonEl.title = "Probe settings";
     settingsButtonEl.setAttribute("aria-label", "Probe settings");
@@ -646,7 +646,7 @@
     // has to yield to.
     const hushed = redlining || editing;
     settingsButtonEl.classList.toggle(
-      "ccp-yielded",
+      "pnt-yielded",
       (!hushed && (hit(labelEl) || hit(toolbarEl))) ||
         (editing && (hit(editPanelEl) || hit(editPopoverEl)))
     );
@@ -719,9 +719,9 @@
     if (overlayContainer) return;
 
     overlayContainer = document.createElement("div");
-    overlayContainer.id = "ccp-overlay-container";
+    overlayContainer.id = "pnt-overlay-container";
 
-    const ids = ["ccp-margin-box", "ccp-bloom", "ccp-padding-box", "ccp-content-box", "ccp-border-box"];
+    const ids = ["pnt-margin-box", "pnt-bloom", "pnt-padding-box", "pnt-content-box", "pnt-border-box"];
     for (const id of ids) {
       const div = document.createElement("div");
       div.id = id;
@@ -730,15 +730,15 @@
 
     // the two spinners carry the gradient; they share a duration and start
     // together, so the bloom stays in phase with the stroke
-    for (const [parentId, spinId] of [["ccp-border-box", "ccp-sweep-spin"], ["ccp-bloom", "ccp-bloom-spin"]]) {
+    for (const [parentId, spinId] of [["pnt-border-box", "pnt-sweep-spin"], ["pnt-bloom", "pnt-bloom-spin"]]) {
       const spin = document.createElement("div");
       spin.id = spinId;
-      spin.className = "ccp-spin";
+      spin.className = "pnt-spin";
       overlayContainer.querySelector("#" + parentId).appendChild(spin);
     }
 
     const ants = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    ants.id = "ccp-ants";
+    ants.id = "pnt-ants";
     ants.appendChild(document.createElementNS("http://www.w3.org/2000/svg", "path"));
     overlayContainer.appendChild(ants);
 
@@ -752,7 +752,7 @@
     // Hidden means opacity 0, not display:none — a shown node must be able to
     // fade and glide, and a transition cannot cross a display flip.
     redlineEl = document.createElement("div");
-    redlineEl.id = "ccp-redline";
+    redlineEl.id = "pnt-redline";
     const pool = (className, count, into) => {
       for (let i = 0; i < count; i++) {
         const node = document.createElement("div");
@@ -763,10 +763,10 @@
       }
       return into;
     };
-    redlineHoverEl = pool("ccp-redline-hover", 1, [])[0];
-    pool("ccp-redline-line", 4, redlineLineEls);
-    pool("ccp-redline-guide-h", 4, redlineGuideEls);
-    pool("ccp-redline-pill", 4, redlinePillEls);
+    redlineHoverEl = pool("pnt-redline-hover", 1, [])[0];
+    pool("pnt-redline-line", 4, redlineLineEls);
+    pool("pnt-redline-guide-h", 4, redlineGuideEls);
+    pool("pnt-redline-pill", 4, redlinePillEls);
     overlayContainer.appendChild(redlineEl);
 
     // Tether layer, built on the same terms as the redline layer above and for
@@ -774,7 +774,7 @@
     // renderTether() decides per frame. Four ticks (one per edge) and two run
     // segments (a single-turn L, or one segment when the two ends line up).
     tetherEl = document.createElement("div");
-    tetherEl.id = "ccp-tether";
+    tetherEl.id = "pnt-tether";
     const tetherPool = (className, count, into) => {
       for (let i = 0; i < count; i++) {
         const node = document.createElement("div");
@@ -786,17 +786,17 @@
     };
     // Three segments, not two: the single-turn L covers almost everything, but
     // the two-turn fallback that keeps the right angle needs a third.
-    tetherPool("ccp-tether-seg", 3, tetherSegEls);
-    tetherPool("ccp-tether-tick", 4, tetherTickEls);
+    tetherPool("pnt-tether-seg", 3, tetherSegEls);
+    tetherPool("pnt-tether-tick", 4, tetherTickEls);
     overlayContainer.appendChild(tetherEl);
 
     labelEl = document.createElement("div");
-    labelEl.id = "ccp-label";
+    labelEl.id = "pnt-label";
     labelEl.style.display = "none";
 
     // Inject Clawd mascot
     const clawdContainer = document.createElement("div");
-    clawdContainer.className = "ccp-clawd";
+    clawdContainer.className = "pnt-clawd";
     clawdContainer.innerHTML = CLAWD_SVG;
     labelEl.appendChild(clawdContainer);
 
@@ -862,7 +862,7 @@
 
     // Margin box
     positionBox(
-      "ccp-margin-box",
+      "pnt-margin-box",
       rect.top - margin.top,
       rect.left - margin.left,
       rect.width + margin.left + margin.right,
@@ -871,7 +871,7 @@
 
     // Padding box
     positionBox(
-      "ccp-padding-box",
+      "pnt-padding-box",
       rect.top + border.top,
       rect.left + border.left,
       rect.width - border.left - border.right,
@@ -880,7 +880,7 @@
 
     // Content box
     positionBox(
-      "ccp-content-box",
+      "pnt-content-box",
       rect.top + border.top + padding.top,
       rect.left + border.left + padding.left,
       rect.width - border.left - border.right - padding.left - padding.right,
@@ -888,10 +888,10 @@
     );
 
     // Sweep ring — sits 2px outside the element, so its radius grows to match
-    positionBox("ccp-border-box", rect.top - 2, rect.left - 2, rect.width + 4, rect.height + 4);
+    positionBox("pnt-border-box", rect.top - 2, rect.left - 2, rect.width + 4, rect.height + 4);
 
     // Inner bloom — exactly the element's box
-    positionBox("ccp-bloom", rect.top, rect.left, rect.width, rect.height);
+    positionBox("pnt-bloom", rect.top, rect.left, rect.width, rect.height);
 
     applyRadiiToOverlay(el, rect, border);
 
@@ -908,10 +908,10 @@
       const node = document.getElementById(id);
       if (node) applyRadii(node, radii, offset);
     };
-    setRadii("ccp-margin-box", 0);
-    setRadii("ccp-bloom", 0);
-    setRadii("ccp-border-box", 2);
-    setRadii("ccp-padding-box", -thickest);
+    setRadii("pnt-margin-box", 0);
+    setRadii("pnt-bloom", 0);
+    setRadii("pnt-border-box", 2);
+    setRadii("pnt-padding-box", -thickest);
 
     // One square, large enough to cover the box's diagonal at any rotation, spun
     // by transform — so the gradient rotates without repainting on every frame.
@@ -919,10 +919,10 @@
     // Parent walks up to <body> routinely), so those fall back to a plain stroke.
     const diagonal = Math.ceil(Math.hypot(rect.width + 4, rect.height + 4));
     const oversized = diagonal > GEOMETRY.maxSweepDiagonal;
-    if (overlayContainer) overlayContainer.classList.toggle("ccp-plain", oversized);
+    if (overlayContainer) overlayContainer.classList.toggle("pnt-plain", oversized);
 
     if (!oversized) {
-      for (const id of ["ccp-sweep-spin", "ccp-bloom-spin"]) {
+      for (const id of ["pnt-sweep-spin", "pnt-bloom-spin"]) {
         const spin = document.getElementById(id);
         if (!spin) continue;
         spin.style.width = diagonal + "px";
@@ -932,7 +932,7 @@
 
     // Marching dashes: the svg starts 2px out so a 2px stroke centred on the
     // element's edge is fully inside it
-    const ants = document.getElementById("ccp-ants");
+    const ants = document.getElementById("pnt-ants");
     if (!ants) return;
     const w = rect.width;
     const h = rect.height;
@@ -1065,8 +1065,8 @@
   function updateToolbarDensity(vw) {
     if (!toolbarEl) return;
     const narrow = vw < GEOMETRY.narrowToolbar;
-    if (toolbarEl.classList.contains("ccp-compact") === narrow) return;
-    toolbarEl.classList.toggle("ccp-compact", narrow);
+    if (toolbarEl.classList.contains("pnt-compact") === narrow) return;
+    toolbarEl.classList.toggle("pnt-compact", narrow);
     lockButtonWidths();
   }
 
@@ -1097,8 +1097,8 @@
 
     const layout = computeChromeLayout(el.getBoundingClientRect(), label, toolbar, vw, vh);
 
-    if (instant) labelEl.classList.add("ccp-no-transition");
-    if (toolbarInstant && toolbarEl) toolbarEl.classList.add("ccp-no-transition");
+    if (instant) labelEl.classList.add("pnt-no-transition");
+    if (toolbarInstant && toolbarEl) toolbarEl.classList.add("pnt-no-transition");
 
     labelEl.style.display = layout.label.hidden ? "none" : "block";
     if (!layout.label.hidden) {
@@ -1119,8 +1119,8 @@
 
     if (instant || toolbarInstant) {
       void labelEl.offsetWidth; // flush the jump before re-enabling the glide
-      labelEl.classList.remove("ccp-no-transition");
-      if (toolbarEl) toolbarEl.classList.remove("ccp-no-transition");
+      labelEl.classList.remove("pnt-no-transition");
+      if (toolbarEl) toolbarEl.classList.remove("pnt-no-transition");
     }
 
     // Last, once both boxes are where they finally sit: hide the gear if either
@@ -1144,10 +1144,10 @@
 
     // Line 1: tag, id, classes, dimensions
     let line1 =
-      `<span class="ccp-label-tag">${tag}</span>` +
-      (id ? `<span class="ccp-label-id">${id}</span>` : "") +
-      (classes ? `<span class="ccp-label-class">${classes}</span>` : "") +
-      `<span class="ccp-label-size">${w} x ${h}</span>`;
+      `<span class="pnt-label-tag">${tag}</span>` +
+      (id ? `<span class="pnt-label-id">${id}</span>` : "") +
+      (classes ? `<span class="pnt-label-class">${classes}</span>` : "") +
+      `<span class="pnt-label-size">${w} x ${h}</span>`;
 
     const elHasText = hasDirectText(el);
 
@@ -1159,7 +1159,7 @@
       const escaped = preview.replace(/[&<>"']/g, (ch) => (
         { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]
       ));
-      lineT = `<div class="ccp-label-line ccp-line-text"><span class="ccp-label-text">"${escaped}"</span></div>`;
+      lineT = `<div class="pnt-label-line pnt-line-text"><span class="pnt-label-text">"${escaped}"</span></div>`;
     }
 
     // Line 2: key computed properties
@@ -1186,7 +1186,7 @@
 
     let line2 = "";
     if (props.length > 0) {
-      line2 = `<div class="ccp-label-line ccp-line-meta"><span class="ccp-label-prop">${props.join('<span class="ccp-label-sep"> · </span>')}</span></div>`;
+      line2 = `<div class="pnt-label-line pnt-line-meta"><span class="pnt-label-prop">${props.join('<span class="pnt-label-sep"> · </span>')}</span></div>`;
     }
 
     // Visual line: background, text color, border, radius, shadow, opacity, cursor, transform, z-index
@@ -1271,7 +1271,7 @@
 
     let lineV = "";
     if (visuals.length > 0) {
-      lineV = `<div class="ccp-label-line ccp-line-visual"><span class="ccp-label-prop">${visuals.join('<span class="ccp-label-sep"> · </span>')}</span></div>`;
+      lineV = `<div class="pnt-label-line pnt-line-visual"><span class="pnt-label-prop">${visuals.join('<span class="pnt-label-sep"> · </span>')}</span></div>`;
     }
 
     // Line 3: breadcrumb path (up to 4 ancestors)
@@ -1291,19 +1291,19 @@
     }
     let line3 = "";
     if (crumbs.length > 0) {
-      const path = crumbs.join('<span class="ccp-label-sep"> › </span>');
-      line3 = `<div class="ccp-label-line ccp-label-marquee ccp-line-breadcrumb"><span class="ccp-label-breadcrumb ccp-marquee-inner">${path}<span class="ccp-label-sep">&nbsp;&nbsp;&nbsp;·&nbsp;&nbsp;&nbsp;</span>${path}</span></div>`;
+      const path = crumbs.join('<span class="pnt-label-sep"> › </span>');
+      line3 = `<div class="pnt-label-line pnt-label-marquee pnt-line-breadcrumb"><span class="pnt-label-breadcrumb pnt-marquee-inner">${path}<span class="pnt-label-sep">&nbsp;&nbsp;&nbsp;·&nbsp;&nbsp;&nbsp;</span>${path}</span></div>`;
     }
 
     // Preserve Clawd mascot, update only the content wrapper
-    let contentWrap = labelEl.querySelector(".ccp-label-content");
+    let contentWrap = labelEl.querySelector(".pnt-label-content");
     if (!contentWrap) {
       contentWrap = document.createElement("div");
-      contentWrap.className = "ccp-label-content";
+      contentWrap.className = "pnt-label-content";
       labelEl.appendChild(contentWrap);
     }
     contentWrap.innerHTML =
-      `<div class="ccp-label-line ccp-line-identity">${line1}</div>` + lineT + line2 + lineV + line3;
+      `<div class="pnt-label-line pnt-line-identity">${line1}</div>` + lineT + line2 + lineV + line3;
 
     // Visible so it can be measured; layoutChrome does the placing.
     labelEl.style.display = "block";
@@ -1314,7 +1314,7 @@
   // element under the cursor, Figma-style: solid accent lines across each gap
   // with a px readout, dashed guides extending an edge when the two boxes
   // don't align. The label and toolbar hush while the key is down (CSS, via
-  // .ccp-redlining on <html>) so the page around the selection stays readable.
+  // .pnt-redlining on <html>) so the page around the selection stays readable.
 
   // Pure, like computeChromeLayout() and for the same reason — test/redline.mjs
   // mirrors it and sweeps it with no DOM. Rects are {top,left,width,height}
@@ -1454,7 +1454,7 @@
   //     rigidly, exactly like updateOverlay's instant mode
   //   - a node fading back in: it would otherwise fly in from its stale spot
   //   - a guide changing orientation: -h to -v is a new shape, not a move
-  // Snapped nodes take .ccp-no-transition, every write lands, one flush
+  // Snapped nodes take .pnt-no-transition, every write lands, one flush
   // commits the jumps, the class lifts, and opacity fades the rest in place.
   function renderRedline(options) {
     if (!redlining || !selectedElement || !redlineEl) return;
@@ -1487,7 +1487,7 @@
     const place = (node, x, y, w, h, reshape) => {
       used.add(node);
       if (instant || reshape || node.style.opacity !== "1") {
-        node.classList.add("ccp-no-transition");
+        node.classList.add("pnt-no-transition");
         snapped.push(node);
       }
       node.style.left = Math.round(x) + "px";
@@ -1515,7 +1515,7 @@
         const node = redlineGuideEls[gi++];
         // Horizontal guides dash via border-top, vertical via border-left.
         // className must land before place() so it can't wipe the snap class.
-        const cls = p.h === 0 ? "ccp-redline-guide-h" : "ccp-redline-guide-v";
+        const cls = p.h === 0 ? "pnt-redline-guide-h" : "pnt-redline-guide-v";
         const reshape = !node.classList.contains(cls);
         node.className = cls;
         place(node, p.x, p.y, p.w, p.h, reshape);
@@ -1530,7 +1530,7 @@
 
     if (snapped.length) {
       void redlineEl.offsetWidth; // flush the jumps before re-enabling the glide
-      for (const node of snapped) node.classList.remove("ccp-no-transition");
+      for (const node of snapped) node.classList.remove("pnt-no-transition");
     }
     for (const node of used) node.style.opacity = "1";
     for (const arr of [redlineLineEls, redlineGuideEls, redlinePillEls]) {
@@ -1553,7 +1553,7 @@
     // The class must land before the target resolves: it turns the label and
     // toolbar visibility:hidden, which drops them out of elementFromPoint, so
     // the page underneath them becomes measurable immediately.
-    document.documentElement.classList.add("ccp-redlining");
+    document.documentElement.classList.add("pnt-redlining");
     applyRedlineQuiet();
     redlineTarget = lastMouseX < 0
       ? null
@@ -1566,7 +1566,7 @@
     if (!redlining) return;
     redlining = false;
     redlineTarget = null;
-    document.documentElement.classList.remove("ccp-redlining");
+    document.documentElement.classList.remove("pnt-redlining");
     applyRedlineQuiet();
     clearRedline();
     // Label and toolbar reappear where layoutChrome kept them all along; the
@@ -1787,7 +1787,7 @@
     const place = (node, r) => {
       used.add(node);
       if (instant || node.style.opacity !== "1") {
-        node.classList.add("ccp-no-transition");
+        node.classList.add("pnt-no-transition");
         snapped.push(node);
       }
       node.style.left = Math.round(r.x) + "px";
@@ -1805,10 +1805,10 @@
       // Horizontal runs dash via border-top, vertical via border-left, exactly
       // as the redline guides do. The class has to land before place() so it
       // cannot wipe the snap class.
-      const cls = s.h === 0 ? "ccp-tether-seg ccp-tether-seg-h" : "ccp-tether-seg ccp-tether-seg-v";
+      const cls = s.h === 0 ? "pnt-tether-seg pnt-tether-seg-h" : "pnt-tether-seg pnt-tether-seg-v";
       if (node.className !== cls) {
         node.className = cls;
-        node.classList.add("ccp-no-transition");
+        node.classList.add("pnt-no-transition");
         if (!snapped.includes(node)) snapped.push(node);
       }
       place(node, s);
@@ -1816,7 +1816,7 @@
 
     if (snapped.length) {
       void tetherEl.offsetWidth; // flush the jumps before re-enabling the glide
-      for (const node of snapped) node.classList.remove("ccp-no-transition");
+      for (const node of snapped) node.classList.remove("pnt-no-transition");
     }
     for (const node of used) node.style.opacity = "1";
     for (const arr of [tetherTickEls, tetherSegEls]) {
@@ -1838,7 +1838,7 @@
   function setTetherLoud(on) {
     if (tetherLoud === on) return;
     tetherLoud = on;
-    document.documentElement.classList.toggle("ccp-tether-loud", on);
+    document.documentElement.classList.toggle("pnt-tether-loud", on);
     renderTether();
   }
 
@@ -1848,7 +1848,7 @@
     clearTimeout(tetherLoudTimer);
     setTetherLoud(true);
     tetherLoudTimer = setTimeout(() => {
-      if (!editGesture && !(editPanelEl && editPanelEl.querySelector(".ccp-edit-row:hover"))) {
+      if (!editGesture && !(editPanelEl && editPanelEl.querySelector(".pnt-edit-row:hover"))) {
         setTetherLoud(false);
       }
     }, 700);
@@ -2198,7 +2198,7 @@
 
     for (const sheet of Array.from(document.styleSheets)) {
       // Our own stylesheets are injected into every page we run on, and their
-      // tokens are the tool's, not the page's. Offering --ccp-accent as a fill
+      // tokens are the tool's, not the page's. Offering --pnt-accent as a fill
       // for someone's card would be inventing a design system they never had.
       if (isOurs.styleSheet(sheet)) continue;
       let rules = null;
@@ -2615,7 +2615,7 @@
   function tokenProbeCell() {
     if (probeCell && probeCell.isConnected) return probeCell;
     probeCell = document.createElement("div");
-    probeCell.id = "ccp-probe-cell";
+    probeCell.id = "pnt-probe-cell";
     probeCell.style.position = "fixed";
     probeCell.style.top = "-9999px";
     probeCell.style.left = "-9999px";
@@ -3210,7 +3210,7 @@
   function enterEditMode() {
     if (!probeActive || !selectedElement || editing) return;
     editing = true;
-    document.documentElement.classList.add("ccp-editing");
+    document.documentElement.classList.add("pnt-editing");
 
     // One walk of the page's stylesheets per entry, so a token step knows the
     // scales. Rebuilt each time rather than cached across entries: single-page
@@ -3252,7 +3252,7 @@
     if (!editing) return;
     commitEditGesture();
     editing = false;
-    document.documentElement.classList.remove("ccp-editing");
+    document.documentElement.classList.remove("pnt-editing");
 
     document.removeEventListener("pointerdown", onEditPointerGuard, true);
     document.removeEventListener("mousedown", onEditPointerGuard, true);
@@ -3263,7 +3263,7 @@
     // Uniform edits end with the session — the agent's teardown puts the
     // page's values back, so the registry and history stop claiming them
     // first. CSS edits (custom properties included) outlive this, as always.
-    // Safe in either order with the teardown below: CCP_SHADER_TEARDOWN
+    // Safe in either order with the teardown below: PNT_SHADER_TEARDOWN
     // itself restores every original, so clears that arrive after it land in
     // a dormant agent as no-ops.
     dropUniformEdits();
@@ -3680,13 +3680,13 @@
     removeEditPanel();
 
     editPanelEl = document.createElement("div");
-    editPanelEl.id = "ccp-edit-panel";
+    editPanelEl.id = "pnt-edit-panel";
 
     const head = document.createElement("div");
-    head.className = "ccp-edit-head";
+    head.className = "pnt-edit-head";
 
     const back = document.createElement("button");
-    back.className = "ccp-edit-back";
+    back.className = "pnt-edit-back";
     back.innerHTML = ICONS.back;
     back.title = "Back to selection";
     back.setAttribute("aria-label", "Back to selection");
@@ -3697,21 +3697,21 @@
     });
 
     const identity = document.createElement("span");
-    identity.className = "ccp-edit-id";
+    identity.className = "pnt-edit-id";
     identity.innerHTML = editPanelIdentity(selectedElement);
 
     const degraded = document.createElement("span");
-    degraded.className = "ccp-edit-degraded";
+    degraded.className = "pnt-edit-degraded";
     degraded.setAttribute("aria-hidden", "true");
 
     const copy = document.createElement("button");
-    copy.className = "ccp-edit-act ccp-edit-copy";
+    copy.className = "pnt-edit-act pnt-edit-copy";
     // origHtml is what setButtonSuccess puts back, and without it the button
     // never came back at all: it stayed disabled, wearing its success state,
     // for as long as the panel was open. The count badge lives inside the
     // markup being saved, and paintEditCounts writes to whichever <i> is on
     // screen, so the restored copy picks the number up again.
-    copy.dataset.origHtml = `${ICONS.code}<i class="ccp-edit-count"></i>`;
+    copy.dataset.origHtml = `${ICONS.code}<i class="pnt-edit-count"></i>`;
     copy.innerHTML = copy.dataset.origHtml;
     copy.title = "Copy every edit";
     copy.setAttribute("aria-label", "Copy every edit");
@@ -3722,7 +3722,7 @@
     });
 
     const resetAll = document.createElement("button");
-    resetAll.className = "ccp-edit-act ccp-edit-resetall";
+    resetAll.className = "pnt-edit-act pnt-edit-resetall";
     resetAll.textContent = "↺";
     resetAll.title = "Reset every edit";
     resetAll.setAttribute("aria-label", "Reset every edit");
@@ -3741,7 +3741,7 @@
     head.addEventListener("pointerdown", onEditDragStart);
 
     const body = document.createElement("div");
-    body.className = "ccp-edit-body";
+    body.className = "pnt-edit-body";
 
     // Delegated rather than per-row: the rows are rebuilt whenever the panel
     // re-renders, and listeners hung on them would have to be rebuilt with
@@ -3749,10 +3749,10 @@
     // them. A row under the pointer is the earliest honest signal that the
     // user is about to change something, so it is what wakes the tether.
     body.addEventListener("pointerover", (e) => {
-      if (e.target.closest(".ccp-edit-row")) setTetherLoud(true);
+      if (e.target.closest(".pnt-edit-row")) setTetherLoud(true);
     });
     body.addEventListener("pointerout", (e) => {
-      const row = e.target.closest(".ccp-edit-row");
+      const row = e.target.closest(".pnt-edit-row");
       if (!row || row.contains(e.relatedTarget)) return;
       if (!editGesture) setTetherLoud(false);
     });
@@ -3846,10 +3846,10 @@
 
   function paintDegradedMarker() {
     if (!editPanelEl) return;
-    const marker = editPanelEl.querySelector(".ccp-edit-degraded");
+    const marker = editPanelEl.querySelector(".pnt-edit-degraded");
     if (!marker) return;
     const reason = degradedReason();
-    marker.classList.toggle("ccp-edit-on", Boolean(reason));
+    marker.classList.toggle("pnt-edit-on", Boolean(reason));
     marker.title = reason || "";
   }
 
@@ -3860,7 +3860,7 @@
 
   function renderEditControls() {
     if (!editPanelEl || !selectedElement) return;
-    const body = editPanelEl.querySelector(".ccp-edit-body");
+    const body = editPanelEl.querySelector(".pnt-edit-body");
     body.textContent = "";
 
     for (const group of groupsFor(selectedElement)) {
@@ -3872,10 +3872,10 @@
         continue;
       }
       const section = document.createElement("div");
-      section.className = "ccp-edit-group";
+      section.className = "pnt-edit-group";
 
       const legend = document.createElement("p");
-      legend.className = "ccp-edit-legend";
+      legend.className = "pnt-edit-legend";
       legend.textContent = group.label;
       section.appendChild(legend);
 
@@ -3931,10 +3931,10 @@
   function renderTypographySection(group) {
     const el = selectedElement;
     const section = document.createElement("div");
-    section.className = "ccp-edit-group ccp-type";
+    section.className = "pnt-edit-group pnt-type";
 
     const legend = document.createElement("p");
-    legend.className = "ccp-edit-legend";
+    legend.className = "pnt-edit-legend";
     legend.textContent = group.label;
     section.appendChild(legend);
 
@@ -3945,7 +3945,7 @@
     if (textControl) {
       const row = buildEditRow(textControl);
       const expand = document.createElement("button");
-      expand.className = "ccp-edit-expand";
+      expand.className = "pnt-edit-expand";
       expand.textContent = "⤢";
       expand.title = "Edit the full text";
       expand.setAttribute("aria-label", "Edit the full text");
@@ -3966,7 +3966,7 @@
 
     // The grid.
     const grid = document.createElement("div");
-    grid.className = "ccp-type-grid";
+    grid.className = "pnt-type-grid";
     for (const control of controls) {
       if (control.kind === "text") continue;
       grid.appendChild(buildTypeCell({ ...control, gridCell: true }));
@@ -3974,7 +3974,7 @@
     section.appendChild(grid);
 
     const cap = document.createElement("p");
-    cap.className = "ccp-type-cap";
+    cap.className = "pnt-type-cap";
     section.appendChild(cap);
     section.addEventListener("pointerover", (e) => {
       const named = e.target.closest("[data-cap]");
@@ -3991,12 +3991,12 @@
   // the edit back on click.
   function buildTypeCell(control) {
     const cell = document.createElement("div");
-    cell.className = "ccp-edit-row ccp-type-cell";
+    cell.className = "pnt-edit-row pnt-type-cell";
     cell.dataset.prop = control.shadowPart ? "box-shadow" : control.prop;
     cell.dataset.control = control.prop;
 
     const k = document.createElement("button");
-    k.className = "ccp-type-k";
+    k.className = "pnt-type-k";
     k.textContent = TYPE_CELL_LABEL[control.prop] || control.label;
     k.title = `Reset ${control.label}`;
     k.addEventListener("click", (e) => {
@@ -4032,12 +4032,12 @@
 
   function buildTypeStyleRow(claim) {
     const row = document.createElement("div");
-    row.className = "ccp-edit-row ccp-type-stylerow";
+    row.className = "pnt-edit-row pnt-type-stylerow";
     row.dataset.prop = "type-style";
     row.dataset.control = "type-style";
 
     const dot = document.createElement("button");
-    dot.className = "ccp-edit-dot";
+    dot.className = "pnt-edit-dot";
     dot.title = "Reset style";
     dot.setAttribute("aria-label", "Reset style");
     dot.addEventListener("click", (e) => {
@@ -4049,16 +4049,16 @@
     });
 
     const label = document.createElement("span");
-    label.className = "ccp-edit-label";
+    label.className = "pnt-edit-label";
     label.textContent = "style";
 
     const chip = document.createElement("span");
-    chip.className = "ccp-type-chip";
+    chip.className = "pnt-type-chip";
     const ladder = typeLadderFor(claim);
 
     if (ladder) {
       const down = document.createElement("button");
-      down.className = "ccp-type-st";
+      down.className = "pnt-type-st";
       down.textContent = "‹";
       down.title = "Step the style down";
       down.addEventListener("click", (e) => {
@@ -4070,19 +4070,19 @@
     }
 
     const name = document.createElement("b");
-    name.className = "ccp-type-name";
+    name.className = "pnt-type-name";
     name.textContent = claim.style.name;
     chip.appendChild(name);
 
     if (!claim.on) {
       const mod = document.createElement("i");
-      mod.className = "ccp-type-mod";
+      mod.className = "pnt-type-mod";
       mod.textContent = "· modified";
       chip.appendChild(mod);
-      chip.classList.add("ccp-type-drifted");
+      chip.classList.add("pnt-type-drifted");
       chip.title = `Conform to ${claim.style.name}`;
       chip.addEventListener("click", (e) => {
-        if (e.target.closest(".ccp-type-st")) return;
+        if (e.target.closest(".pnt-type-st")) return;
         e.preventDefault();
         e.stopPropagation();
         conformTypeStyle(detectTypeStyle(selectedElement) || claim);
@@ -4091,7 +4091,7 @@
 
     if (ladder) {
       const up = document.createElement("button");
-      up.className = "ccp-type-st";
+      up.className = "pnt-type-st";
       up.textContent = "›";
       up.title = "Step the style up";
       up.addEventListener("click", (e) => {
@@ -4113,17 +4113,17 @@
   function refreshTypographyState() {
     if (!editPanelEl || !selectedElement || !selectedElement.isConnected) return;
     const el = selectedElement;
-    if (!editPanelEl.querySelector(".ccp-type")) return;
+    if (!editPanelEl.querySelector(".pnt-type")) return;
     editTypeClaim = detectTypeStyle(el);
     const claim = editTypeClaim;
 
-    for (const cell of editPanelEl.querySelectorAll(".ccp-type-cell")) {
+    for (const cell of editPanelEl.querySelectorAll(".pnt-type-cell")) {
       const prop = cell.dataset.control;
-      cell.classList.remove("ccp-type-fromstyle", "ccp-type-drift", "ccp-type-owntok");
+      cell.classList.remove("pnt-type-fromstyle", "pnt-type-drift", "pnt-type-owntok");
       if (claim && claim.style.constituents[prop] !== undefined) {
         const drifted = claim.drifted.includes(prop);
         const safe = escapeHtml(claim.style.name);
-        cell.classList.add(drifted ? "ccp-type-drift" : "ccp-type-fromstyle");
+        cell.classList.add(drifted ? "pnt-type-drift" : "pnt-type-fromstyle");
         cell.dataset.cap = drifted
           ? `<b>${TYPE_CELL_LABEL[prop]}</b> — drifted from ${safe}`
           : `<b>${TYPE_CELL_LABEL[prop]}</b> — from ${safe}`;
@@ -4133,7 +4133,7 @@
           ? familyForControl(el, control)
           : null;
         if (family) {
-          cell.classList.add("ccp-type-owntok");
+          cell.classList.add("pnt-type-owntok");
           const onRung = matchToken(family.members, numericState(el, control).value);
           cell.dataset.cap = onRung
             ? `<b>${escapeHtml(onRung.name)}</b> — wheel steps the ${escapeHtml(family.prefix)} scale`
@@ -4144,12 +4144,12 @@
       }
     }
 
-    const styleRow = editPanelEl.querySelector(".ccp-type-stylerow");
+    const styleRow = editPanelEl.querySelector(".pnt-type-stylerow");
     if (styleRow) {
       const edited = isEditedProp(el, "type-style");
-      styleRow.classList.toggle("ccp-edit-dirty", edited);
-      const dot = styleRow.querySelector(".ccp-edit-dot");
-      if (dot) dot.classList.toggle("ccp-edit-on", edited);
+      styleRow.classList.toggle("pnt-edit-dirty", edited);
+      const dot = styleRow.querySelector(".pnt-edit-dot");
+      if (dot) dot.classList.toggle("pnt-edit-on", edited);
       if (claim) {
         const safe = escapeHtml(claim.style.name);
         styleRow.dataset.cap = claim.on
@@ -4169,7 +4169,7 @@
   }
 
   function paintTypeCaption() {
-    const cap = editPanelEl && editPanelEl.querySelector(".ccp-type-cap");
+    const cap = editPanelEl && editPanelEl.querySelector(".pnt-type-cap");
     if (!cap) return;
     const claim = editTypeClaim;
     cap.innerHTML = claim
@@ -4189,9 +4189,9 @@
     if (!el || !el.isConnected) return;
 
     const pop = document.createElement("div");
-    pop.id = "ccp-text-editor";
+    pop.id = "pnt-text-editor";
     const head = document.createElement("div");
-    head.className = "ccp-txted-head";
+    head.className = "pnt-txted-head";
     const title = document.createElement("span");
     title.textContent = "Text";
     const close = document.createElement("button");
@@ -4241,7 +4241,7 @@
     });
 
     const count = document.createElement("p");
-    count.className = "ccp-txted-count";
+    count.className = "pnt-txted-count";
     const paintCount = () => {
       count.textContent = `${area.value.length} chars · Enter commits · Esc abandons`;
     };
@@ -4301,9 +4301,9 @@
 
   function buildAddRow(group) {
     const row = document.createElement("div");
-    row.className = "ccp-edit-row ccp-edit-addrow";
+    row.className = "pnt-edit-row pnt-edit-addrow";
     const button = document.createElement("button");
-    button.className = "ccp-edit-add";
+    button.className = "pnt-edit-add";
     button.textContent = `+ add ${group.label.toLowerCase()}`;
     button.addEventListener("click", (e) => {
       e.preventDefault();
@@ -4325,7 +4325,7 @@
 
   function buildEditRow(control, isSide) {
     const row = document.createElement("div");
-    row.className = "ccp-edit-row" + (isSide ? " ccp-edit-side" : "");
+    row.className = "pnt-edit-row" + (isSide ? " pnt-edit-side" : "");
     // Shadow parts all write box-shadow, and a vec uniform's components all
     // write the whole uniform — so the row's dirty state and its reset both
     // key off the one property the registry actually holds.
@@ -4334,7 +4334,7 @@
     row.dataset.control = control.prop;
 
     const dot = document.createElement("button");
-    dot.className = "ccp-edit-dot";
+    dot.className = "pnt-edit-dot";
     dot.title = `Reset ${control.label}`;
     dot.setAttribute("aria-label", `Reset ${control.label}`);
     dot.addEventListener("click", (e) => {
@@ -4348,7 +4348,7 @@
     });
 
     const label = document.createElement("span");
-    label.className = "ccp-edit-label";
+    label.className = "pnt-edit-label";
     label.textContent = control.label;
 
     row.appendChild(dot);
@@ -4361,7 +4361,7 @@
       const differ = selectedElement && selectedElement.isConnected &&
         sidesDiffer(getComputedStyle(selectedElement), control);
       const link = document.createElement("button");
-      link.className = "ccp-edit-link";
+      link.className = "pnt-edit-link";
       link.textContent = split ? "⊟" : "⊞";
       // Going back to a single value when the sides disagree is not a change
       // of view, it is an edit — it throws three of them away. The button says
@@ -4387,7 +4387,7 @@
 
     if (control.sides && editSplit.has(control.prop)) {
       // Split: the parent row is a heading for the four beneath it.
-      row.classList.add("ccp-edit-parent");
+      row.classList.add("pnt-edit-parent");
       return row;
     }
 
@@ -4405,10 +4405,10 @@
   // Escape abandons back to where this gesture started, blur commits.
   function buildTextControl(control) {
     const wrap = document.createElement("span");
-    wrap.className = "ccp-edit-textwrap";
+    wrap.className = "pnt-edit-textwrap";
 
     const input = document.createElement("input");
-    input.className = "ccp-edit-textin";
+    input.className = "pnt-edit-textin";
     input.type = "text";
     input.spellcheck = false;
     input.setAttribute("aria-label", control.label);
@@ -4458,17 +4458,17 @@
 
   function buildColorControl(control) {
     const wrap = document.createElement("span");
-    wrap.className = "ccp-edit-color";
+    wrap.className = "pnt-edit-color";
 
     const swatch = document.createElement("button");
-    swatch.className = "ccp-edit-swatch";
+    swatch.className = "pnt-edit-swatch";
     swatch.title = `Change ${control.label}`;
     swatch.setAttribute("aria-label", `Change ${control.label}`);
     const fill = document.createElement("i");
     swatch.appendChild(fill);
 
     const readout = document.createElement("span");
-    readout.className = "ccp-edit-hex";
+    readout.className = "pnt-edit-hex";
 
     swatch.addEventListener("click", (e) => {
       e.preventDefault();
@@ -4493,11 +4493,11 @@
   // you are counting steps, scrubbing when you are judging by eye.
   function buildNumericControl(control) {
     const wrap = document.createElement("span");
-    wrap.className = "ccp-edit-num";
+    wrap.className = "pnt-edit-num";
     wrap.dataset.prop = control.prop;
 
     const input = document.createElement("input");
-    input.className = "ccp-edit-input";
+    input.className = "pnt-edit-input";
     input.type = "text";
     input.inputMode = "decimal";
     input.spellcheck = false;
@@ -4506,7 +4506,7 @@
     wrap.appendChild(input);
     if (control.unit) {
       const unit = document.createElement("i");
-      unit.className = "ccp-edit-unit";
+      unit.className = "pnt-edit-unit";
       unit.textContent = control.unit;
       wrap.appendChild(unit);
     }
@@ -4523,13 +4523,13 @@
     // the value would leave the cell blank.
     if (!control.gridCell && editPrefs.editTokenControls === "token" &&
         familyForControl(selectedElement, control)) {
-      wrap.classList.add("ccp-edit-quiet");
+      wrap.classList.add("pnt-edit-quiet");
     }
 
     const extra = [];
     if (control.auto) {
       const auto = document.createElement("button");
-      auto.className = "ccp-edit-auto";
+      auto.className = "pnt-edit-auto";
       auto.textContent = "auto";
       auto.title = `Let ${control.label} size itself`;
       auto.addEventListener("click", (e) => {
@@ -4549,7 +4549,7 @@
       : familyForControl(selectedElement, control);
     if (family) {
       const stepper = document.createElement("span");
-      stepper.className = "ccp-edit-tok";
+      stepper.className = "pnt-edit-tok";
       stepper.dataset.family = family.prefix;
       const down = document.createElement("button");
       down.textContent = "‹";
@@ -4572,7 +4572,7 @@
 
     if (extra.length === 0) return wrap;
     const holder = document.createElement("span");
-    holder.className = "ccp-edit-numwrap";
+    holder.className = "pnt-edit-numwrap";
     holder.appendChild(wrap);
     for (const node of extra) holder.appendChild(node);
     return holder;
@@ -4638,7 +4638,7 @@
 
   function buildSegmentControl(control) {
     const seg = document.createElement("span");
-    seg.className = "ccp-edit-seg";
+    seg.className = "pnt-edit-seg";
     seg.dataset.prop = control.prop;
     seg.setAttribute("role", "radiogroup");
     seg.setAttribute("aria-label", control.label);
@@ -4649,7 +4649,7 @@
       button.setAttribute("role", "radio");
       button.title = option;
       button.textContent = { left: "≡", center: "≡", right: "≡" }[option] || option;
-      button.classList.add(`ccp-edit-align-${option}`);
+      button.classList.add(`pnt-edit-align-${option}`);
       button.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -4688,37 +4688,37 @@
     // longer width-locked to it, and no longer painted over the rows it is
     // meant to be tuning. The class stays for the styling and for the tests
     // that find it by class.
-    pop.id = "ccp-color-picker";
-    pop.className = "ccp-edit-pop";
+    pop.id = "pnt-color-picker";
+    pop.className = "pnt-edit-pop";
     pop.innerHTML = `
-      <div class="ccp-edit-pophead">
-        <span class="ccp-edit-poptitle"></span>
-        <button class="ccp-edit-popclose" title="Close" aria-label="Close colour picker">×</button>
+      <div class="pnt-edit-pophead">
+        <span class="pnt-edit-poptitle"></span>
+        <button class="pnt-edit-popclose" title="Close" aria-label="Close colour picker">×</button>
       </div>
-      <div class="ccp-edit-sat"><i class="ccp-edit-sat-dot"></i></div>
-      <div class="ccp-edit-rails">
-        <div class="ccp-edit-hue"><i class="ccp-edit-rail-dot"></i></div>
-        <div class="ccp-edit-alpha"><span></span><i class="ccp-edit-rail-dot"></i></div>
+      <div class="pnt-edit-sat"><i class="pnt-edit-sat-dot"></i></div>
+      <div class="pnt-edit-rails">
+        <div class="pnt-edit-hue"><i class="pnt-edit-rail-dot"></i></div>
+        <div class="pnt-edit-alpha"><span></span><i class="pnt-edit-rail-dot"></i></div>
       </div>
-      <div class="ccp-edit-popfoot">
-        <input class="ccp-edit-hexin" type="text" spellcheck="false" aria-label="Hex colour">
-        <button class="ccp-edit-drop" title="Pick a colour from the page" aria-label="Pick a colour from the page">◎</button>
+      <div class="pnt-edit-popfoot">
+        <input class="pnt-edit-hexin" type="text" spellcheck="false" aria-label="Hex colour">
+        <button class="pnt-edit-drop" title="Pick a colour from the page" aria-label="Pick a colour from the page">◎</button>
       </div>`;
 
-    const sat = pop.querySelector(".ccp-edit-sat");
-    const satDot = pop.querySelector(".ccp-edit-sat-dot");
-    const hue = pop.querySelector(".ccp-edit-hue");
-    const hueDot = hue.querySelector(".ccp-edit-rail-dot");
-    const alphaRail = pop.querySelector(".ccp-edit-alpha");
+    const sat = pop.querySelector(".pnt-edit-sat");
+    const satDot = pop.querySelector(".pnt-edit-sat-dot");
+    const hue = pop.querySelector(".pnt-edit-hue");
+    const hueDot = hue.querySelector(".pnt-edit-rail-dot");
+    const alphaRail = pop.querySelector(".pnt-edit-alpha");
     const alphaFill = alphaRail.querySelector("span");
-    const alphaDot = alphaRail.querySelector(".ccp-edit-rail-dot");
-    const hexIn = pop.querySelector(".ccp-edit-hexin");
-    const drop = pop.querySelector(".ccp-edit-drop");
+    const alphaDot = alphaRail.querySelector(".pnt-edit-rail-dot");
+    const hexIn = pop.querySelector(".pnt-edit-hexin");
+    const drop = pop.querySelector(".pnt-edit-drop");
 
     // The picker no longer sits under the row it belongs to, so it has to say
     // which property it is editing.
-    pop.querySelector(".ccp-edit-poptitle").textContent = control.label;
-    pop.querySelector(".ccp-edit-popclose").addEventListener("click", (ev) => {
+    pop.querySelector(".pnt-edit-poptitle").textContent = control.label;
+    pop.querySelector(".pnt-edit-popclose").addEventListener("click", (ev) => {
       ev.preventDefault();
       ev.stopPropagation();
       closeColorPicker();
@@ -4727,7 +4727,7 @@
     const tokens = paletteTokens(el);
     if (tokens.length) {
       const palette = document.createElement("div");
-      palette.className = "ccp-edit-palette";
+      palette.className = "pnt-edit-palette";
 
       // The swatches are 14px of colour and nothing else: without this the row
       // neither says what it is nor which token any square stands for. The
@@ -4737,7 +4737,7 @@
       // present, so naming a swatch costs no layout and the row cannot jump
       // under the pointer.
       const caption = document.createElement("div");
-      caption.className = "ccp-edit-palcap";
+      caption.className = "pnt-edit-palcap";
       const capName = document.createElement("b");
       const capValue = document.createElement("span");
       caption.appendChild(capName);
@@ -4755,7 +4755,7 @@
 
       for (const token of tokens) {
         const swatch = document.createElement("button");
-        swatch.className = "ccp-edit-pal";
+        swatch.className = "pnt-edit-pal";
         swatch.style.backgroundColor = token.hex;
         // Kept as well as the caption: it is what a screen reader reads, and
         // what survives if the pointer never enters at all.
@@ -4782,7 +4782,7 @@
       // Still first offer, but below the title bar rather than above it: the
       // header names what is being edited and carries the way out, so it stays
       // the top edge of the surface.
-      pop.querySelector(".ccp-edit-pophead").after(palette);
+      pop.querySelector(".pnt-edit-pophead").after(palette);
       palette.after(caption);
     }
 
@@ -4813,7 +4813,7 @@
       // destroyed by every re-render of the rows, and the captured node would
       // then take the live preview with it into a detached tree.
       const swatchFill = editPanelEl && editPanelEl.querySelector(
-        `.ccp-edit-row[data-control="${control.prop}"] .ccp-edit-swatch i`
+        `.pnt-edit-row[data-control="${control.prop}"] .pnt-edit-swatch i`
       );
       if (swatchFill) swatchFill.style.background = currentCss();
     }
@@ -4912,7 +4912,7 @@
       drop.remove();
     }
 
-    // Appended to the root, after the panel. --ccp-z-chrome is already
+    // Appended to the root, after the panel. --pnt-z-chrome is already
     // 2147483647, so the picker cannot outrank the panel by z-index — being
     // later in the document is what puts it on top, and is why this append
     // cannot become an insertBefore.
@@ -4957,7 +4957,7 @@
   function repositionColorPicker() {
     if (!editPopoverEl) return;
     const anchor = editPanelEl && editPanelEl.querySelector(
-      `.ccp-edit-row[data-control="${editPopoverProp}"] .ccp-edit-swatch`
+      `.pnt-edit-row[data-control="${editPopoverProp}"] .pnt-edit-swatch`
     );
     if (!anchor) {
       closeColorPicker();
@@ -5152,7 +5152,7 @@
       if (!scrubbing) {
         if (Math.abs(dx) < 3) return;
         scrubbing = true;
-        wrap.classList.add("ccp-edit-scrubbing");
+        wrap.classList.add("pnt-edit-scrubbing");
         beginEditGesture(el, control.prop);
         suppressTransitions(el);
         if (document.activeElement === input) input.blur();
@@ -5166,7 +5166,7 @@
       wrap.removeEventListener("pointermove", move);
       wrap.removeEventListener("pointerup", up);
       wrap.removeEventListener("pointercancel", up);
-      wrap.classList.remove("ccp-edit-scrubbing");
+      wrap.classList.remove("pnt-edit-scrubbing");
       if (scrubbing) {
         releaseTransitions(el);
         commitEditGesture();
@@ -5204,7 +5204,7 @@
 
     for (const control of allControls) {
       {
-        const row = editPanelEl.querySelector(`.ccp-edit-row[data-control="${control.prop}"]`);
+        const row = editPanelEl.querySelector(`.pnt-edit-row[data-control="${control.prop}"]`);
         if (!row) continue;
 
         // A uniform's edits live on the probed canvas rather than on the
@@ -5213,21 +5213,21 @@
         if (!target) continue;
 
         const edited = isEditedProp(target, row.dataset.prop);
-        row.classList.toggle("ccp-edit-dirty", edited);
-        const dot = row.querySelector(".ccp-edit-dot");
-        if (dot) dot.classList.toggle("ccp-edit-on", edited);
+        row.classList.toggle("pnt-edit-dirty", edited);
+        const dot = row.querySelector(".pnt-edit-dot");
+        if (dot) dot.classList.toggle("pnt-edit-on", edited);
 
         if (control.kind === "color") {
           const raw = readColorValue(target, control);
           const parsed = resolveColor(raw);
-          const fill = row.querySelector(".ccp-edit-swatch i");
+          const fill = row.querySelector(".pnt-edit-swatch i");
           if (fill) fill.style.background = raw || "transparent";
-          const hex = row.querySelector(".ccp-edit-hex");
+          const hex = row.querySelector(".pnt-edit-hex");
           if (hex) {
             const entry = editRegistry.get(target)?.props.get(row.dataset.prop);
             const token = entry && entry.after && entry.after.token;
             hex.textContent = token ? token.name : parsed ? formatHex(parsed) : raw;
-            hex.classList.toggle("ccp-edit-token", Boolean(token));
+            hex.classList.toggle("pnt-edit-token", Boolean(token));
           }
           continue;
         }
@@ -5235,14 +5235,14 @@
         if (control.kind === "segment") {
           const raw = readComputed(target, control);
           const value = (control.equivalents && control.equivalents[raw]) || raw;
-          for (const button of row.querySelectorAll(".ccp-edit-seg button")) {
+          for (const button of row.querySelectorAll(".pnt-edit-seg button")) {
             button.setAttribute("aria-checked", String(button.dataset.value === value));
           }
           continue;
         }
 
         if (control.kind === "text") {
-          const input = row.querySelector(".ccp-edit-textin");
+          const input = row.querySelector(".pnt-edit-textin");
           // Typing must never be overwritten mid-keystroke — same rule the
           // numeric fields keep.
           if (input && document.activeElement !== input) {
@@ -5251,7 +5251,7 @@
           continue;
         }
 
-        const input = row.querySelector(".ccp-edit-input");
+        const input = row.querySelector(".pnt-edit-input");
         if (!input) continue;
         const record = editRegistry.get(target);
         const entry = record && record.props.get(control.prop);
@@ -5263,20 +5263,20 @@
         if (document.activeElement !== input) {
           input.value = formatNumeric(state.value, control);
         }
-        const wrap = row.querySelector(".ccp-edit-num");
-        if (wrap) wrap.classList.toggle("ccp-edit-untouched", isAuto || state.auto);
-        const auto = row.querySelector(".ccp-edit-auto");
+        const wrap = row.querySelector(".pnt-edit-num");
+        if (wrap) wrap.classList.toggle("pnt-edit-untouched", isAuto || state.auto);
+        const auto = row.querySelector(".pnt-edit-auto");
         if (auto) auto.setAttribute("aria-checked", String(Boolean(isAuto)));
 
         // The stepper reads out where the value sits now — a rung's name, or a
         // dash when a raw scrub has left it between rungs.
-        const stepper = row.querySelector(".ccp-edit-tok");
+        const stepper = row.querySelector(".pnt-edit-tok");
         if (stepper) {
           const family = editTokenFamilies &&
             editTokenFamilies.find((f) => f.prefix === stepper.dataset.family);
           const onRung = family ? matchToken(family.members, state.value) : null;
           stepper.querySelector("b").textContent = onRung ? shortTokenName(onRung.name) : "—";
-          stepper.classList.toggle("ccp-edit-offscale", !onRung);
+          stepper.classList.toggle("pnt-edit-offscale", !onRung);
           stepper.title = onRung ? onRung.name : `Off the ${stepper.dataset.family} scale`;
         }
       }
@@ -5292,9 +5292,9 @@
     if (advancedState && advancedState.canvasEl) {
       for (const head of editPanelEl.querySelectorAll("[data-adv-parent]")) {
         const edited = isEditedProp(advancedState.canvasEl, head.dataset.advParent);
-        head.classList.toggle("ccp-edit-dirty", edited);
-        const dot = head.querySelector(".ccp-edit-dot");
-        if (dot) dot.classList.toggle("ccp-edit-on", edited);
+        head.classList.toggle("pnt-edit-dirty", edited);
+        const dot = head.querySelector(".pnt-edit-dot");
+        if (dot) dot.classList.toggle("pnt-edit-on", edited);
       }
     }
 
@@ -5302,10 +5302,10 @@
     // properties: it answers "how much is this copy about to carry", which is
     // the question you have when several elements have been tuned.
     const touched = editedElements().length;
-    const badge = editPanelEl.querySelector(".ccp-edit-count");
+    const badge = editPanelEl.querySelector(".pnt-edit-count");
     if (badge) badge.textContent = touched ? String(touched) : "";
-    const resetAll = editPanelEl.querySelector(".ccp-edit-resetall");
-    if (resetAll) resetAll.classList.toggle("ccp-edit-on", touched > 0);
+    const resetAll = editPanelEl.querySelector(".pnt-edit-resetall");
+    if (resetAll) resetAll.classList.toggle("pnt-edit-on", touched > 0);
     paintDegradedMarker();
   }
 
@@ -5355,12 +5355,12 @@
     const tag = el.tagName.toLowerCase();
     let rest = "";
     if (el.id && !isOurs.name(el.id)) {
-      rest = `<b class="ccp-edit-id-id">#${escapeHtml(el.id)}</b>`;
+      rest = `<b class="pnt-edit-id-id">#${escapeHtml(el.id)}</b>`;
     } else {
       const cls = Array.from(el.classList).find((c) => !isOurs.name(c));
-      if (cls) rest = `<b class="ccp-edit-id-class">.${escapeHtml(cls)}</b>`;
+      if (cls) rest = `<b class="pnt-edit-id-class">.${escapeHtml(cls)}</b>`;
     }
-    return `<b class="ccp-edit-id-tag">${tag}</b>${rest}`;
+    return `<b class="pnt-edit-id-tag">${tag}</b>${rest}`;
   }
 
   function escapeHtml(s) {
@@ -5434,11 +5434,11 @@
       head.removeEventListener("pointermove", move);
       head.removeEventListener("pointerup", up);
       head.removeEventListener("pointercancel", up);
-      head.classList.remove("ccp-edit-dragging");
+      head.classList.remove("pnt-edit-dragging");
     };
 
     head.setPointerCapture(e.pointerId);
-    head.classList.add("ccp-edit-dragging");
+    head.classList.add("pnt-edit-dragging");
     head.addEventListener("pointermove", move);
     head.addEventListener("pointerup", up);
     head.addEventListener("pointercancel", up);
@@ -5462,10 +5462,10 @@
     const rect = el.getBoundingClientRect();
     if (rect.width <= 0 && rect.height <= 0) return;
 
-    let flash = document.getElementById("ccp-edit-flash");
+    let flash = document.getElementById("pnt-edit-flash");
     if (!flash) {
       flash = document.createElement("div");
-      flash.id = "ccp-edit-flash";
+      flash.id = "pnt-edit-flash";
       overlayContainer.appendChild(flash);
     }
     flash.style.top = rect.top + "px";
@@ -5474,15 +5474,15 @@
     flash.style.height = rect.height + "px";
     // Restart the animation on a repeat undo: without the reflow between the
     // two class writes the browser coalesces them and nothing replays.
-    flash.classList.remove("ccp-edit-flashing");
+    flash.classList.remove("pnt-edit-flashing");
     void flash.offsetWidth;
-    flash.classList.add("ccp-edit-flashing");
+    flash.classList.add("pnt-edit-flashing");
     // Cleared on a timer rather than on animationend, because under reduced
     // motion there is no animation to end — the ring simply holds and then
     // goes, so both paths finish the same way.
     clearTimeout(editFlashTimer);
     editFlashTimer = setTimeout(() => {
-      flash.classList.remove("ccp-edit-flashing");
+      flash.classList.remove("pnt-edit-flashing");
     }, 700);
   }
 
@@ -5716,11 +5716,11 @@
   // these string literals appear in Edit Apply and nowhere else — makes the
   // write path as un-movable as the setProperty one.
   function postShaderSet(name, value) {
-    postShaderMessage("CCP_SHADER_SET", { name, value });
+    postShaderMessage("PNT_SHADER_SET", { name, value });
   }
 
   function postShaderClear(name) {
-    postShaderMessage("CCP_SHADER_CLEAR", { name });
+    postShaderMessage("PNT_SHADER_CLEAR", { name });
   }
 
   // The text node an edit lands on: the first direct child with words of its
@@ -6467,7 +6467,7 @@
   // stale nonce is a message from a selection that no longer exists.
   //
   // Nothing here writes a uniform. The two message types that do —
-  // CCP_SHADER_SET and CCP_SHADER_CLEAR — are sent from the Edit Apply section
+  // PNT_SHADER_SET and PNT_SHADER_CLEAR — are sent from the Edit Apply section
   // and nowhere else, and test/edit-audit.mjs pins those literals there the
   // same way it pins setProperty.
   let shaderNonce = null;
@@ -6481,7 +6481,7 @@
 
   function postShaderMessage(type, payload) {
     if (!shaderNonce) return;
-    window.postMessage({ ccp: "shader", v: 1, nonce: shaderNonce, type, ...payload }, shaderTarget());
+    window.postMessage({ pnt: "shader", v: 1, nonce: shaderNonce, type, ...payload }, shaderTarget());
   }
 
   // Fire-and-forget on purpose: if the agent is gone (the extension was
@@ -6507,21 +6507,21 @@
   async function injectAndProbe(el, canvas, ticket) {
     const nonce = (crypto.randomUUID && crypto.randomUUID()) ||
       String(Math.random()).slice(2) + Date.now();
-    canvas.setAttribute("data-ccp-probe", nonce);
+    canvas.setAttribute("data-pnt-probe", nonce);
     advancedMarkedCanvas = canvas;
     try {
       await chrome.runtime.sendMessage({ type: "INJECT_SHADER_AGENT" });
     } catch { /* no worker (harness, or mid-reload): the agent may still be resident */ }
     // Edit Mode ended, or moved on, while the worker was injecting.
     if (ticket !== advancedTicket || !editing || selectedElement !== el) {
-      if (canvas.isConnected) canvas.removeAttribute("data-ccp-probe");
+      if (canvas.isConnected) canvas.removeAttribute("data-pnt-probe");
       if (advancedMarkedCanvas === canvas) advancedMarkedCanvas = null;
       return;
     }
     shaderNonce = nonce;
-    postShaderMessage("CCP_SHADER_PROBE", { observeMs: 700, maxUniforms: 64 });
+    postShaderMessage("PNT_SHADER_PROBE", { observeMs: 700, maxUniforms: 64 });
     clearInterval(advancedKeepalive);
-    advancedKeepalive = setInterval(() => postShaderMessage("CCP_SHADER_KEEPALIVE", {}), 4000);
+    advancedKeepalive = setInterval(() => postShaderMessage("PNT_SHADER_KEEPALIVE", {}), 4000);
   }
 
   // The uniform roster the panel will trust, held to what it can render:
@@ -6562,13 +6562,13 @@
     if (e.source !== window) return;
     if (e.origin !== location.origin) return;
     const msg = e.data;
-    if (!msg || msg.ccp !== "shader" || msg.v !== 1) return;
+    if (!msg || msg.pnt !== "shader" || msg.v !== 1) return;
     if (!shaderNonce || msg.nonce !== shaderNonce) return;
     if (!advancedState) return;
 
-    if (msg.type === "CCP_SHADER_INVENTORY") {
+    if (msg.type === "PNT_SHADER_INVENTORY") {
       if (advancedMarkedCanvas) {
-        if (advancedMarkedCanvas.isConnected) advancedMarkedCanvas.removeAttribute("data-ccp-probe");
+        if (advancedMarkedCanvas.isConnected) advancedMarkedCanvas.removeAttribute("data-pnt-probe");
         advancedState.canvasEl = advancedMarkedCanvas;
         advancedMarkedCanvas = null;
       }
@@ -6596,13 +6596,13 @@
         renderTether({ instant: true });
         repositionColorPicker();
       }
-      if (advancedOpen) postShaderMessage("CCP_SHADER_WATCH", { on: hasDrivenUniforms() });
+      if (advancedOpen) postShaderMessage("PNT_SHADER_WATCH", { on: hasDrivenUniforms() });
       return;
     }
 
-    if (msg.type === "CCP_SHADER_ERROR") {
+    if (msg.type === "PNT_SHADER_ERROR") {
       if (advancedMarkedCanvas) {
-        if (advancedMarkedCanvas.isConnected) advancedMarkedCanvas.removeAttribute("data-ccp-probe");
+        if (advancedMarkedCanvas.isConnected) advancedMarkedCanvas.removeAttribute("data-pnt-probe");
         advancedMarkedCanvas = null;
       }
       // Not an error worth a marker: most canvases are not shaders, and the
@@ -6610,12 +6610,12 @@
       return;
     }
 
-    if (msg.type === "CCP_SHADER_TICK") {
+    if (msg.type === "PNT_SHADER_TICK") {
       applyShaderTick(msg.values);
       return;
     }
 
-    if (msg.type === "CCP_SHADER_GONE") {
+    if (msg.type === "PNT_SHADER_GONE") {
       advancedState.gone = true;
       advancedState.live = false;
       renderEditControls();
@@ -6624,12 +6624,12 @@
 
   function teardownShaderBridge() {
     advancedTicket++;
-    if (shaderNonce) postShaderMessage("CCP_SHADER_TEARDOWN", {});
+    if (shaderNonce) postShaderMessage("PNT_SHADER_TEARDOWN", {});
     shaderNonce = null;
     clearInterval(advancedKeepalive);
     advancedKeepalive = 0;
     if (advancedMarkedCanvas) {
-      if (advancedMarkedCanvas.isConnected) advancedMarkedCanvas.removeAttribute("data-ccp-probe");
+      if (advancedMarkedCanvas.isConnected) advancedMarkedCanvas.removeAttribute("data-pnt-probe");
       advancedMarkedCanvas = null;
     }
     advancedState = null;
@@ -6744,15 +6744,15 @@
       rec.value = vec;
       // Taken over: the row shows the override, not the page's stream.
       if (isEditedProp(st.canvasEl, "uniform:" + name)) continue;
-      const rows = editPanelEl.querySelectorAll(`.ccp-edit-row[data-prop="uniform:${name}"]`);
+      const rows = editPanelEl.querySelectorAll(`.pnt-edit-row[data-prop="uniform:${name}"]`);
       for (const row of rows) {
         const control = advancedControls.find((c) => c.prop === row.dataset.control);
         if (!control) continue;
-        const input = row.querySelector(".ccp-edit-input");
+        const input = row.querySelector(".pnt-edit-input");
         if (input && document.activeElement !== input) {
           input.value = formatNumeric(vec[Math.max(0, control.uniform.part)], control);
         }
-        const fill = row.querySelector(".ccp-edit-swatch i");
+        const fill = row.querySelector(".pnt-edit-swatch i");
         if (fill) fill.style.background = readColorValue(st.canvasEl, control);
       }
     }
@@ -6866,12 +6866,12 @@
   // rows, the same arrangement a split padding control draws.
   function buildAdvancedVecHead(control) {
     const row = document.createElement("div");
-    row.className = "ccp-edit-row ccp-edit-parent";
+    row.className = "pnt-edit-row pnt-edit-parent";
     row.dataset.prop = control.uniformKey;
     row.dataset.advParent = control.uniformKey;
 
     const dot = document.createElement("button");
-    dot.className = "ccp-edit-dot";
+    dot.className = "pnt-edit-dot";
     dot.title = `Reset ${control.vecHead}`;
     dot.setAttribute("aria-label", `Reset ${control.vecHead}`);
     dot.addEventListener("click", (e) => {
@@ -6884,7 +6884,7 @@
     });
 
     const label = document.createElement("span");
-    label.className = "ccp-edit-label";
+    label.className = "pnt-edit-label";
     label.textContent = control.vecHead;
 
     row.appendChild(dot);
@@ -6909,14 +6909,14 @@
     advancedControls = params.concat(driven);
 
     const section = document.createElement("div");
-    section.className = "ccp-edit-group ccp-adv-group";
+    section.className = "pnt-edit-group pnt-adv-group";
 
     const details = document.createElement("details");
-    details.className = "ccp-adv";
+    details.className = "pnt-adv";
     details.open = advancedOpen;
     details.addEventListener("toggle", () => {
       advancedOpen = details.open;
-      postShaderMessage("CCP_SHADER_WATCH", { on: details.open && hasDrivenUniforms() });
+      postShaderMessage("PNT_SHADER_WATCH", { on: details.open && hasDrivenUniforms() });
       // Opening grows the panel; a panel that grew past the viewport bottom
       // leaves its new rows unreachable, so re-clamp exactly as a resize
       // does. After the glide, because the clamp needs the final height.
@@ -6929,15 +6929,15 @@
     });
 
     const summary = document.createElement("summary");
-    summary.className = "ccp-adv-summary";
+    summary.className = "pnt-adv-summary";
     const caret = document.createElement("i");
-    caret.className = "ccp-adv-caret";
+    caret.className = "pnt-adv-caret";
     caret.setAttribute("aria-hidden", "true");
     const legend = document.createElement("p");
-    legend.className = "ccp-edit-legend ccp-adv-legend";
+    legend.className = "pnt-edit-legend pnt-adv-legend";
     legend.textContent = "Advanced";
     const count = document.createElement("span");
-    count.className = "ccp-adv-count";
+    count.className = "pnt-adv-count";
     count.textContent = advancedSummaryText();
     summary.appendChild(caret);
     summary.appendChild(legend);
@@ -6945,22 +6945,22 @@
     details.appendChild(summary);
 
     const body = document.createElement("div");
-    body.className = "ccp-adv-body";
+    body.className = "pnt-adv-body";
 
     if (st.canvasEl && st.uniforms.size > 0 && st.canvasEl !== selectedElement) {
       const note = document.createElement("p");
-      note.className = "ccp-adv-note";
+      note.className = "pnt-adv-note";
       note.innerHTML = `shader on ${editPanelIdentity(st.canvasEl)} inside the selection`;
       body.appendChild(note);
     }
     if (st.gone) {
       const note = document.createElement("p");
-      note.className = "ccp-adv-note";
+      note.className = "pnt-adv-note";
       note.textContent = "the page rebuilt its shader — these controls have let go";
       body.appendChild(note);
     } else if (st.uniforms.size > 0 && !st.live) {
       const note = document.createElement("p");
-      note.className = "ccp-adv-note";
+      note.className = "pnt-adv-note";
       note.textContent = "this shader drew once and stopped — values shown, not tunable";
       body.appendChild(note);
     }
@@ -6969,9 +6969,9 @@
 
     if (driven.length > 0) {
       const cluster = document.createElement("div");
-      cluster.className = "ccp-adv-driven";
+      cluster.className = "pnt-adv-driven";
       const micro = document.createElement("p");
-      micro.className = "ccp-adv-driven-legend";
+      micro.className = "pnt-adv-driven-legend";
       micro.textContent = "driven by the page";
       cluster.appendChild(micro);
       appendAdvancedRows(cluster, driven);
@@ -6980,7 +6980,7 @@
 
     // Read-only inventories keep their rows honest: visible, valued, inert.
     if ((st.uniforms.size > 0 && !st.live) || st.gone) {
-      body.classList.add("ccp-adv-readonly");
+      body.classList.add("pnt-adv-readonly");
       for (const node of body.querySelectorAll("input, button")) node.disabled = true;
     }
 
@@ -7119,7 +7119,7 @@
     updateOverlay(target);
 
     if (overlayContainer) {
-      overlayContainer.classList.add("ccp-selected");
+      overlayContainer.classList.add("pnt-selected");
     }
 
     showToolbar(target);
@@ -7215,7 +7215,7 @@
     stopRedline(); // every deselection path ends redline — it has no anchor
     selectedElement = null;
     if (overlayContainer) {
-      overlayContainer.classList.remove("ccp-selected");
+      overlayContainer.classList.remove("pnt-selected");
     }
     removeToolbar();
   }
@@ -7225,13 +7225,13 @@
     removeToolbar();
 
     toolbarEl = document.createElement("div");
-    toolbarEl.id = "ccp-toolbar";
+    toolbarEl.id = "pnt-toolbar";
 
     // Copy actions live in the bar; Select Parent is a sibling button beside it.
-    // Both are flex children of #ccp-toolbar with align-items:stretch, so the
+    // Both are flex children of #pnt-toolbar with align-items:stretch, so the
     // button always matches the bar's height without hard-coded padding.
     const bar = document.createElement("div");
-    bar.className = "ccp-bar";
+    bar.className = "pnt-bar";
 
     // Actions read selectedElement at click time so they follow "Select Parent" hops.
     // Edit is icon-only: it opens a mode rather than performing an action, and the
@@ -7247,7 +7247,7 @@
       button.dataset.origHtml = btn.icon + (btn.iconOnly ? "" : `<span>${btn.label}</span>`);
       button.innerHTML = button.dataset.origHtml;
       if (btn.iconOnly) {
-        button.className = "ccp-icon-btn";
+        button.className = "pnt-icon-btn";
         button.title = btn.label;
         button.setAttribute("aria-label", btn.label);
       }
@@ -7260,7 +7260,7 @@
     }
 
     parentButtonEl = document.createElement("button");
-    parentButtonEl.className = "ccp-parent-btn";
+    parentButtonEl.className = "pnt-parent-btn";
     parentButtonEl.innerHTML = ICONS.parent + `<span>Select Parent</span>`;
     parentButtonEl.addEventListener("click", (e) => {
       e.preventDefault();
@@ -7293,7 +7293,7 @@
     if (!parentButtonEl) return;
     const disabled = !getSelectableParent(selectedElement);
     parentButtonEl.disabled = disabled;
-    parentButtonEl.classList.toggle("ccp-button-disabled", disabled);
+    parentButtonEl.classList.toggle("pnt-button-disabled", disabled);
     parentButtonEl.title = disabled
       ? "No parent element to select"
       : "Select this element's parent";
@@ -8057,7 +8057,7 @@
     if (!btnEl) return;
     btnEl.innerHTML = CLAWD_MINI + `<span>Copying...</span>`;
     btnEl.disabled = true;
-    btnEl.style.opacity = token("--ccp-opacity-loading", "0.7");
+    btnEl.style.opacity = token("--pnt-opacity-loading", "0.7");
   }
 
   // The restore is guarded on origHtml, so a caller that never recorded one
@@ -8123,26 +8123,26 @@
 
     if (!toastEl) {
       toastEl = document.createElement("div");
-      toastEl.id = "ccp-toast";
+      toastEl.id = "pnt-toast";
     }
 
     toastEl.textContent = message;
-    toastEl.className = isError ? "ccp-toast-error" : "";
+    toastEl.className = isError ? "pnt-toast-error" : "";
 
-    const z = token("--ccp-z-chrome", "2147483647");
+    const z = token("--pnt-z-chrome", "2147483647");
 
     // Position next to toolbar if visible, otherwise fixed bottom-right
     if (toolbarEl && toolbarEl.parentElement) {
       document.documentElement.appendChild(toastEl);
       const toolbarRect = toolbarEl.getBoundingClientRect();
-      const gap = parseFloat(token("--ccp-gap-section", "8px")) || 8;
+      const gap = parseFloat(token("--pnt-gap-section", "8px")) || 8;
       toastEl.style.position = "fixed";
       toastEl.style.top = toolbarRect.top + "px";
       toastEl.style.left = (toolbarRect.right + gap) + "px";
       toastEl.style.height = toolbarRect.height + "px";
       toastEl.style.zIndex = z;
     } else {
-      const inset = token("--ccp-toast-inset", "24px");
+      const inset = token("--pnt-toast-inset", "24px");
       document.documentElement.appendChild(toastEl);
       toastEl.style.position = "fixed";
       toastEl.style.bottom = inset;
@@ -8154,11 +8154,11 @@
 
     // Force reflow for transition
     toastEl.offsetHeight;
-    toastEl.classList.add("ccp-toast-visible");
+    toastEl.classList.add("pnt-toast-visible");
 
     toastTimer = setTimeout(() => {
       if (toastEl) {
-        toastEl.classList.remove("ccp-toast-visible");
+        toastEl.classList.remove("pnt-toast-visible");
         toastTimer = setTimeout(() => {
           if (toastEl) {
             toastEl.remove();

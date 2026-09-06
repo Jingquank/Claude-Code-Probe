@@ -35,7 +35,7 @@
   .specimen {
     position: absolute;
     background: #f0eee7;
-    border: 2px solid var(--ccp-accent);
+    border: 2px solid var(--pnt-accent);
     border-radius: 10px;
     padding: 12px 14px;
     font: 12px/1.4 ui-monospace, monospace;
@@ -48,7 +48,7 @@
   .fixed-bar {
     position: fixed; left: 44px; bottom: 0;
     width: 260px; height: 52px;
-    background: var(--ccp-surface); color: var(--ccp-text);
+    background: var(--pnt-surface); color: var(--pnt-text);
     border-radius: 10px 10px 0 0;
     font: 12px/52px ui-monospace, monospace; text-align: center;
     z-index: 5;
@@ -59,32 +59,32 @@
   #hud {
     position: fixed; top: 0; right: 0; z-index: 999999;
     width: 400px; max-height: 100vh; overflow-y: auto;
-    background: var(--ccp-surface); color: var(--ccp-text);
+    background: var(--pnt-surface); color: var(--pnt-text);
     font: 11px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
     padding: 12px 14px 18px;
     box-shadow: -8px 0 32px -12px rgba(0,0,0,.5);
   }
   #hud.hidden { display: none; }
-  #hud h1 { font-size: 12px; margin: 0 0 2px; letter-spacing: .06em; text-transform: uppercase; color: var(--ccp-accent); }
+  #hud h1 { font-size: 12px; margin: 0 0 2px; letter-spacing: .06em; text-transform: uppercase; color: var(--pnt-accent); }
   #hud .sub { color: #8a867c; margin: 0 0 10px; }
   #hud kbd {
     background: #2a2a27; border: 1px solid #3d3d38; border-radius: 4px;
-    padding: 0 4px; font: inherit; color: var(--ccp-text);
+    padding: 0 4px; font: inherit; color: var(--pnt-text);
   }
   #hud .keys { margin: 0 0 12px; color: #8a867c; }
   #hud .keys div { margin: 2px 0; }
 
   #summary { margin: 0 0 10px; padding: 8px 10px; border-radius: 6px; background: #201f1d; }
   #summary.pass { border-left: 3px solid #4a9d5f; }
-  #summary.fail { border-left: 3px solid var(--ccp-accent); }
+  #summary.fail { border-left: 3px solid var(--pnt-accent); }
 
   .row {
     border-top: 1px solid #2a2a27; padding: 8px 0;
     display: grid; grid-template-columns: 1fr 100px; gap: 8px; align-items: start;
   }
-  .row.active { background: #221f1c; box-shadow: inset 3px 0 0 var(--ccp-accent); padding-left: 7px; }
-  .row .name { color: var(--ccp-text); }
-  .row .flags { color: var(--ccp-accent); margin-top: 3px; }
+  .row.active { background: #221f1c; box-shadow: inset 3px 0 0 var(--pnt-accent); padding-left: 7px; }
+  .row .name { color: var(--pnt-text); }
+  .row .flags { color: var(--pnt-accent); margin-top: 3px; }
   .row .nums  { color: #6f6c64; margin-top: 3px; font-size: 10px; }
   .row .verdict { font-weight: 700; }
   .row .verdict.PASS { color: #4a9d5f; }
@@ -93,7 +93,7 @@
 
   .diagram { position: relative; width: 96px; background: #0d0d0c; border: 1px solid #3d3d38; overflow: hidden; }
   .diagram i { position: absolute; display: block; }
-  .diagram .el { background: rgb(from var(--ccp-accent) r g b / 0.28); border: 1px solid var(--ccp-accent); }
+  .diagram .el { background: rgb(from var(--pnt-accent) r g b / 0.28); border: 1px solid var(--pnt-accent); }
   .diagram .lb { background: rgba(250,249,245,.85); }
   .diagram .tb { background: rgba(120,170,255,.85); }
   .legend { color: #6f6c64; margin: 8px 0 0; }
@@ -105,17 +105,17 @@
 
 <div id="hud">
   <h1>Probe placement harness</h1>
-  <p class="sub">Placement of <code>#ccp-label</code> and <code>#ccp-toolbar</code>, simulated and live.</p>
+  <p class="sub">Placement of <code>#pnt-label</code> and <code>#pnt-toolbar</code>, simulated and live.</p>
   <div class="keys">
     <div><kbd>s</kbd> run simulation (no extension needed)</div>
-    <div><kbd>r</kbd> run live sweep (probe mode must be ON)</div>
+    <div><kbd>r</kbd> run live sweep (point mode must be ON)</div>
     <div><kbd>n</kbd>/<kbd>p</kbd> next / prev case &nbsp; <kbd>g</kbd> go to current</div>
     <div><kbd>d</kbd> dump JSON to console &nbsp; <kbd>h</kbd> hide HUD</div>
   </div>
-  <div id="summary">Press <kbd>s</kbd> to simulate, or turn on probe mode and press <kbd>r</kbd>.</div>
+  <div id="summary">Press <kbd>s</kbd> to simulate, or turn on point mode and press <kbd>r</kbd>.</div>
   <div id="rows"></div>
   <p class="legend">
-    <span class="sw" style="background:rgb(from var(--ccp-accent) r g b / 0.6)"></span>element &nbsp;
+    <span class="sw" style="background:rgb(from var(--pnt-accent) r g b / 0.6)"></span>element &nbsp;
     <span class="sw" style="background:rgba(250,249,245,.85)"></span>label &nbsp;
     <span class="sw" style="background:rgba(120,170,255,.85)"></span>toolbar
   </p>
@@ -245,8 +245,8 @@ async function runLive() {
     }));
     await wait(240);                // let the toolbar's minWidth rAF and the 150ms glide settle
 
-    const label = boxOf(document.getElementById("ccp-label"));
-    const toolbar = boxOf(document.getElementById("ccp-toolbar"));
+    const label = boxOf(document.getElementById("pnt-label"));
+    const toolbar = boxOf(document.getElementById("pnt-toolbar"));
 
     if (!label || !toolbar) {
       results.push({

@@ -1,4 +1,4 @@
-<title>Claude Code Probe — Settings layout prototypes</title>
+<title>Pointee — Settings layout prototypes</title>
 
 <style>
 /* ============================================================
@@ -175,7 +175,7 @@ kbd {
    variables per theme, every alpha variant derived rather than
    declared. If a theme reads wrong here, the contract is wrong.
    ============================================================ */
-[data-ccp-theme="terracotta-dark"] {
+[data-pnt-theme="terracotta-dark"] {
   --surface:#141413; --text:#faf9f5; --dim:#c8c5bc; --muted:#8a8780; --faint:#6a6a64;
   --sep:#3a3a35; --accent:#d97757; --accent-dark:#b06848; --accent-light:#ffd9c7;
   --on-accent:#1a0d07; --id:#6a9bcc; --class:#788c5d; --error:#dc2626;
@@ -183,7 +183,7 @@ kbd {
   --shadow-bar: 0 4px 16px rgba(20,20,19,.6);
   --page:#1e1e1c; --page-ink:#c8c5bc; --page-rule:#2e2e2a;
 }
-[data-ccp-theme="terracotta-light"] {
+[data-pnt-theme="terracotta-light"] {
   --surface:#faf9f5; --text:#141413; --dim:#3a3a35; --muted:#6a6a64; --faint:#8a8780;
   --sep:#ddd9cf; --accent:#c2603f; --accent-dark:#9c4a2e; --accent-light:#e8c4b2;
   --on-accent:#fff8f4; --id:#2f6291; --class:#4d6a36; --error:#b91c1c;
@@ -191,7 +191,7 @@ kbd {
   --shadow-bar: 0 4px 14px rgba(60,45,35,.18);
   --page:#ffffff; --page-ink:#3a3a35; --page-rule:#eae7de;
 }
-[data-ccp-theme="dracula"] {
+[data-pnt-theme="dracula"] {
   --surface:#282a36; --text:#f8f8f2; --dim:#cfd0e0; --muted:#8b93bd; --faint:#6272a4;
   --sep:#44475a; --accent:#bd93f9; --accent-dark:#9a6ee0; --accent-light:#e0d0ff;
   --on-accent:#1a1626; --id:#8be9fd; --class:#50fa7b; --error:#ff5555;
@@ -199,7 +199,7 @@ kbd {
   --shadow-bar: 0 4px 16px rgba(20,20,30,.65);
   --page:#21222c; --page-ink:#cfd0e0; --page-rule:#343746;
 }
-[data-ccp-theme="monokai"] {
+[data-pnt-theme="monokai"] {
   --surface:#272822; --text:#f8f8f2; --dim:#d9d8cd; --muted:#9d9a86; --faint:#75715e;
   --sep:#3e3d32; --accent:#f92672; --accent-dark:#cc1f5d; --accent-light:#ffb3ce;
   --on-accent:#2a0512; --id:#66d9ef; --class:#a6e22e; --error:#ff6188;
@@ -207,7 +207,7 @@ kbd {
   --shadow-bar: 0 4px 16px rgba(20,20,15,.65);
   --page:#1e1f1a; --page-ink:#d9d8cd; --page-rule:#32332b;
 }
-[data-ccp-theme="nord"] {
+[data-pnt-theme="nord"] {
   --surface:#2e3440; --text:#eceff4; --dim:#d8dee9; --muted:#9aa5bb; --faint:#7b88a1;
   --sep:#3b4252; --accent:#88c0d0; --accent-dark:#5e81ac; --accent-light:#d3e6ec;
   --on-accent:#16202b; --id:#81a1c1; --class:#a3be8c; --error:#bf616a;
@@ -215,7 +215,7 @@ kbd {
   --shadow-bar: 0 4px 16px rgba(20,25,35,.6);
   --page:#272c36; --page-ink:#d8dee9; --page-rule:#343b48;
 }
-[data-ccp-theme="solarized-dark"] {
+[data-pnt-theme="solarized-dark"] {
   --surface:#002b36; --text:#eee8d5; --dim:#93a1a1; --muted:#7d9095; --faint:#586e75;
   --sep:#073642; --accent:#cb4b16; --accent-dark:#a53c11; --accent-light:#f5c6ac;
   --on-accent:#1a0700; --id:#268bd2; --class:#859900; --error:#dc322f;
@@ -223,7 +223,7 @@ kbd {
   --shadow-bar: 0 4px 16px rgba(0,20,25,.65);
   --page:#01212b; --page-ink:#93a1a1; --page-rule:#062b35;
 }
-[data-ccp-theme="tokyo-night"] {
+[data-pnt-theme="tokyo-night"] {
   --surface:#1a1b26; --text:#c0caf5; --dim:#a9b1d6; --muted:#7b83a8; --faint:#565f89;
   --sep:#292e42; --accent:#bb9af7; --accent-dark:#9a78d8; --accent-light:#e2d4ff;
   --on-accent:#16111f; --id:#7aa2f7; --class:#9ece6a; --error:#f7768e;
@@ -257,7 +257,7 @@ kbd {
 .mock-el-body  { font-size: 11px; color: var(--muted); }
 
 /* the info panel */
-.ccp-label {
+.pnt-label {
   background: var(--surface);
   color: var(--text);
   border: 1px solid rgba(217,119,87,.25);
@@ -285,15 +285,15 @@ kbd {
 }
 
 /* the toolbar */
-.ccp-toolbar { display: flex; align-items: stretch; gap: 8px; font-family: var(--mono); }
-.ccp-bar {
+.pnt-toolbar { display: flex; align-items: stretch; gap: 8px; font-family: var(--mono); }
+.pnt-bar {
   display: flex; gap: 4px; padding: 4px;
   background: var(--surface);
   border: 1px solid rgba(217,119,87,.5);
   border: 1px solid rgb(from var(--accent) r g b / 0.5);
   border-radius: 10px; box-shadow: var(--shadow-bar);
 }
-.ccp-bar button {
+.pnt-bar button {
   display: flex; align-items: center; gap: 6px;
   padding: 7px 12px; border-radius: 7px;
   background: transparent; border: 1px solid transparent;
@@ -302,11 +302,11 @@ kbd {
   text-transform: uppercase; letter-spacing: 0.05em;
   cursor: pointer; transition: background .15s, border-color .15s;
 }
-.ccp-bar button:hover {
+.pnt-bar button:hover {
   background: rgb(from var(--accent) r g b / 0.15);
   border-color: rgb(from var(--accent) r g b / 0.5);
 }
-.ccp-parent {
+.pnt-parent {
   display: flex; align-items: center; gap: 6px; padding: 0 14px;
   background: var(--surface); color: var(--accent);
   border: 1px solid var(--accent); border-radius: 10px;
@@ -315,11 +315,11 @@ kbd {
   text-transform: uppercase; letter-spacing: 0.05em;
   cursor: pointer; transition: background .15s, color .15s;
 }
-.ccp-parent:hover { background: var(--accent); color: var(--on-accent); }
-.ccp-toolbar svg, .ccp-gear svg { width: 14px; height: 14px; flex: none; }
+.pnt-parent:hover { background: var(--accent); color: var(--on-accent); }
+.pnt-toolbar svg, .pnt-gear svg { width: 14px; height: 14px; flex: none; }
 
 /* the gear — square, icon only, opaque because it sits on the page */
-.ccp-gear {
+.pnt-gear {
   display: grid; place-items: center;
   width: 30px; height: 30px;
   background: var(--surface); color: var(--accent);
@@ -327,7 +327,7 @@ kbd {
   box-shadow: var(--shadow-bar); cursor: pointer;
   transition: background .15s, color .15s;
 }
-.ccp-gear:hover { background: var(--accent); color: var(--on-accent); }
+.pnt-gear:hover { background: var(--accent); color: var(--on-accent); }
 .gear-float { position: absolute; top: 12px; right: 12px; z-index: 5; }
 
 /* ============================================================
@@ -573,7 +573,7 @@ kbd {
       <p class="thesis">The pattern people already know from editor preferences. Themes
         as a scannable vertical list on the left; everything else is preview.</p>
     </div>
-    <div class="viewport" data-ccp-theme="terracotta-dark" data-proto="1">
+    <div class="viewport" data-pnt-theme="terracotta-dark" data-proto="1">
       <div class="viewport-bar">
         <i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">chrome-extension://…/settings/index.html</span>
@@ -608,7 +608,7 @@ kbd {
         in its own theme, so the swatch <em>is</em> the preview and all eight are
         comparable in one glance.</p>
     </div>
-    <div class="viewport" data-ccp-theme="terracotta-dark" data-proto="2">
+    <div class="viewport" data-pnt-theme="terracotta-dark" data-proto="2">
       <div class="viewport-bar">
         <i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">chrome-extension://…/settings/index.html</span>
@@ -636,7 +636,7 @@ kbd {
       <p class="thesis">Themes compress into one horizontal row so the preview can be
         centred and given the whole stage beneath it.</p>
     </div>
-    <div class="viewport" data-ccp-theme="dracula" data-proto="3">
+    <div class="viewport" data-pnt-theme="dracula" data-proto="3">
       <div class="viewport-bar">
         <i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">chrome-extension://…/settings/index.html</span>
@@ -668,7 +668,7 @@ kbd {
         settings column scrolls; the preview rail stays put so you never lose sight of
         what you're changing.</p>
     </div>
-    <div class="viewport" data-ccp-theme="nord" data-proto="4">
+    <div class="viewport" data-pnt-theme="nord" data-proto="4">
       <div class="viewport-bar">
         <i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">chrome-extension://…/settings/index.html</span>
@@ -714,14 +714,14 @@ kbd {
       <p class="thesis">One narrow column, centred. Header, picker, preview, done — the
         least chrome that still does the job.</p>
     </div>
-    <div class="viewport" data-ccp-theme="tokyo-night" data-proto="5">
+    <div class="viewport" data-pnt-theme="tokyo-night" data-proto="5">
       <div class="viewport-bar">
         <i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">chrome-extension://…/settings/index.html</span>
       </div>
       <div class="sp L5">
         <div>
-          <p class="sp-title">Claude Code Probe · Settings</p>
+          <p class="sp-title">Pointee · Settings</p>
           <p class="sp-sub">Preferences are stored on this device and never leave it.</p>
         </div>
         <hr class="sp-hr">
@@ -751,7 +751,7 @@ kbd {
         webpage with real probe chrome sitting on it — gear in the top-right and
         everything — and the picker floats over it like the tool does.</p>
     </div>
-    <div class="viewport" data-ccp-theme="monokai" data-proto="6">
+    <div class="viewport" data-pnt-theme="monokai" data-proto="6">
       <div class="viewport-bar">
         <i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">chrome-extension://…/settings/index.html</span>
@@ -793,7 +793,7 @@ kbd {
       <p class="thesis">A single theme fills the stage; arrows step through. Trades
         breadth of comparison for depth of attention on each palette.</p>
     </div>
-    <div class="viewport" data-ccp-theme="solarized-dark" data-proto="7">
+    <div class="viewport" data-pnt-theme="solarized-dark" data-proto="7">
       <div class="viewport-bar">
         <i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">chrome-extension://…/settings/index.html</span>
@@ -831,13 +831,13 @@ kbd {
         narrowed it to two and need to see them together to decide.</p>
     </div>
     <div class="viewport" data-proto="8">
-      <div class="viewport-bar" data-ccp-theme="terracotta-dark">
+      <div class="viewport-bar" data-pnt-theme="terracotta-dark">
         <i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">chrome-extension://…/settings/index.html</span>
       </div>
       <div class="L8">
         <div class="panes">
-          <div class="sp pane" data-ccp-theme="terracotta-dark" data-pane="a">
+          <div class="sp pane" data-pnt-theme="terracotta-dark" data-pane="a">
             <div class="pane-head">
               <span class="tag">A</span>
               <select data-pane-select="a" aria-label="Theme A"></select>
@@ -845,7 +845,7 @@ kbd {
             <div data-slot="preview"></div>
           </div>
           <div class="divider"></div>
-          <div class="sp pane" data-ccp-theme="dracula" data-pane="b">
+          <div class="sp pane" data-pnt-theme="dracula" data-pane="b">
             <div class="pane-head">
               <span class="tag">B</span>
               <select data-pane-select="b" aria-label="Theme B"></select>
@@ -853,7 +853,7 @@ kbd {
             <div data-slot="preview"></div>
           </div>
         </div>
-        <div class="sp foot" data-ccp-theme="terracotta-dark">
+        <div class="sp foot" data-pnt-theme="terracotta-dark">
           <button class="btn" data-pick="a">Use A</button>
           <button class="btn btn-ghost" data-pick="b">Use B</button>
           <span class="saved" data-slot="saved"></span>
@@ -949,14 +949,14 @@ function swatchHTML(t, cls) {
    example, so nothing here is placeholder text. */
 function mockChrome({ gear = false, element = true } = {}) {
   return `
-    ${gear ? `<button class="ccp-gear gear-float" title="Probe settings">${svg(ICON.gear)}</button>` : ""}
+    ${gear ? `<button class="pnt-gear gear-float" title="Probe settings">${svg(ICON.gear)}</button>` : ""}
     <div class="mock">
       ${element ? `
       <div class="mock-el">
         <div class="mock-el-title">Pro Plan</div>
         <div class="mock-el-body">For teams that need more.</div>
       </div>` : ""}
-      <div class="ccp-label" style="margin-top:${element ? "14px" : "0"}">
+      <div class="pnt-label" style="margin-top:${element ? "14px" : "0"}">
         <div class="l-row l-identity">
           <span class="t-tag">div</span><span class="t-class">.card</span>
           <span class="t-id">#plan-pro</span><span class="t-size">320 × 208</span>
@@ -979,12 +979,12 @@ function mockChrome({ gear = false, element = true } = {}) {
           div.grid <span class="t-sep">›</span> <span class="t-tag">div</span>
         </div>
       </div>
-      <div class="ccp-toolbar" style="margin-top:12px">
-        <div class="ccp-bar">
+      <div class="pnt-toolbar" style="margin-top:12px">
+        <div class="pnt-bar">
           <button type="button">${svg(ICON.code)}<span>Copy Code</span></button>
           <button type="button">${svg(ICON.camera)}<span>Screenshot</span></button>
         </div>
-        <button type="button" class="ccp-parent">${svg(ICON.parent)}<span>Select Parent</span></button>
+        <button type="button" class="pnt-parent">${svg(ICON.parent)}<span>Select Parent</span></button>
       </div>
     </div>`;
 }
@@ -1032,7 +1032,7 @@ function renderCards(host, current) {
     `<div class="opt-cards" role="radiogroup" aria-label="Theme">` +
     THEMES.map((t) => `
       <button type="button" class="card" role="radio" data-theme="${t.id}"
-              data-ccp-theme="${resolve(t.id)}" aria-checked="${t.id === current}">
+              data-pnt-theme="${resolve(t.id)}" aria-checked="${t.id === current}">
         <div class="card-head">
           <span class="card-name">${t.name}</span>
           <span class="opt-check" aria-hidden="true">✓</span>
@@ -1051,7 +1051,7 @@ function renderSelect(el, current) {
 /* ---- wire every prototype ---- */
 document.querySelectorAll("[data-proto]").forEach((root) => {
   const n = root.dataset.proto;
-  let current = root.dataset.ccpTheme || "terracotta-dark";
+  let current = root.dataset.pntTheme || "terracotta-dark";
   if (n === "8") current = "terracotta-dark";
 
   const preview = root.querySelector('[data-slot="preview"]');
@@ -1059,11 +1059,11 @@ document.querySelectorAll("[data-proto]").forEach((root) => {
 
   const paint = () => {
     const resolved = resolve(current);
-    if (n !== "8") root.dataset.ccpTheme = resolved;
+    if (n !== "8") root.dataset.pntTheme = resolved;
     root.querySelectorAll("[data-theme]").forEach((b) => {
       const on = b.dataset.theme === current;
       b.setAttribute("aria-checked", String(on));
-      if (b.classList.contains("card")) b.dataset.ccpTheme = resolve(b.dataset.theme);
+      if (b.classList.contains("card")) b.dataset.pntTheme = resolve(b.dataset.theme);
     });
     const name = root.querySelector('[data-slot="name"]');
     if (name) name.textContent = THEMES.find((t) => t.id === current).name;
@@ -1111,9 +1111,9 @@ document.querySelectorAll("[data-proto]").forEach((root) => {
     root.querySelectorAll("[data-pane-select]").forEach((sel) => {
       const key = sel.dataset.paneSelect;
       const pane = root.querySelector(`[data-pane="${key}"]`);
-      renderSelect(sel, pane.dataset.ccpTheme);
+      renderSelect(sel, pane.dataset.pntTheme);
       sel.addEventListener("change", () => {
-        pane.dataset.ccpTheme = resolve(sel.value);
+        pane.dataset.pntTheme = resolve(sel.value);
       });
     });
     const saved = root.querySelector('[data-slot="saved"]');
@@ -1123,7 +1123,7 @@ document.querySelectorAll("[data-proto]").forEach((root) => {
         const sel = root.querySelector(`[data-pane-select="${btn.dataset.pick}"]`);
         const label = THEMES.find((t) => t.id === sel.value).name;
         root.querySelectorAll('.viewport-bar, .L8 .foot').forEach((el) => {
-          el.dataset.ccpTheme = pane.dataset.ccpTheme;
+          el.dataset.pntTheme = pane.dataset.pntTheme;
         });
         saved.textContent = "Saved · " + label;
       });

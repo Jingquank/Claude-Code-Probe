@@ -28,9 +28,9 @@ Three more symptoms of the same cause:
    `0.15s cubic-bezier(0.4, 0, 0.2, 1)` eight times. Changing either meant a
    find-and-replace and hoping.
 2. **The one token block that existed was scoped to a single selector.**
-   `#ccp-label` declared `--ccp-xs` through `--ccp-gap-section` — so nothing else
-   could use them, and `--ccp-lg: 14px` sat declared-but-unreferenced while
-   `.ccp-parent-btn` wrote `padding: 0 14px` by hand ten lines away.
+   `#pnt-label` declared `--pnt-xs` through `--pnt-gap-section` — so nothing else
+   could use them, and `--pnt-lg: 14px` sat declared-but-unreferenced while
+   `.pnt-parent-btn` wrote `padding: 0 14px` by hand ten lines away.
 3. **Adding a second palette was impossible** without duplicating the stylesheet.
 
 ### Measured
@@ -74,7 +74,7 @@ and near-impossible to keep coherent — nine chances to paste a slightly wrong
 hex.
 
 ```css
-border-color: rgb(from var(--ccp-accent) r g b / 0.5);
+border-color: rgb(from var(--pnt-accent) r g b / 0.5);
 ```
 
 Relative colour syntax, Chrome 119+. Available unconditionally since the Firefox
@@ -84,25 +84,25 @@ have a border that disagrees with its own accent.
 
 ### 3. One attribute, because custom properties survive `all: initial`
 
-`data-ccp-theme` on `<html>`, and every token block keys off it. All five injected
-roots — `#ccp-overlay-container`, `#ccp-label`, `#ccp-toolbar`,
-`#ccp-settings-btn`, `#ccp-toast` — inherit from there. No per-root plumbing.
+`data-pnt-theme` on `<html>`, and every token block keys off it. All five injected
+roots — `#pnt-overlay-container`, `#pnt-label`, `#pnt-toolbar`,
+`#pnt-settings-btn`, `#pnt-toast` — inherit from there. No per-root plumbing.
 
 This works because of one specific guarantee. Four of those roots set
 `all: initial`, and **`all` does not reset custom properties** (CSS Cascade 4
 §3.2 states it explicitly). Regular inherited properties *are* reset, which is
 why `font-family` and `box-sizing` are still redundantly re-declared on
-`.ccp-bar`, `.ccp-bar button` and `.ccp-parent-btn` — that redundancy is load
+`.pnt-bar`, `.pnt-bar button` and `.pnt-parent-btn` — that redundancy is load
 bearing, not leftover.
 
 Had it gone the other way, the token block would have to be duplicated at each
 `all: initial` boundary, and this document would say so instead.
 
-Theme blocks are keyed on `[data-ccp-theme="…"]` rather than
-`:root[data-ccp-theme="…"]`, so a theme can be scoped to any subtree. The
+Theme blocks are keyed on `[data-pnt-theme="…"]` rather than
+`:root[data-pnt-theme="…"]`, so a theme can be scoped to any subtree. The
 settings page relies on it: each pill's swatch carries its own
-`data-ccp-theme` and draws its stripes from `var(--ccp-surface)`,
-`var(--ccp-accent)` and the two syntax colours. **The swatch is not a picture of
+`data-pnt-theme` and draws its stripes from `var(--pnt-surface)`,
+`var(--pnt-accent)` and the two syntax colours. **The swatch is not a picture of
 the palette, it is the palette** — no hex is repeated in the settings page at
 all.
 
@@ -117,7 +117,7 @@ put two copies of each palette one edit apart. It would also make the settings
 page lie: the preview shows what the attribute selects, so resolving in JS means
 the preview and the page agree by construction.
 
-This also matches the precedent already set in `content.css` for `.ccp-compact`,
+This also matches the precedent already set in `content.css` for `.pnt-compact`,
 where a JS-toggled class beat a media query because the JS needed to know.
 
 ### 5. Geometry stays in JS — the one deliberate exception
@@ -138,7 +138,7 @@ not just a regression net but the safety argument itself, since `tetherGap` is
 the clearance that keeps Edit Mode's chrome off the border it is editing.
 
 The rule, stated once: **values the layout algorithm reasons about live in
-`GEOMETRY`; values that only paint live in `tokens.css`.** `--ccp-ring: 2px` is a
+`GEOMETRY`; values that only paint live in `tokens.css`.** `--pnt-ring: 2px` is a
 token because it draws a stroke; `GEOMETRY.gap: 6` is not because the solver does
 arithmetic on it. The redline's 1px stroke is CSS; its pill offset is `GEOMETRY`,
 because the solver adds and clamps it.
@@ -159,10 +159,10 @@ Each carries a comment at its definition, or the next sweep absorbs it.
 
 | value | why it stays fixed |
 |---|---|
-| `--ccp-checker` | the chequerboard behind a translucent swatch. The swatch reports the *page's* colour, so its backdrop must stay a neutral reference or the tool misreports what it is inspecting |
-| `--ccp-mask` | a stencil, not a colour — `mask-image` reads only its alpha. Theming it could do nothing useful and could break the mask |
+| `--pnt-checker` | the chequerboard behind a translucent swatch. The swatch reports the *page's* colour, so its backdrop must stay a neutral reference or the tool misreports what it is inspecting |
+| `--pnt-mask` | a stencil, not a colour — `mask-image` reads only its alpha. Theming it could do nothing useful and could break the mask |
 | `resolveBackgroundColor()`'s `#ffffff` | the browser's default page background, reported as a fact about the page |
-| `--ccp-picker-white` / `--ccp-picker-black` / `--ccp-hue-ramp` | the edit panel's colour space, not its decoration. The saturation square is white toward one edge and black toward the other because that is what saturation and value *mean*, and the rail runs the spectrum because that is what hue is. Tinting any of them would make the picker report a colour the page will not get |
+| `--pnt-picker-white` / `--pnt-picker-black` / `--pnt-hue-ramp` | the edit panel's colour space, not its decoration. The saturation square is white toward one edge and black toward the other because that is what saturation and value *mean*, and the rail runs the spectrum because that is what hue is. Tinting any of them would make the picker report a colour the page will not get |
 
 The colour swatch's *fill* is written inline from JS for the same reason. Only its
 border follows the theme.
@@ -170,7 +170,7 @@ border follows the theme.
 ### 7. Motion is part of the token set, so reduced-motion is part of the contract
 
 Four durations and one curve are tokens. That made an existing gap obvious: the
-`prefers-reduced-motion` query disabled `#ccp-ants` and `.ccp-spin` but **not
+`prefers-reduced-motion` query disabled `#pnt-ants` and `.pnt-spin` but **not
 Clawd's 24s walk or 1.1s bob**, so the mascot kept pacing for anyone who had
 asked their OS for stillness. The marquee was missing too. Both are now in the
 query.
@@ -182,7 +182,7 @@ dies in the `prefers-reduced-motion` block at the end of
 `settings/settings.css`, zeroed rather than softened. The redline layer stays off the list
 by design: its dashed guides deliberately don't march. It does *glide* — the
 hover box, lines and pills tween between hover targets on the same
-`--ccp-duration`/`--ccp-ease` curve as the selection overlay — but that is a
+`--pnt-duration`/`--pnt-ease` curve as the selection overlay — but that is a
 positional transition, the same category as the overlay glide, which this block
 has never disabled. Redline snaps out of its glide while tracking scroll, so
 the tween never reads as lag.
@@ -198,7 +198,7 @@ per theme. Two tiers:
 | text | `text`, `text-dim`, `text-muted`, `syntax-id`, `syntax-class`, `on-accent` on `accent`, `on-error` on `error` | **4.5:1** | AA for body text |
 | non-text / transient | `text-faint`, `accent` on `surface`, `on-accent` on `accent-dark` | **3:1**, warn under 4.5 | `accent` doubles as a border and icon colour, where 3:1 is the correct AA bar; `accent-dark` is only the `:active` fill, held for as long as a mouse button is down |
 
-**`--ccp-text-faint` does not reach AA in seven of the eight themes** — 3.39:1 in
+**`--pnt-text-faint` does not reach AA in seven of the eight themes** — 3.39:1 in
 the default. This is inherited, not introduced: it is the shipped 1.2.0 grey, and
 `terracotta-dark` must stay pixel-identical. Raising it to 4.5:1 would collapse
 the info panel's four-step text hierarchy into two, because `text-muted` sits at
@@ -217,7 +217,7 @@ three accent/ink pairs — all corrected in `tokens.css`.
 
 `chrome.action.setBadgeBackgroundColor` is browser chrome. It cannot read
 `tokens.css`, so `background.js` holds a `BADGE_ACCENT` map. That is real
-duplication, so `test/tokens.mjs` asserts it matches every theme's `--ccp-accent`
+duplication, so `test/tokens.mjs` asserts it matches every theme's `--pnt-accent`
 and that neither side has an entry the other lacks. A new theme with a forgotten
 badge fails the run.
 
@@ -236,7 +236,7 @@ badge fails the run.
 
 Light themes need their **shadows re-tuned, not inverted**. The dark themes'
 `rgba(20, 20, 19, 0.6)` reads as a smudge on a light surface, which is why
-`--ccp-shadow-card` and `--ccp-shadow-bar` are themed values rather than derived
+`--pnt-shadow-card` and `--pnt-shadow-bar` are themed values rather than derived
 from the surface.
 
 ---
@@ -373,8 +373,8 @@ does nothing in the source either.
 
 **The extension's own tokens are not the page's.** `tokens.css` and
 `content.css` ride along on every page as content scripts, so the stylesheet
-walk skips them by URL, with the `ccp-` namespace filtered as a backstop.
-Without that, `--ccp-accent` gets offered as a fill for someone's card. The
+walk skips them by URL, with the `pnt-` namespace filtered as a backstop.
+Without that, `--pnt-accent` gets offered as a fill for someone's card. The
 namespace filter carries more weight now than it did: token discovery asks the
 element, and the element cannot tell our custom properties from the page's.
 
@@ -453,7 +453,7 @@ the page cached before injection can never be mapped back to names, and makes
 freezing a page-driven `u_time` the same mechanism as nudging a constant.
 
 **One door, still.** The two bridge messages that perform a write —
-`CCP_SHADER_SET` and `CCP_SHADER_CLEAR` — are sent from the Edit Apply section
+`PNT_SHADER_SET` and `PNT_SHADER_CLEAR` — are sent from the Edit Apply section
 and nowhere else, and `test/edit-audit.mjs` pins the literals there exactly as
 it pins `setProperty`. Undo, the reset dots, reset-all and the delta block all
 work off the same registry entries as CSS edits; a driven uniform's `before` is

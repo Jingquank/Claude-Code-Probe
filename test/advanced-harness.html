@@ -20,7 +20,7 @@
 
       python3 -m http.server 8765     # then open /test/advanced-harness.html
 
-  Press "p" to toggle Probe Mode. Then, per specimen, click it (or its
+  Press "p" to toggle Point Mode. Then, per specimen, click it (or its
   wrapper), click the pencil, and look at the bottom of the panel:
 
     01 wave        — "Advanced · 6 shader values". u_time sits in the driven
@@ -138,7 +138,7 @@
 <body>
 
 <h1>Advanced-section specimens</h1>
-<p class="lede">Five mechanisms, one panel. <kbd>p</kbd> toggles Probe Mode; select, then the pencil.</p>
+<p class="lede">Five mechanisms, one panel. <kbd>p</kbd> toggles Point Mode; select, then the pencil.</p>
 
 <div class="grid">
   <article class="card">
@@ -179,7 +179,7 @@
 </div>
 
 <p class="note">
-  <kbd>p</kbd> toggles Probe Mode. <kbd>Esc</kbd> steps back out one layer at a
+  <kbd>p</kbd> toggles Point Mode. <kbd>Esc</kbd> steps back out one layer at a
   time. Reload the extension mid-override on 01 to watch the dead-man switch
   unfreeze the wave within ten seconds — here, simulate it by leaving Edit
   Mode instead.
@@ -196,10 +196,10 @@
   const listeners = [];
   const changeListeners = [];
   const read = () => {
-    try { return JSON.parse(localStorage.getItem("ccp-harness-store") || "{}"); }
+    try { return JSON.parse(localStorage.getItem("pnt-harness-store") || "{}"); }
     catch { return {}; }
   };
-  const write = (obj) => localStorage.setItem("ccp-harness-store", JSON.stringify(obj));
+  const write = (obj) => localStorage.setItem("pnt-harness-store", JSON.stringify(obj));
 
   window.chrome = {
     runtime: {
@@ -253,7 +253,7 @@
   };
   function setState(next) {
     active = next;
-    for (const fn of listeners) fn({ type: "TOGGLE_PROBE", active });
+    for (const fn of listeners) fn({ type: "TOGGLE_POINT", active });
     hud();
   }
 
@@ -265,7 +265,7 @@
     }
   }, true);
 
-  window.__ccpHarness = { setState, isActive: () => active };
+  window.__pntHarness = { setState, isActive: () => active };
 })();
 </script>
 

@@ -1,5 +1,5 @@
 <meta charset="utf-8">
-<title>Claude Code Probe — Settings redesign prototypes</title>
+<title>Pointee — Settings redesign prototypes</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
@@ -138,7 +138,7 @@ h1 {
 /* ============================================================
    THEME TOKENS — the real eight, page-side derivations included
    ============================================================ */
-[data-ccp-theme="terracotta-dark"] {
+[data-pnt-theme="terracotta-dark"] {
   --surface:#141413; --text:#faf9f5; --dim:#c8c5bc; --muted:#8a8780; --faint:#6a6a64;
   --sep:#3a3a35; --accent:#d97757; --accent-dark:#b06848; --on-accent:#1a0d07;
   --id:#6a9bcc; --class:#788c5d;
@@ -146,7 +146,7 @@ h1 {
   --shadow-bar: 0 4px 16px rgba(20,20,19,.6);
   --page:#1e1e1c; --page-ink:#c8c5bc; --page-rule:#2e2e2a;
 }
-[data-ccp-theme="terracotta-light"] {
+[data-pnt-theme="terracotta-light"] {
   --surface:#faf9f5; --text:#141413; --dim:#3a3a35; --muted:#6a6a64; --faint:#8a8780;
   --sep:#ddd9cf; --accent:#c2603f; --accent-dark:#9c4a2e; --on-accent:#fff8f4;
   --id:#2f6291; --class:#4d6a36;
@@ -154,7 +154,7 @@ h1 {
   --shadow-bar: 0 4px 14px rgba(60,45,35,.18);
   --page:#ffffff; --page-ink:#3a3a35; --page-rule:#eae7de;
 }
-[data-ccp-theme="dracula"] {
+[data-pnt-theme="dracula"] {
   --surface:#282a36; --text:#f8f8f2; --dim:#cfd0e0; --muted:#8b93bd; --faint:#6272a4;
   --sep:#44475a; --accent:#bd93f9; --accent-dark:#9a6ee0; --on-accent:#1a1626;
   --id:#8be9fd; --class:#50fa7b;
@@ -162,7 +162,7 @@ h1 {
   --shadow-bar: 0 4px 16px rgba(20,20,30,.65);
   --page:#21222c; --page-ink:#cfd0e0; --page-rule:#343746;
 }
-[data-ccp-theme="monokai"] {
+[data-pnt-theme="monokai"] {
   --surface:#272822; --text:#f8f8f2; --dim:#d9d8cd; --muted:#9d9a86; --faint:#75715e;
   --sep:#3e3d32; --accent:#f92672; --accent-dark:#cc1f5d; --on-accent:#2a0512;
   --id:#66d9ef; --class:#a6e22e;
@@ -170,7 +170,7 @@ h1 {
   --shadow-bar: 0 4px 16px rgba(20,20,15,.65);
   --page:#1e1f1a; --page-ink:#d9d8cd; --page-rule:#32332b;
 }
-[data-ccp-theme="nord"] {
+[data-pnt-theme="nord"] {
   --surface:#2e3440; --text:#eceff4; --dim:#d8dee9; --muted:#9aa5bb; --faint:#7b88a1;
   --sep:#3b4252; --accent:#88c0d0; --accent-dark:#5e81ac; --on-accent:#16202b;
   --id:#81a1c1; --class:#a3be8c;
@@ -178,7 +178,7 @@ h1 {
   --shadow-bar: 0 4px 16px rgba(20,25,35,.6);
   --page:#272c36; --page-ink:#d8dee9; --page-rule:#343b48;
 }
-[data-ccp-theme="solarized-dark"] {
+[data-pnt-theme="solarized-dark"] {
   --surface:#002b36; --text:#eee8d5; --dim:#93a1a1; --muted:#7d9095; --faint:#586e75;
   --sep:#073642; --accent:#cb4b16; --accent-dark:#a53c11; --on-accent:#1a0700;
   --id:#268bd2; --class:#859900;
@@ -186,7 +186,7 @@ h1 {
   --shadow-bar: 0 4px 16px rgba(0,20,25,.65);
   --page:#01212b; --page-ink:#93a1a1; --page-rule:#062b35;
 }
-[data-ccp-theme="tokyo-night"] {
+[data-pnt-theme="tokyo-night"] {
   --surface:#1a1b26; --text:#c0caf5; --dim:#a9b1d6; --muted:#7b83a8; --faint:#565f89;
   --sep:#292e42; --accent:#bb9af7; --accent-dark:#9a78d8; --on-accent:#16111f;
   --id:#7aa2f7; --class:#9ece6a;
@@ -309,7 +309,7 @@ h1 {
    MOCK PROBE CHROME (compact: identity, props, crumb + toolbar)
    ============================================================ */
 .pv-chrome { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
-.ccp-label {
+.pnt-label {
   background: var(--surface); color: var(--text);
   border: 1px solid rgb(from var(--accent) r g b / 0.25);
   border-radius: 8px; box-shadow: var(--shadow-card);
@@ -325,22 +325,22 @@ h1 {
 .t-prop  { color: var(--muted); font-size: 10px; }
 .t-sep   { color: var(--sep); }
 .t-crumb { color: var(--faint); font-size: 10px; }
-.ccp-toolbar { display: flex; align-items: stretch; gap: 8px; font-family: var(--mono); }
-.ccp-bar {
+.pnt-toolbar { display: flex; align-items: stretch; gap: 8px; font-family: var(--mono); }
+.pnt-bar {
   display: flex; gap: 4px; padding: 4px;
   background: var(--surface);
   border: 1px solid rgb(from var(--accent) r g b / 0.5);
   border-radius: 10px; box-shadow: var(--shadow-bar);
 }
-.ccp-bar button, .ccp-parent {
+.pnt-bar button, .pnt-parent {
   font: 500 11px var(--mono); letter-spacing: 0.06em; text-transform: uppercase;
   display: flex; align-items: center; gap: 6px;
   padding: 7px 12px; border-radius: 7px;
   background: transparent; border: 1px solid transparent;
   color: var(--text); cursor: pointer;
 }
-.ccp-bar button:hover { border-color: rgb(from var(--accent) r g b / 0.5); }
-.ccp-parent {
+.pnt-bar button:hover { border-color: rgb(from var(--accent) r g b / 0.5); }
+.pnt-parent {
   background: var(--surface); color: var(--accent);
   border: 1px solid var(--accent); border-radius: 10px; box-shadow: var(--shadow-bar);
 }
@@ -551,7 +551,7 @@ h1 {
         section you're in — chrome mock for Appearance, redline vignette for
         Measuring.</p>
     </div>
-    <div class="viewport" data-ccp-theme="terracotta-dark" data-proto="1">
+    <div class="viewport" data-pnt-theme="terracotta-dark" data-proto="1">
       <div class="viewport-bar">
         <i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">chrome-extension://…/settings/index.html</span>
@@ -595,7 +595,7 @@ h1 {
         a mini-legend and a pill radiogroup, booleans included. Maximum consistency
         with the page that exists.</p>
     </div>
-    <div class="viewport" data-ccp-theme="nord" data-proto="2">
+    <div class="viewport" data-pnt-theme="nord" data-proto="2">
       <div class="viewport-bar">
         <i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">chrome-extension://…/settings/index.html</span>
@@ -637,7 +637,7 @@ h1 {
         float in a compact tabbed panel, like the probe's own chrome floats on a real
         page.</p>
     </div>
-    <div class="viewport" data-ccp-theme="dracula" data-proto="3">
+    <div class="viewport" data-pnt-theme="dracula" data-proto="3">
       <div class="viewport-bar">
         <i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">chrome-extension://…/settings/index.html</span>
@@ -685,7 +685,7 @@ h1 {
         redline vignette side by side. Touching a setting doesn't swap anything; it
         just brightens the half you're affecting.</p>
     </div>
-    <div class="viewport" data-ccp-theme="terracotta-light" data-proto="4">
+    <div class="viewport" data-pnt-theme="terracotta-light" data-proto="4">
       <div class="viewport-bar">
         <i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">chrome-extension://…/settings/index.html</span>
@@ -723,7 +723,7 @@ h1 {
         register as the probe's own readout. Hovering a row spotlights exactly the
         part of the vignette that row controls.</p>
     </div>
-    <div class="viewport" data-ccp-theme="solarized-dark" data-proto="5">
+    <div class="viewport" data-pnt-theme="solarized-dark" data-proto="5">
       <div class="viewport-bar">
         <i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">chrome-extension://…/settings/index.html</span>
@@ -760,7 +760,7 @@ h1 {
         you edit the sentence that describes the behaviour, and the vignette beneath
         acts it out.</p>
     </div>
-    <div class="viewport" data-ccp-theme="tokyo-night" data-proto="6">
+    <div class="viewport" data-pnt-theme="tokyo-night" data-proto="6">
       <div class="viewport-bar">
         <i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">chrome-extension://…/settings/index.html</span>
@@ -795,7 +795,7 @@ h1 {
         guides, the selection to quiet the overlay, the readout chips for unit and
         precision.</p>
     </div>
-    <div class="viewport" data-ccp-theme="monokai" data-proto="7">
+    <div class="viewport" data-pnt-theme="monokai" data-proto="7">
       <div class="viewport-bar">
         <i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">chrome-extension://…/settings/index.html</span>
@@ -830,7 +830,7 @@ h1 {
       <p class="thesis">Each setting is a self-contained card — label, control, and a
         one-line consequence in plain words. No shared preview; the grid is the page.</p>
     </div>
-    <div class="viewport" data-ccp-theme="terracotta-dark" data-proto="8">
+    <div class="viewport" data-pnt-theme="terracotta-dark" data-proto="8">
       <div class="viewport-bar">
         <i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">chrome-extension://…/settings/index.html</span>
@@ -861,7 +861,7 @@ h1 {
         full width for its controls and a large dedicated preview — no sharing, no
         swapping.</p>
     </div>
-    <div class="viewport" data-ccp-theme="nord" data-proto="9">
+    <div class="viewport" data-pnt-theme="nord" data-proto="9">
       <div class="viewport-bar">
         <i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">chrome-extension://…/settings/index.html</span>
@@ -903,7 +903,7 @@ h1 {
         a narrow column and the preview gets the majority share — fixing the recorded
         "rail too narrow" cost. Both previews stacked, always visible.</p>
     </div>
-    <div class="viewport" data-ccp-theme="terracotta-light" data-proto="10">
+    <div class="viewport" data-pnt-theme="terracotta-light" data-proto="10">
       <div class="viewport-bar">
         <i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">chrome-extension://…/settings/index.html</span>
@@ -942,7 +942,7 @@ h1 {
         act on it in the drawer — controls and that group's preview together, nothing
         else on stage.</p>
     </div>
-    <div class="viewport" data-ccp-theme="dracula" data-proto="11">
+    <div class="viewport" data-pnt-theme="dracula" data-proto="11">
       <div class="viewport-bar">
         <i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">chrome-extension://…/settings/index.html</span>
@@ -989,7 +989,7 @@ h1 {
       <p class="thesis">No rail. Each group is followed immediately by its own live
         preview, inline in the flow — you never look sideways, only down.</p>
     </div>
-    <div class="viewport" data-ccp-theme="tokyo-night" data-proto="12">
+    <div class="viewport" data-pnt-theme="tokyo-night" data-proto="12">
       <div class="viewport-bar">
         <i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">chrome-extension://…/settings/index.html</span>
@@ -1074,7 +1074,7 @@ const themesHTML = () =>
   `<div class="opt-pills" role="radiogroup" aria-label="Theme">` +
   THEMES.map((t) => `
     <button type="button" class="pill" role="radio" data-set="theme" data-val="${t.id}">
-      <span class="sw-dot" data-ccp-theme="${resolve(t.id)}" style="background:var(--accent)"></span>
+      <span class="sw-dot" data-pnt-theme="${resolve(t.id)}" style="background:var(--accent)"></span>
       <span>${t.name}</span>
     </button>`).join("") + `</div>`;
 
@@ -1139,7 +1139,7 @@ const vigHTML = (live) => `
 
 const chromeHTML = () => `
   <div class="pv-chrome">
-    <div class="ccp-label">
+    <div class="pnt-label">
       <div class="l-row" style="font-size:12px">
         <span class="t-tag">div</span><span class="t-class">.card</span>
         <span class="t-id">#plan-pro</span><span class="t-size">320 × 208</span>
@@ -1155,12 +1155,12 @@ const chromeHTML = () => `
         div.grid <span class="t-sep">›</span> <span class="t-tag">div</span>
       </div>
     </div>
-    <div class="ccp-toolbar">
-      <div class="ccp-bar">
+    <div class="pnt-toolbar">
+      <div class="pnt-bar">
         <button type="button">Copy Code</button>
         <button type="button">Screenshot</button>
       </div>
-      <button type="button" class="ccp-parent">Select Parent</button>
+      <button type="button" class="pnt-parent">Select Parent</button>
     </div>
   </div>`;
 
@@ -1178,7 +1178,7 @@ const SENTENCE = (s) => [
    ============================================================ */
 document.querySelectorAll("[data-proto]").forEach((root) => {
   const n = root.dataset.proto;
-  const s = { ...DEFAULTS, theme: root.dataset.ccpTheme || DEFAULTS.theme };
+  const s = { ...DEFAULTS, theme: root.dataset.pntTheme || DEFAULTS.theme };
 
   /* fill slots */
   root.querySelectorAll('[data-slot="themes"]').forEach((h) => h.innerHTML = themesHTML());
@@ -1202,7 +1202,7 @@ document.querySelectorAll("[data-proto]").forEach((root) => {
   };
 
   const paint = () => {
-    root.dataset.ccpTheme = resolve(s.theme);
+    root.dataset.pntTheme = resolve(s.theme);
     root.querySelectorAll("[data-set]").forEach((b) => {
       b.setAttribute("aria-checked", String(s[b.dataset.set] === b.dataset.val));
     });

@@ -14,7 +14,7 @@
 // functions were removed, so they are not repeated here.)
 //
 // They are deliberately verbatim, warts included. Live mode measures the real
-// #ccp-label / #ccp-toolbar and is the check that this transcription is honest.
+// #pnt-label / #pnt-toolbar and is the check that this transcription is honest.
 //
 // GEOMETRY in content.js is the other half of this mirror: M / GAP / PAIR /
 // MIN_LABEL_H below must match GEOMETRY.margin / .gap / .pair / .minLabelHeight.

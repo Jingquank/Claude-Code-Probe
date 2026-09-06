@@ -1,5 +1,5 @@
 <meta charset="utf-8">
-<title>Claude Code Probe — Edit panel prototypes</title>
+<title>Pointee — Edit panel prototypes</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
@@ -143,49 +143,49 @@ h1 {
 /* ============================================================
    THEME TOKENS — the real seven, page-side derivations included
    ============================================================ */
-[data-ccp-theme="terracotta-dark"] {
+[data-pnt-theme="terracotta-dark"] {
   --surface:#141413; --text:#faf9f5; --dim:#c8c5bc; --muted:#8a8780; --faint:#6a6a64;
   --sep:#3a3a35; --accent:#d97757; --accent-dark:#b06848; --on-accent:#1a0d07;
   --shadow-card: 0 8px 24px -8px rgba(0,0,0,.55), 0 2px 6px rgba(20,20,19,.4);
   --shadow-bar: 0 4px 16px rgba(20,20,19,.6);
   --page:#1e1e1c; --page-ink:#c8c5bc; --page-rule:#2e2e2a;
 }
-[data-ccp-theme="terracotta-light"] {
+[data-pnt-theme="terracotta-light"] {
   --surface:#faf9f5; --text:#141413; --dim:#3a3a35; --muted:#6a6a64; --faint:#8a8780;
   --sep:#ddd9cf; --accent:#c2603f; --accent-dark:#9c4a2e; --on-accent:#fff8f4;
   --shadow-card: 0 8px 24px -10px rgba(60,45,35,.28), 0 1px 3px rgba(60,45,35,.14);
   --shadow-bar: 0 4px 14px rgba(60,45,35,.18);
   --page:#ffffff; --page-ink:#3a3a35; --page-rule:#eae7de;
 }
-[data-ccp-theme="dracula"] {
+[data-pnt-theme="dracula"] {
   --surface:#282a36; --text:#f8f8f2; --dim:#cfd0e0; --muted:#8b93bd; --faint:#6272a4;
   --sep:#44475a; --accent:#bd93f9; --accent-dark:#9a6ee0; --on-accent:#1a1626;
   --shadow-card: 0 8px 24px -8px rgba(0,0,0,.6), 0 2px 6px rgba(20,20,30,.45);
   --shadow-bar: 0 4px 16px rgba(20,20,30,.65);
   --page:#21222c; --page-ink:#cfd0e0; --page-rule:#343746;
 }
-[data-ccp-theme="monokai"] {
+[data-pnt-theme="monokai"] {
   --surface:#272822; --text:#f8f8f2; --dim:#d9d8cd; --muted:#9d9a86; --faint:#75715e;
   --sep:#3e3d32; --accent:#f92672; --accent-dark:#cc1f5d; --on-accent:#2a0512;
   --shadow-card: 0 8px 24px -8px rgba(0,0,0,.6), 0 2px 6px rgba(20,20,15,.45);
   --shadow-bar: 0 4px 16px rgba(20,20,15,.65);
   --page:#1e1f1a; --page-ink:#d9d8cd; --page-rule:#32332b;
 }
-[data-ccp-theme="nord"] {
+[data-pnt-theme="nord"] {
   --surface:#2e3440; --text:#eceff4; --dim:#d8dee9; --muted:#9aa5bb; --faint:#7b88a1;
   --sep:#3b4252; --accent:#88c0d0; --accent-dark:#5e81ac; --on-accent:#16202b;
   --shadow-card: 0 8px 24px -8px rgba(0,0,0,.5), 0 2px 6px rgba(20,25,35,.4);
   --shadow-bar: 0 4px 16px rgba(20,25,35,.6);
   --page:#272c36; --page-ink:#d8dee9; --page-rule:#343b48;
 }
-[data-ccp-theme="solarized-dark"] {
+[data-pnt-theme="solarized-dark"] {
   --surface:#002b36; --text:#eee8d5; --dim:#93a1a1; --muted:#7d9095; --faint:#586e75;
   --sep:#073642; --accent:#cb4b16; --accent-dark:#a53c11; --on-accent:#1a0700;
   --shadow-card: 0 8px 24px -8px rgba(0,0,0,.55), 0 2px 6px rgba(0,20,25,.45);
   --shadow-bar: 0 4px 16px rgba(0,20,25,.65);
   --page:#01212b; --page-ink:#93a1a1; --page-rule:#062b35;
 }
-[data-ccp-theme="tokyo-night"] {
+[data-pnt-theme="tokyo-night"] {
   --surface:#1a1b26; --text:#c0caf5; --dim:#a9b1d6; --muted:#7b83a8; --faint:#565f89;
   --sep:#292e42; --accent:#bb9af7; --accent-dark:#9a78d8; --on-accent:#16111f;
   --shadow-card: 0 8px 24px -8px rgba(0,0,0,.6), 0 2px 6px rgba(15,15,25,.45);
@@ -221,7 +221,7 @@ h1 {
   box-shadow: 0 2px 8px rgba(0,0,0,.08);
 }
 /* selection ring: selection state glows (the beam's stand-in), edit state is
-   the flat solid ring — .ccp-editing keeps the box, drops the beam */
+   the flat solid ring — .pnt-editing keeps the box, drops the beam */
 .vp [data-card] { outline: 2px solid var(--accent); outline-offset: 2px; }
 .vp[data-state="select"] [data-card] { filter: drop-shadow(0 0 7px rgb(from var(--accent) r g b / 0.55)); }
 
@@ -611,7 +611,7 @@ h1 {
         sections, everything visible at the cost of height — the scrollbar is the
         tax, familiarity is the payoff.</p>
     </div>
-    <div class="viewport" data-ccp-theme="terracotta-dark" data-proto="1">
+    <div class="viewport" data-pnt-theme="terracotta-dark" data-proto="1">
       <div class="viewport-bar">
         <i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">https://skills.example.dev/catalog</span>
@@ -648,7 +648,7 @@ h1 {
         sized because it never shows two categories at once; the tab strip is the
         map of what's editable.</p>
     </div>
-    <div class="viewport" data-ccp-theme="nord" data-proto="2">
+    <div class="viewport" data-pnt-theme="nord" data-proto="2">
       <div class="viewport-bar">
         <i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">https://skills.example.dev/catalog</span>
@@ -686,7 +686,7 @@ h1 {
         what you're tuning, close what you're not — dirty dots keep the closed
         sections honest.</p>
     </div>
-    <div class="viewport" data-ccp-theme="terracotta-light" data-proto="3">
+    <div class="viewport" data-pnt-theme="terracotta-light" data-proto="3">
       <div class="viewport-bar">
         <i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">https://skills.example.dev/catalog</span>
@@ -716,7 +716,7 @@ h1 {
         No section furniture at all — twenty rows under four quiet caps, maximum
         density, one dialect across the whole extension.</p>
     </div>
-    <div class="viewport" data-ccp-theme="tokyo-night" data-proto="4">
+    <div class="viewport" data-pnt-theme="tokyo-night" data-proto="4">
       <div class="viewport-bar">
         <i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">https://skills.example.dev/catalog</span>
@@ -753,7 +753,7 @@ h1 {
         group buttons sits where the bar was, and the active group blooms beneath
         it. The mode transition is a morph, not a swap.</p>
     </div>
-    <div class="viewport" data-ccp-theme="monokai" data-proto="5">
+    <div class="viewport" data-pnt-theme="monokai" data-proto="5">
       <div class="viewport-bar">
         <i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">https://skills.example.dev/catalog</span>
@@ -791,7 +791,7 @@ h1 {
         the bottom — a mixing console under the page. Nothing hidden, nothing
         stacked, nothing covering the element.</p>
     </div>
-    <div class="viewport" data-ccp-theme="terracotta-dark" data-proto="6">
+    <div class="viewport" data-pnt-theme="terracotta-dark" data-proto="6">
       <div class="viewport-bar">
         <i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">https://skills.example.dev/catalog</span>
@@ -828,7 +828,7 @@ h1 {
         chips — and each chip opens the controls that change it. The summary is
         the interface.</p>
     </div>
-    <div class="viewport" data-ccp-theme="dracula" data-proto="7">
+    <div class="viewport" data-pnt-theme="dracula" data-proto="7">
       <div class="viewport-bar">
         <i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">https://skills.example.dev/catalog</span>
@@ -866,7 +866,7 @@ h1 {
         every number scrubs in place, every token is a chip mid-prose. The
         settings gallery's "sentence" heritage, applied to the panel.</p>
     </div>
-    <div class="viewport" data-ccp-theme="terracotta-light" data-proto="8">
+    <div class="viewport" data-pnt-theme="terracotta-light" data-proto="8">
       <div class="viewport-bar">
         <i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">https://skills.example.dev/catalog</span>
@@ -896,7 +896,7 @@ h1 {
         pad, radius, shadow — and a "more" pill per group for the long tail.
         The 80% loop pays nothing for the 20%.</p>
     </div>
-    <div class="viewport" data-ccp-theme="solarized-dark" data-proto="9">
+    <div class="viewport" data-pnt-theme="solarized-dark" data-proto="9">
       <div class="viewport-bar">
         <i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">https://skills.example.dev/catalog</span>
@@ -935,7 +935,7 @@ h1 {
         right the design system's scales drawn as ladders — the value's position
         on the rail is the interface.</p>
     </div>
-    <div class="viewport" data-ccp-theme="terracotta-dark" data-proto="10">
+    <div class="viewport" data-pnt-theme="terracotta-dark" data-proto="10">
       <div class="viewport-bar">
         <i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">https://skills.example.dev/catalog</span>
@@ -975,7 +975,7 @@ h1 {
         tuning desk: grab anything, slide, feel the notches where the design
         system's stops are.</p>
     </div>
-    <div class="viewport" data-ccp-theme="tokyo-night" data-proto="11">
+    <div class="viewport" data-pnt-theme="tokyo-night" data-proto="11">
       <div class="viewport-bar">
         <i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">https://skills.example.dev/catalog</span>
@@ -1005,7 +1005,7 @@ h1 {
         what the box around them looks like — the box tab drawn as the box-model
         diagram itself, controls sitting where they act.</p>
     </div>
-    <div class="viewport" data-ccp-theme="nord" data-proto="12">
+    <div class="viewport" data-pnt-theme="nord" data-proto="12">
       <div class="viewport-bar">
         <i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">https://skills.example.dev/catalog</span>
@@ -1440,7 +1440,7 @@ document.querySelectorAll("[data-proto]").forEach((root) => {
   root.addEventListener("click", (e) => {
     const hit = (sel) => e.target.closest(sel);
     let el;
-    if ((el = hit("[data-theme]"))) { root.dataset.ccpTheme = el.dataset.theme; return; }
+    if ((el = hit("[data-theme]"))) { root.dataset.pntTheme = el.dataset.theme; return; }
     if ((el = hit("[data-back]"))) { vp.dataset.state = "select"; return; }
     if ((el = hit("[data-pencil]"))) {
       vp.dataset.state = "edit";

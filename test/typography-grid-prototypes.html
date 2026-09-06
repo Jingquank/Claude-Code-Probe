@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Claude Code Probe — Typography grid, round two</title>
+<title>Pointee — Typography grid, round two</title>
 <!--
   Round two. Option 07 from typography-prototypes.html won: the 3×2 mini-grid,
   labels above cells, three normal rows for the whole group. Two questions
@@ -83,13 +83,13 @@ h1 { font-family:var(--mono); font-weight:500; font-size:clamp(1.75rem,4.5vw,var
 /* ============================================================
    THEME TOKENS — the real seven.
    ============================================================ */
-[data-ccp-theme="terracotta-dark"] { --surface:#141413; --text:#faf9f5; --dim:#c8c5bc; --muted:#8a8780; --faint:#6a6a64; --sep:#3a3a35; --accent:#d97757; --on-accent:#1a0d07; --shadow-card:0 8px 24px -8px rgba(0,0,0,.55),0 2px 6px rgba(20,20,19,.4); --page:#1e1e1c; --page-ink:#c8c5bc; }
-[data-ccp-theme="terracotta-light"] { --surface:#faf9f5; --text:#141413; --dim:#3a3a35; --muted:#6a6a64; --faint:#8a8780; --sep:#ddd9cf; --accent:#c2603f; --on-accent:#fff8f4; --shadow-card:0 8px 24px -10px rgba(60,45,35,.28),0 1px 3px rgba(60,45,35,.14); --page:#ffffff; --page-ink:#3a3a35; }
-[data-ccp-theme="dracula"] { --surface:#282a36; --text:#f8f8f2; --dim:#cfd0e0; --muted:#8b93bd; --faint:#6272a4; --sep:#44475a; --accent:#bd93f9; --on-accent:#1a1626; --shadow-card:0 8px 24px -8px rgba(0,0,0,.6),0 2px 6px rgba(20,20,30,.45); --page:#21222c; --page-ink:#cfd0e0; }
-[data-ccp-theme="monokai"] { --surface:#272822; --text:#f8f8f2; --dim:#d9d8cd; --muted:#9d9a86; --faint:#75715e; --sep:#3e3d32; --accent:#f92672; --on-accent:#2a0512; --shadow-card:0 8px 24px -8px rgba(0,0,0,.6),0 2px 6px rgba(20,20,15,.45); --page:#1e1f1a; --page-ink:#d9d8cd; }
-[data-ccp-theme="nord"] { --surface:#2e3440; --text:#eceff4; --dim:#d8dee9; --muted:#9aa5bb; --faint:#7b88a1; --sep:#3b4252; --accent:#88c0d0; --on-accent:#16202b; --shadow-card:0 8px 24px -8px rgba(0,0,0,.5),0 2px 6px rgba(20,25,35,.4); --page:#272c36; --page-ink:#d8dee9; }
-[data-ccp-theme="solarized-dark"] { --surface:#002b36; --text:#eee8d5; --dim:#93a1a1; --muted:#7d9095; --faint:#586e75; --sep:#073642; --accent:#cb4b16; --on-accent:#1a0700; --shadow-card:0 8px 24px -8px rgba(0,0,0,.55),0 2px 6px rgba(0,20,25,.45); --page:#01212b; --page-ink:#93a1a1; }
-[data-ccp-theme="tokyo-night"] { --surface:#1a1b26; --text:#c0caf5; --dim:#a9b1d6; --muted:#7b83a8; --faint:#565f89; --sep:#292e42; --accent:#bb9af7; --on-accent:#16111f; --shadow-card:0 8px 24px -8px rgba(0,0,0,.6),0 2px 6px rgba(15,15,25,.45); --page:#16161e; --page-ink:#a9b1d6; }
+[data-pnt-theme="terracotta-dark"] { --surface:#141413; --text:#faf9f5; --dim:#c8c5bc; --muted:#8a8780; --faint:#6a6a64; --sep:#3a3a35; --accent:#d97757; --on-accent:#1a0d07; --shadow-card:0 8px 24px -8px rgba(0,0,0,.55),0 2px 6px rgba(20,20,19,.4); --page:#1e1e1c; --page-ink:#c8c5bc; }
+[data-pnt-theme="terracotta-light"] { --surface:#faf9f5; --text:#141413; --dim:#3a3a35; --muted:#6a6a64; --faint:#8a8780; --sep:#ddd9cf; --accent:#c2603f; --on-accent:#fff8f4; --shadow-card:0 8px 24px -10px rgba(60,45,35,.28),0 1px 3px rgba(60,45,35,.14); --page:#ffffff; --page-ink:#3a3a35; }
+[data-pnt-theme="dracula"] { --surface:#282a36; --text:#f8f8f2; --dim:#cfd0e0; --muted:#8b93bd; --faint:#6272a4; --sep:#44475a; --accent:#bd93f9; --on-accent:#1a1626; --shadow-card:0 8px 24px -8px rgba(0,0,0,.6),0 2px 6px rgba(20,20,30,.45); --page:#21222c; --page-ink:#cfd0e0; }
+[data-pnt-theme="monokai"] { --surface:#272822; --text:#f8f8f2; --dim:#d9d8cd; --muted:#9d9a86; --faint:#75715e; --sep:#3e3d32; --accent:#f92672; --on-accent:#2a0512; --shadow-card:0 8px 24px -8px rgba(0,0,0,.6),0 2px 6px rgba(20,20,15,.45); --page:#1e1f1a; --page-ink:#d9d8cd; }
+[data-pnt-theme="nord"] { --surface:#2e3440; --text:#eceff4; --dim:#d8dee9; --muted:#9aa5bb; --faint:#7b88a1; --sep:#3b4252; --accent:#88c0d0; --on-accent:#16202b; --shadow-card:0 8px 24px -8px rgba(0,0,0,.5),0 2px 6px rgba(20,25,35,.4); --page:#272c36; --page-ink:#d8dee9; }
+[data-pnt-theme="solarized-dark"] { --surface:#002b36; --text:#eee8d5; --dim:#93a1a1; --muted:#7d9095; --faint:#586e75; --sep:#073642; --accent:#cb4b16; --on-accent:#1a0700; --shadow-card:0 8px 24px -8px rgba(0,0,0,.55),0 2px 6px rgba(0,20,25,.45); --page:#01212b; --page-ink:#93a1a1; }
+[data-pnt-theme="tokyo-night"] { --surface:#1a1b26; --text:#c0caf5; --dim:#a9b1d6; --muted:#7b83a8; --faint:#565f89; --sep:#292e42; --accent:#bb9af7; --on-accent:#16111f; --shadow-card:0 8px 24px -8px rgba(0,0,0,.6),0 2px 6px rgba(15,15,25,.45); --page:#16161e; --page-ink:#a9b1d6; }
 
 /* ============================================================
    PANEL FRAGMENT + THE WINNING GRID, shared by all eight.
@@ -215,7 +215,7 @@ h1 { font-family:var(--mono); font-weight:500; font-size:clamp(1.75rem,4.5vw,var
 <body>
 
 <nav class="topbar"><div class="wrap topbar-in">
-  <p class="topbar-title">CCP · typography grid · round two</p>
+  <p class="topbar-title">PNT · typography grid · round two</p>
   <div class="jump">
     <a href="#v1">1</a><a href="#v2">2</a><a href="#v3">3</a><a href="#v4">4</a>
     <a href="#v5">5</a><a href="#v6">6</a><a href="#v7">7</a><a href="#v8">8</a>
@@ -244,7 +244,7 @@ h1 { font-family:var(--mono); font-weight:500; font-size:clamp(1.75rem,4.5vw,var
         the caption line and arms ‹ › stepping on the scroll wheel and arrow keys.
         Nothing widens, ever.</p>
     </div>
-    <div class="viewport" data-ccp-theme="terracotta-dark">
+    <div class="viewport" data-pnt-theme="terracotta-dark">
       <div class="viewport-bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">skills.example.dev/catalog</span><span class="dots"></span></div>
       <div class="stage">
@@ -292,7 +292,7 @@ h1 { font-family:var(--mono); font-weight:500; font-size:clamp(1.75rem,4.5vw,var
         none exists, the number stays. The grid itself answers "which of these are
         designed?" at a glance.</p>
     </div>
-    <div class="viewport" data-ccp-theme="tokyo-night">
+    <div class="viewport" data-pnt-theme="tokyo-night">
       <div class="viewport-bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">skills.example.dev/catalog</span><span class="dots"></span></div>
       <div class="stage">
@@ -341,7 +341,7 @@ h1 { font-family:var(--mono); font-weight:500; font-size:clamp(1.75rem,4.5vw,var
         The long-text editor is shown open beside the panel, where the colour
         picker taught surfaces to go.</p>
     </div>
-    <div class="viewport" data-ccp-theme="nord">
+    <div class="viewport" data-pnt-theme="nord">
       <div class="viewport-bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">skills.example.dev/catalog</span><span class="dots"></span></div>
       <div class="stage" style="position:relative">
@@ -392,7 +392,7 @@ h1 { font-family:var(--mono); font-weight:500; font-size:clamp(1.75rem,4.5vw,var
         scales were detected. The shelf is the degraded-marker philosophy inverted:
         present exactly when there is something to say.</p>
     </div>
-    <div class="viewport" data-ccp-theme="dracula">
+    <div class="viewport" data-pnt-theme="dracula">
       <div class="viewport-bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">skills.example.dev/catalog</span><span class="dots"></span></div>
       <div class="stage">
@@ -441,7 +441,7 @@ h1 { font-family:var(--mono); font-weight:500; font-size:clamp(1.75rem,4.5vw,var
         stepper, token name and all — for that property only. One property gets
         depth; six stay shallow. Click size or leading.</p>
     </div>
-    <div class="viewport" data-ccp-theme="monokai">
+    <div class="viewport" data-pnt-theme="monokai">
       <div class="viewport-bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">skills.example.dev/catalog</span><span class="dots"></span></div>
       <div class="stage">
@@ -491,7 +491,7 @@ h1 { font-family:var(--mono); font-weight:500; font-size:clamp(1.75rem,4.5vw,var
         The existing "on a design token, show" preference stops being a settings-page
         decision and becomes a one-click stance. Try it.</p>
     </div>
-    <div class="viewport" data-ccp-theme="solarized-dark">
+    <div class="viewport" data-pnt-theme="solarized-dark">
       <div class="viewport-bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">skills.example.dev/catalog</span><span class="dots"></span></div>
       <div class="stage">
@@ -540,7 +540,7 @@ h1 { font-family:var(--mono); font-weight:500; font-size:clamp(1.75rem,4.5vw,var
         rung lit. Stepping is for neighbours; the menu is for going straight to a
         rung. Click size.</p>
     </div>
-    <div class="viewport" data-ccp-theme="terracotta-light">
+    <div class="viewport" data-pnt-theme="terracotta-light">
       <div class="viewport-bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">skills.example.dev/catalog</span><span class="dots"></span></div>
       <div class="stage">
@@ -594,7 +594,7 @@ h1 { font-family:var(--mono); font-weight:500; font-size:clamp(1.75rem,4.5vw,var
         words the field truncates. Every piece has a precedent elsewhere in the
         extension.</p>
     </div>
-    <div class="viewport" data-ccp-theme="tokyo-night">
+    <div class="viewport" data-pnt-theme="tokyo-night">
       <div class="viewport-bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i>
         <span class="viewport-url">skills.example.dev/catalog</span><span class="dots"></span></div>
       <div class="stage" style="position:relative">
@@ -662,7 +662,7 @@ for (const vp of document.querySelectorAll(".viewport")) {
   for (const t of THEMES) {
     const b = document.createElement("button");
     b.className = "tdot"; b.style.background = SWATCHES[t]; b.title = t;
-    b.addEventListener("click", () => vp.setAttribute("data-ccp-theme", t));
+    b.addEventListener("click", () => vp.setAttribute("data-pnt-theme", t));
     dots.appendChild(b);
   }
 }

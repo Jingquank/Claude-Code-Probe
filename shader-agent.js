@@ -1,4 +1,4 @@
-// Claude Code Probe — shader agent.
+// Pointee — shader agent.
 //
 // The only file of this extension that runs in the page's own JavaScript
 // world. The content script lives in Chrome's isolated world, which shares the
@@ -31,8 +31,8 @@
 
 (() => {
   "use strict";
-  if (window.__ccpShaderAgent) return; // resident from an earlier injection
-  window.__ccpShaderAgent = true;
+  if (window.__pntShaderAgent) return; // resident from an earlier injection
+  window.__pntShaderAgent = true;
 
   // file:// documents have an opaque origin ("null"), which postMessage
   // rejects as a target. The message never leaves this window either way.
@@ -101,7 +101,7 @@
       // program — carrying on writing through them would be undefined
       // behaviour, so the session ends and the panel is told.
       if (session && program === session.program) {
-        post("CCP_SHADER_GONE", { reason: "relink" });
+        post("PNT_SHADER_GONE", { reason: "relink" });
         endSession(false);
       }
       return realLink.call(this, program);
@@ -188,7 +188,7 @@
 
   function post(type, payload) {
     window.postMessage({
-      ccp: "shader", v: 1, nonce: session ? session.nonce : (payload && payload.nonce) || "",
+      pnt: "shader", v: 1, nonce: session ? session.nonce : (payload && payload.nonce) || "",
       type, ...payload,
     }, TARGET);
   }
@@ -232,8 +232,8 @@
   // ===== Probe =====
 
   function findMarkedCanvas(nonce) {
-    for (const canvas of document.querySelectorAll("canvas[data-ccp-probe]")) {
-      if (canvas.getAttribute("data-ccp-probe") === nonce) return canvas;
+    for (const canvas of document.querySelectorAll("canvas[data-pnt-probe]")) {
+      if (canvas.getAttribute("data-pnt-probe") === nonce) return canvas;
     }
     return null;
   }
@@ -242,7 +242,7 @@
     endSession(true);
     const canvas = findMarkedCanvas(msg.nonce);
     if (!canvas) {
-      post("CCP_SHADER_ERROR", { nonce: msg.nonce, ok: false, reason: "no-canvas" });
+      post("PNT_SHADER_ERROR", { nonce: msg.nonce, ok: false, reason: "no-canvas" });
       return;
     }
     installDrawHooks();
@@ -302,14 +302,14 @@
         realGetContext.call(session.canvas, "webgl2") ||
         realGetContext.call(session.canvas, "webgl");
       if (!gl || typeof gl.getParameter !== "function") {
-        post("CCP_SHADER_ERROR", { ok: false, reason: "no-gl" });
+        post("PNT_SHADER_ERROR", { ok: false, reason: "no-gl" });
         endSession(false);
         return;
       }
       session.gl = gl;
       program = gl.getParameter(gl.CURRENT_PROGRAM);
       if (!program) {
-        post("CCP_SHADER_ERROR", { ok: false, reason: "no-program" });
+        post("PNT_SHADER_ERROR", { ok: false, reason: "no-program" });
         endSession(false);
         return;
       }
@@ -317,7 +317,7 @@
 
     const gl = session.gl;
     if (gl.isContextLost()) {
-      post("CCP_SHADER_ERROR", { ok: false, reason: "context-lost" });
+      post("PNT_SHADER_ERROR", { ok: false, reason: "context-lost" });
       endSession(false);
       return;
     }
@@ -345,7 +345,7 @@
     }
 
     session.lostHandler = () => {
-      post("CCP_SHADER_GONE", { reason: "context-lost" });
+      post("PNT_SHADER_GONE", { reason: "context-lost" });
       endSession(false);
     };
     session.canvas.addEventListener("webglcontextlost", session.lostHandler);
@@ -393,7 +393,7 @@
   }
 
   function postInventory(live, truncated) {
-    post("CCP_SHADER_INVENTORY", {
+    post("PNT_SHADER_INVENTORY", {
       ok: true,
       contextType: (window.WebGL2RenderingContext &&
         session.gl instanceof WebGL2RenderingContext) ? "webgl2" : "webgl",
@@ -419,7 +419,7 @@
         const v = toArray(session.gl.getUniform(session.program, rec.loc));
         if (v) { values[rec.name] = v; any = true; }
       }
-      if (any) post("CCP_SHADER_TICK", { values });
+      if (any) post("PNT_SHADER_TICK", { values });
     }
     session.rafId = requestAnimationFrame(watchLoop);
   }
@@ -441,9 +441,9 @@
     if (e.source !== window) return;
     if (e.origin !== location.origin && !(e.origin === "null" && location.origin === "null")) return;
     const msg = e.data;
-    if (!msg || msg.ccp !== "shader" || msg.v !== 1) return;
+    if (!msg || msg.pnt !== "shader" || msg.v !== 1) return;
 
-    if (msg.type === "CCP_SHADER_PROBE") {
+    if (msg.type === "PNT_SHADER_PROBE") {
       beginProbe(msg);
       return;
     }
@@ -453,7 +453,7 @@
     if (!session || msg.nonce !== session.nonce) return;
     lastBeat = performance.now();
 
-    if (msg.type === "CCP_SHADER_SET") {
+    if (msg.type === "PNT_SHADER_SET") {
       const rec = session.uniforms.get(msg.name);
       const value = toArray(msg.value);
       if (!rec || !value || value.length !== rec.comps) return;
@@ -466,7 +466,7 @@
       return;
     }
 
-    if (msg.type === "CCP_SHADER_CLEAR") {
+    if (msg.type === "PNT_SHADER_CLEAR") {
       const rec = session.uniforms.get(msg.name);
       session.overrides.delete(msg.name);
       // A driven value is overwritten by the page next frame anyway; a
@@ -475,7 +475,7 @@
       return;
     }
 
-    if (msg.type === "CCP_SHADER_WATCH") {
+    if (msg.type === "PNT_SHADER_WATCH") {
       const on = Boolean(msg.on);
       if (on === session.watching) return;
       session.watching = on;
@@ -484,9 +484,9 @@
       return;
     }
 
-    if (msg.type === "CCP_SHADER_KEEPALIVE") return; // lastBeat already moved
+    if (msg.type === "PNT_SHADER_KEEPALIVE") return; // lastBeat already moved
 
-    if (msg.type === "CCP_SHADER_TEARDOWN") {
+    if (msg.type === "PNT_SHADER_TEARDOWN") {
       endSession(true);
       removeDrawHooks();
     }

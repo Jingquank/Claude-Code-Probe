@@ -3,16 +3,16 @@
    page itself needs, plus the handful of overrides that let the real chrome be
    rendered inline as a preview instead of pinned to the viewport.
 
-   Everything here is expressed in --ccp-* tokens, so the page follows the theme
+   Everything here is expressed in --pnt-* tokens, so the page follows the theme
    you are choosing. Two grounds are derived from the surface rather than being
-   declared per theme: mixing toward --ccp-text lifts a dark surface and darkens
+   declared per theme: mixing toward --pnt-text lifts a dark surface and darkens
    a light one, which gives a usable two-tone in either direction with no
    theme-specific values. */
 
 :root {
-  --sp-ground: var(--ccp-surface);
-  --sp-raised: color-mix(in srgb, var(--ccp-surface) 94%, var(--ccp-text));
-  --sp-hairline: color-mix(in srgb, var(--ccp-surface) 84%, var(--ccp-text));
+  --sp-ground: var(--pnt-surface);
+  --sp-raised: color-mix(in srgb, var(--pnt-surface) 94%, var(--pnt-text));
+  --sp-hairline: color-mix(in srgb, var(--pnt-surface) 84%, var(--pnt-text));
   --sp-pad: 22px;
   /* Sections glide open and closed (::details-content height below); this is
      what lets `height: auto` interpolate. */
@@ -26,8 +26,8 @@ html, body { height: 100%; }
 body {
   margin: 0;
   background: var(--sp-ground);
-  color: var(--ccp-text);
-  font: var(--ccp-text-base)/var(--ccp-leading-base) var(--ccp-font);
+  color: var(--pnt-text);
+  font: var(--pnt-text-base)/var(--pnt-leading-base) var(--pnt-font);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -51,26 +51,26 @@ body {
 .sp-header {
   display: flex;
   align-items: baseline;
-  gap: var(--ccp-md);
-  padding: var(--sp-pad) var(--sp-pad) var(--ccp-lg);
+  gap: var(--pnt-md);
+  padding: var(--sp-pad) var(--sp-pad) var(--pnt-lg);
   border-bottom: 1px solid var(--sp-hairline);
 }
 
 .sp-header h1 {
   margin: 0;
-  font-size: var(--ccp-text-lg);
-  font-weight: var(--ccp-weight-bold);
+  font-size: var(--pnt-text-lg);
+  font-weight: var(--pnt-weight-bold);
   text-transform: uppercase;
-  letter-spacing: var(--ccp-tracking-wide);
-  color: var(--ccp-text);
+  letter-spacing: var(--pnt-tracking-wide);
+  color: var(--pnt-text);
 }
 
 .sp-version {
   margin: 0;
-  font-size: var(--ccp-text-sm);
+  font-size: var(--pnt-text-sm);
   text-transform: uppercase;
-  letter-spacing: var(--ccp-tracking-wide);
-  color: var(--ccp-text-muted);
+  letter-spacing: var(--pnt-tracking-wide);
+  color: var(--pnt-text-muted);
 }
 
 /* ===== Two columns =====
@@ -88,7 +88,7 @@ body {
 .sp-scroll {
   display: flex;
   flex-direction: column;
-  gap: var(--ccp-lg);
+  gap: var(--pnt-lg);
   padding: var(--sp-pad);
   min-width: 0;
 }
@@ -98,8 +98,8 @@ body {
    display-toggles afterwards, so this can never replay. */
 .sp-scroll,
 .sp-rail {
-  transition: opacity var(--ccp-duration-slow) var(--ccp-ease),
-              translate var(--ccp-duration-slow) var(--ccp-ease);
+  transition: opacity var(--pnt-duration-slow) var(--pnt-ease),
+              translate var(--pnt-duration-slow) var(--pnt-ease);
 }
 
 .sp-rail { transition-delay: 60ms; }
@@ -128,7 +128,7 @@ body {
   top: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--ccp-gap-section);
+  gap: var(--pnt-gap-section);
   padding: var(--sp-pad);
 }
 
@@ -152,7 +152,7 @@ body {
 .sp-summary {
   display: flex;
   align-items: center;
-  gap: var(--ccp-sm);
+  gap: var(--pnt-sm);
   cursor: pointer;
   list-style: none;
   user-select: none;
@@ -161,12 +161,12 @@ body {
 .sp-summary::-webkit-details-marker { display: none; }
 
 .sp-summary:focus-visible {
-  outline: 2px solid var(--ccp-accent);
+  outline: 2px solid var(--pnt-accent);
   outline-offset: 2px;
-  border-radius: var(--ccp-radius-xs);
+  border-radius: var(--pnt-radius-xs);
 }
 
-.sp-summary:hover .sp-legend { color: var(--ccp-text-dim); }
+.sp-summary:hover .sp-legend { color: var(--pnt-text-dim); }
 
 /* Drawn caret, not a glyph: rotates from "pointing right" (closed) to
    "pointing down" (open). */
@@ -175,10 +175,10 @@ body {
   width: 6px;
   height: 6px;
   margin-top: -3px;
-  border-right: 1.5px solid var(--ccp-text-muted);
-  border-bottom: 1.5px solid var(--ccp-text-muted);
+  border-right: 1.5px solid var(--pnt-text-muted);
+  border-bottom: 1.5px solid var(--pnt-text-muted);
   transform: rotate(45deg);
-  transition: transform var(--ccp-duration);
+  transition: transform var(--pnt-duration);
 }
 
 details:not([open]) > .sp-summary .sp-caret {
@@ -189,8 +189,8 @@ details:not([open]) > .sp-summary .sp-caret {
 .sp-section-body {
   display: flex;
   flex-direction: column;
-  gap: var(--ccp-gap-section);
-  padding-top: var(--ccp-gap-section);
+  gap: var(--pnt-gap-section);
+  padding-top: var(--pnt-gap-section);
 }
 
 /* The collapse glides: height interpolates to auto (interpolate-size on :root)
@@ -200,8 +200,8 @@ details:not([open]) > .sp-summary .sp-caret {
 .sp-section::details-content {
   height: 0;
   overflow: clip;
-  transition: height var(--ccp-duration-slow) var(--ccp-ease),
-              content-visibility var(--ccp-duration-slow) allow-discrete;
+  transition: height var(--pnt-duration-slow) var(--pnt-ease),
+              content-visibility var(--pnt-duration-slow) allow-discrete;
 }
 
 .sp-section[open]::details-content {
@@ -211,35 +211,35 @@ details:not([open]) > .sp-summary .sp-caret {
 .sp-legend {
   display: flex;
   align-items: center;
-  gap: var(--ccp-sm);
+  gap: var(--pnt-sm);
   margin: 0;
-  font-size: var(--ccp-text-sm);
-  font-weight: var(--ccp-weight-medium);
+  font-size: var(--pnt-text-sm);
+  font-weight: var(--pnt-weight-medium);
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--ccp-text-muted);
+  color: var(--pnt-text-muted);
 }
 
 .sp-tag {
-  font-size: var(--ccp-text-sm);
-  font-weight: var(--ccp-weight-medium);
+  font-size: var(--pnt-text-sm);
+  font-weight: var(--pnt-weight-medium);
   text-transform: uppercase;
-  letter-spacing: var(--ccp-tracking-wide);
-  color: var(--ccp-accent);
-  border: 1px solid rgb(from var(--ccp-accent) r g b / 0.4);
-  border-radius: var(--ccp-radius-xs);
-  padding: 1px var(--ccp-gap-base);
+  letter-spacing: var(--pnt-tracking-wide);
+  color: var(--pnt-accent);
+  border: 1px solid rgb(from var(--pnt-accent) r g b / 0.4);
+  border-radius: var(--pnt-radius-xs);
+  padding: 1px var(--pnt-gap-base);
 }
 
 .sp-sub {
   margin: 0;
   max-width: 62ch;
-  font-size: var(--ccp-text-sm);
-  line-height: var(--ccp-leading-base);
-  color: var(--ccp-text-muted);
+  font-size: var(--pnt-text-sm);
+  line-height: var(--pnt-leading-base);
+  color: var(--pnt-text-muted);
 }
 
-.sp-sub strong { color: var(--ccp-text-dim); font-weight: var(--ccp-weight-medium); }
+.sp-sub strong { color: var(--pnt-text-dim); font-weight: var(--pnt-weight-medium); }
 
 .sp-hr { border: 0; border-top: 1px solid var(--sp-hairline); margin: 0; }
 
@@ -249,45 +249,45 @@ details:not([open]) > .sp-summary .sp-caret {
 .sp-pills {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--ccp-sm);
+  gap: var(--pnt-sm);
 }
 
 .sp-pill {
   display: flex;
   align-items: center;
-  gap: var(--ccp-sm);
-  padding: var(--ccp-gap-base) var(--ccp-md) var(--ccp-gap-base) var(--ccp-sm);
-  border: 1px solid var(--ccp-sep);
+  gap: var(--pnt-sm);
+  padding: var(--pnt-gap-base) var(--pnt-md) var(--pnt-gap-base) var(--pnt-sm);
+  border: 1px solid var(--pnt-sep);
   border-radius: 20px;
   background: transparent;
-  color: var(--ccp-text-dim);
-  font: var(--ccp-weight-medium) var(--ccp-text-sm)/var(--ccp-leading-tight) var(--ccp-font);
+  color: var(--pnt-text-dim);
+  font: var(--pnt-weight-medium) var(--pnt-text-sm)/var(--pnt-leading-tight) var(--pnt-font);
   text-transform: uppercase;
-  letter-spacing: var(--ccp-tracking-wide);
+  letter-spacing: var(--pnt-tracking-wide);
   cursor: pointer;
-  transition: background var(--ccp-duration), border-color var(--ccp-duration),
-              color var(--ccp-duration), transform var(--ccp-duration-fast) ease;
+  transition: background var(--pnt-duration), border-color var(--pnt-duration),
+              color var(--pnt-duration), transform var(--pnt-duration-fast) ease;
 }
 
 .sp-pill:active { transform: scale(0.97); }
 
 .sp-pill:hover {
-  border-color: rgb(from var(--ccp-accent) r g b / 0.6);
-  color: var(--ccp-text);
+  border-color: rgb(from var(--pnt-accent) r g b / 0.6);
+  color: var(--pnt-text);
 }
 
 .sp-pill:focus-visible {
-  outline: 2px solid var(--ccp-accent);
+  outline: 2px solid var(--pnt-accent);
   outline-offset: 2px;
 }
 
 .sp-pill[aria-checked="true"] {
-  background: var(--ccp-accent);
-  border-color: var(--ccp-accent);
-  color: var(--ccp-on-accent);
+  background: var(--pnt-accent);
+  border-color: var(--pnt-accent);
+  color: var(--pnt-on-accent);
 }
 
-/* The swatch carries its own data-ccp-theme, so these stripes resolve against
+/* The swatch carries its own data-pnt-theme, so these stripes resolve against
    that theme's tokens rather than the page's. No hex is repeated in JS or here —
    the palette shown is literally the palette that will be applied. */
 .sp-sw {
@@ -295,35 +295,35 @@ details:not([open]) > .sp-summary .sp-caret {
   flex: none;
   width: 20px;
   height: 10px;
-  border-radius: var(--ccp-radius-xs);
+  border-radius: var(--pnt-radius-xs);
   overflow: hidden;
-  box-shadow: inset 0 0 0 1px rgb(from var(--ccp-text) r g b / 0.18);
+  box-shadow: inset 0 0 0 1px rgb(from var(--pnt-text) r g b / 0.18);
 }
 
 .sp-sw > i { flex: 1; }
-.sp-sw > i:nth-child(1) { background: var(--ccp-surface); }
-.sp-sw > i:nth-child(2) { background: var(--ccp-accent); }
-.sp-sw > i:nth-child(3) { background: var(--ccp-syntax-id); }
-.sp-sw > i:nth-child(4) { background: var(--ccp-syntax-class); }
+.sp-sw > i:nth-child(1) { background: var(--pnt-surface); }
+.sp-sw > i:nth-child(2) { background: var(--pnt-accent); }
+.sp-sw > i:nth-child(3) { background: var(--pnt-syntax-id); }
+.sp-sw > i:nth-child(4) { background: var(--pnt-syntax-class); }
 
 /* System shows both palettes it resolves between, split down the middle. */
 .sp-sw-split { display: flex; }
 .sp-sw-split > span { display: flex; flex: 1; }
 .sp-sw-split > span > i { flex: 1; }
-.sp-sw-split > span > i:nth-child(1) { background: var(--ccp-surface); }
-.sp-sw-split > span > i:nth-child(2) { background: var(--ccp-accent); }
+.sp-sw-split > span > i:nth-child(1) { background: var(--pnt-surface); }
+.sp-sw-split > span > i:nth-child(2) { background: var(--pnt-accent); }
 
 /* The note fades in with a 2px rise and fades back out; settings.js toggles
    .sp-saved-in and clears the text only after the fade has finished. */
 .sp-saved {
   margin: 0;
   min-height: 1.4em;
-  font-size: var(--ccp-text-sm);
-  color: var(--ccp-syntax-class);
+  font-size: var(--pnt-text-sm);
+  color: var(--pnt-syntax-class);
   opacity: 0;
   translate: 0 2px;
-  transition: opacity var(--ccp-duration) var(--ccp-ease),
-              translate var(--ccp-duration) var(--ccp-ease);
+  transition: opacity var(--pnt-duration) var(--pnt-ease),
+              translate var(--pnt-duration) var(--pnt-ease);
 }
 
 .sp-saved.sp-saved-in {
@@ -339,25 +339,25 @@ details:not([open]) > .sp-summary .sp-caret {
 .sp-sheet {
   display: flex;
   flex-direction: column;
-  gap: var(--ccp-md);
+  gap: var(--pnt-md);
 }
 
 .sp-sheet-group { display: flex; flex-direction: column; }
 
 .sp-sheet-cat {
-  margin: 0 0 var(--ccp-gap-tight);
-  font-size: var(--ccp-text-sm);
-  font-weight: var(--ccp-weight-medium);
+  margin: 0 0 var(--pnt-gap-tight);
+  font-size: var(--pnt-text-sm);
+  font-weight: var(--pnt-weight-medium);
   text-transform: uppercase;
-  letter-spacing: var(--ccp-tracking-wide);
-  color: var(--ccp-text-faint);
+  letter-spacing: var(--pnt-tracking-wide);
+  color: var(--pnt-text-faint);
 }
 
 .sp-spec {
   display: flex;
   align-items: center;
-  gap: var(--ccp-md);
-  padding: var(--ccp-gap-base) 0;
+  gap: var(--pnt-md);
+  padding: var(--pnt-gap-base) 0;
 }
 
 /* A row can withdraw entirely when its question stops applying — depth means
@@ -368,30 +368,30 @@ details:not([open]) > .sp-summary .sp-caret {
 /* A caveat under a chunk, in the sub's register but tucked against the rows it
    belongs to. */
 .sp-note {
-  margin: var(--ccp-gap-tight) 0 0;
+  margin: var(--pnt-gap-tight) 0 0;
   max-width: 62ch;
-  font-size: var(--ccp-text-sm);
-  line-height: var(--ccp-leading-base);
-  color: var(--ccp-text-faint);
+  font-size: var(--pnt-text-sm);
+  line-height: var(--pnt-leading-base);
+  color: var(--pnt-text-faint);
 }
 
-.sp-note strong { color: var(--ccp-text-muted); }
+.sp-note strong { color: var(--pnt-text-muted); }
 
 .sp-note code {
-  font-family: var(--ccp-font);
-  color: var(--ccp-text-muted);
+  font-family: var(--pnt-font);
+  color: var(--pnt-text-muted);
 }
 
 .sp-spec-label {
   flex: none;
-  font-size: var(--ccp-text-base);
-  color: var(--ccp-text);
+  font-size: var(--pnt-text-base);
+  color: var(--pnt-text);
 }
 
 .sp-spec-leader {
   flex: 1;
   min-width: 24px;
-  border-top: 1px dotted var(--ccp-sep);
+  border-top: 1px dotted var(--pnt-sep);
   margin-top: 2px;
 }
 
@@ -399,38 +399,38 @@ details:not([open]) > .sp-summary .sp-caret {
 .sp-seg {
   display: inline-flex;
   flex: none;
-  border: 1px solid var(--ccp-sep);
-  border-radius: var(--ccp-radius-sm);
+  border: 1px solid var(--pnt-sep);
+  border-radius: var(--pnt-radius-sm);
   overflow: hidden;
 }
 
 .sp-seg button {
   border: 0;
   background: transparent;
-  color: var(--ccp-text-muted);
-  font: var(--ccp-weight-medium) var(--ccp-text-sm)/var(--ccp-leading-tight) var(--ccp-font);
+  color: var(--pnt-text-muted);
+  font: var(--pnt-weight-medium) var(--pnt-text-sm)/var(--pnt-leading-tight) var(--pnt-font);
   text-transform: uppercase;
-  letter-spacing: var(--ccp-tracking-wide);
-  padding: var(--ccp-gap-base) var(--ccp-md);
+  letter-spacing: var(--pnt-tracking-wide);
+  padding: var(--pnt-gap-base) var(--pnt-md);
   cursor: pointer;
-  transition: background var(--ccp-duration), color var(--ccp-duration),
-              transform var(--ccp-duration-fast) ease;
+  transition: background var(--pnt-duration), color var(--pnt-duration),
+              transform var(--pnt-duration-fast) ease;
 }
 
 .sp-seg button:active { transform: scale(0.97); }
 
-.sp-seg button + button { border-left: 1px solid var(--ccp-sep); }
+.sp-seg button + button { border-left: 1px solid var(--pnt-sep); }
 
-.sp-seg button:hover { color: var(--ccp-text); }
+.sp-seg button:hover { color: var(--pnt-text); }
 
 .sp-seg button:focus-visible {
-  outline: 2px solid var(--ccp-accent);
+  outline: 2px solid var(--pnt-accent);
   outline-offset: -2px;
 }
 
 .sp-seg button[aria-checked="true"] {
-  background: var(--ccp-accent);
-  color: var(--ccp-on-accent);
+  background: var(--pnt-accent);
+  color: var(--pnt-on-accent);
 }
 
 /* Presets are actions, not a value: pressing one writes a set of switches, and
@@ -438,15 +438,15 @@ details:not([open]) > .sp-summary .sp-caret {
    been moved by hand. Hence aria-pressed, and a filled state that is quieter
    than a chosen value's. */
 .sp-seg-act button[aria-pressed="true"] {
-  background: color-mix(in srgb, var(--ccp-accent) 22%, transparent);
-  color: var(--ccp-text);
+  background: color-mix(in srgb, var(--pnt-accent) 22%, transparent);
+  color: var(--pnt-text);
 }
 
 /* The payload bar's chips: the same control one size down, so they read as
    belonging to the preview rather than to the sheet. */
 .sp-seg-sm button {
-  padding: 2px var(--ccp-gap-base);
-  font-size: var(--ccp-text-sm);
+  padding: 2px var(--pnt-gap-base);
+  font-size: var(--pnt-text-sm);
 }
 
 /* The real switch: a button with role="switch", a knob transition, and a
@@ -459,9 +459,9 @@ details:not([open]) > .sp-summary .sp-caret {
   padding: 0;
   border: 0;
   border-radius: 9px;
-  background: var(--ccp-sep);
+  background: var(--pnt-sep);
   cursor: pointer;
-  transition: background var(--ccp-duration), transform var(--ccp-duration-fast) ease;
+  transition: background var(--pnt-duration), transform var(--pnt-duration-fast) ease;
 }
 
 .sp-switch:active { transform: scale(0.96); }
@@ -474,17 +474,17 @@ details:not([open]) > .sp-summary .sp-caret {
   width: 13px;
   height: 13px;
   border-radius: 50%;
-  background: var(--ccp-text-muted);
-  transition: left var(--ccp-duration), background var(--ccp-duration);
+  background: var(--pnt-text-muted);
+  transition: left var(--pnt-duration), background var(--pnt-duration);
 }
 
 .sp-switch:focus-visible {
-  outline: 2px solid var(--ccp-accent);
+  outline: 2px solid var(--pnt-accent);
   outline-offset: 2px;
 }
 
-.sp-switch[aria-checked="true"] { background: var(--ccp-accent); }
-.sp-switch[aria-checked="true"]::after { left: 15px; background: var(--ccp-on-accent); }
+.sp-switch[aria-checked="true"] { background: var(--pnt-accent); }
+.sp-switch[aria-checked="true"]::after { left: 15px; background: var(--pnt-on-accent); }
 
 /* Quiet text action, spec-sheet register. Disabled means "already there". */
 .sp-reset {
@@ -493,64 +493,64 @@ details:not([open]) > .sp-summary .sp-caret {
   padding: 0;
   border: 0;
   background: transparent;
-  font: var(--ccp-weight-medium) var(--ccp-text-sm)/var(--ccp-leading-tight) var(--ccp-font);
+  font: var(--pnt-weight-medium) var(--pnt-text-sm)/var(--pnt-leading-tight) var(--pnt-font);
   text-transform: uppercase;
-  letter-spacing: var(--ccp-tracking-wide);
-  color: var(--ccp-text-muted);
+  letter-spacing: var(--pnt-tracking-wide);
+  color: var(--pnt-text-muted);
   cursor: pointer;
-  transition: color var(--ccp-duration), transform var(--ccp-duration-fast) ease;
+  transition: color var(--pnt-duration), transform var(--pnt-duration-fast) ease;
 }
 
 .sp-reset:active:not(:disabled) { transform: scale(0.97); }
 
-.sp-reset:hover:not(:disabled) { color: var(--ccp-accent); }
+.sp-reset:hover:not(:disabled) { color: var(--pnt-accent); }
 
 .sp-reset:focus-visible {
-  outline: 2px solid var(--ccp-accent);
+  outline: 2px solid var(--pnt-accent);
   outline-offset: 2px;
-  border-radius: var(--ccp-radius-xs);
+  border-radius: var(--pnt-radius-xs);
 }
 
 .sp-reset:disabled {
-  opacity: var(--ccp-opacity-disabled);
+  opacity: var(--pnt-opacity-disabled);
   cursor: default;
 }
 
 /* ===== Footer ===== */
 .sp-footer {
   margin-top: auto;
-  padding-top: var(--ccp-lg);
+  padding-top: var(--pnt-lg);
   border-top: 1px solid var(--sp-hairline);
-  font-size: var(--ccp-text-sm);
-  color: var(--ccp-text-faint);
+  font-size: var(--pnt-text-sm);
+  color: var(--pnt-text-faint);
 }
 
 .sp-footer p { margin: 0; }
-.sp-footer a { color: var(--ccp-text-muted); }
-.sp-footer a:hover { color: var(--ccp-accent); }
+.sp-footer a { color: var(--pnt-text-muted); }
+.sp-footer a:hover { color: var(--pnt-accent); }
 
 /* ===== The preview =====
-   content.css pins #ccp-label, #ccp-toolbar and #ccp-settings-btn to the
-   viewport. Inside .ccp-mock they have to flow instead. These are the only
+   content.css pins #pnt-label, #pnt-toolbar and #pnt-settings-btn to the
+   viewport. Inside .pnt-mock they have to flow instead. These are the only
    overrides — everything else about their appearance comes from the real rules,
    which is the point. Each selector is class + id so it outranks the id-only
    rule it is overriding. */
 .sp-preview {
   position: relative;
-  border-radius: var(--ccp-radius-md);
+  border-radius: var(--pnt-radius-md);
   /* Blueprint paper, shared by both previews: a faint accent grid over the
      ground, so the anatomy sheet and the measuring drawing sit on the same
      sheet. */
   background:
     repeating-linear-gradient(0deg,
-      rgb(from var(--ccp-accent) r g b / 0.05) 0 1px, transparent 1px 24px),
+      rgb(from var(--pnt-accent) r g b / 0.05) 0 1px, transparent 1px 24px),
     repeating-linear-gradient(90deg,
-      rgb(from var(--ccp-accent) r g b / 0.05) 0 1px, transparent 1px 24px),
+      rgb(from var(--pnt-accent) r g b / 0.05) 0 1px, transparent 1px 24px),
     var(--sp-ground);
   border: 1px solid var(--sp-hairline);
-  padding: var(--ccp-md);
+  padding: var(--pnt-md);
   /* A longer readout than the sample would overflow the rail rather than
-     wrap, because #ccp-label is white-space: nowrap. Clip it here so the
+     wrap, because #pnt-label is white-space: nowrap. Clip it here so the
      rail's own layout can't be pushed around. */
   overflow: hidden;
   /* Mock and vignette share the first cell: during the mode crossfade both
@@ -559,7 +559,7 @@ details:not([open]) > .sp-summary .sp-caret {
   display: grid;
 }
 
-.sp-preview > .ccp-mock,
+.sp-preview > .pnt-mock,
 .sp-preview > .sp-vig,
 .sp-preview > .ep-mock,
 .sp-preview > .sp-pay {
@@ -575,74 +575,74 @@ details:not([open]) > .sp-summary .sp-caret {
 .sp-pay {
   display: flex;
   flex-direction: column;
-  gap: var(--ccp-sm);
+  gap: var(--pnt-sm);
   min-width: 0;
 }
 
 .sp-pay-bar {
   display: flex;
   align-items: center;
-  gap: var(--ccp-sm);
+  gap: var(--pnt-sm);
 }
 
 .sp-pay-q {
-  font-size: var(--ccp-text-sm);
+  font-size: var(--pnt-text-sm);
   text-transform: uppercase;
-  letter-spacing: var(--ccp-tracking-wide);
-  color: var(--ccp-text-faint);
+  letter-spacing: var(--pnt-tracking-wide);
+  color: var(--pnt-text-faint);
 }
 
 .sp-pay-count {
   margin-left: auto;
-  font-size: var(--ccp-text-sm);
+  font-size: var(--pnt-text-sm);
   font-variant-numeric: tabular-nums;
-  color: var(--ccp-text-faint);
+  color: var(--pnt-text-faint);
 }
 
 .sp-pay-out {
   margin: 0;
-  padding: var(--ccp-sm);
+  padding: var(--pnt-sm);
   max-height: 340px;
   overflow: auto;
   border: 1px solid var(--sp-hairline);
-  border-radius: var(--ccp-radius-sm);
-  background: var(--ccp-surface);
-  font: var(--ccp-text-sm)/var(--ccp-leading-base) var(--ccp-font);
-  color: var(--ccp-text-muted);
+  border-radius: var(--pnt-radius-sm);
+  background: var(--pnt-surface);
+  font: var(--pnt-text-sm)/var(--pnt-leading-base) var(--pnt-font);
+  color: var(--pnt-text-muted);
   /* The payload is copied as-is, so it is shown as-is: a line that would wrap
      in a prompt wraps here, rather than being hidden behind a scrollbar. */
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
-.sp-pay-out .sp-pay-fence { color: var(--ccp-text-faint); }
-.sp-pay-out .sp-pay-tag { color: var(--ccp-accent); }
-.sp-pay-out .sp-pay-empty { color: var(--ccp-text-faint); }
+.sp-pay-out .sp-pay-fence { color: var(--pnt-text-faint); }
+.sp-pay-out .sp-pay-tag { color: var(--pnt-accent); }
+.sp-pay-out .sp-pay-empty { color: var(--pnt-text-faint); }
 
 /* The row under the pointer lights up the line it writes — the same lesson the
    vignette's spotlight teaches, in the only register text has. */
 .sp-pay-out [data-field] {
   display: inline;
-  border-radius: var(--ccp-radius-xs);
-  transition: background var(--ccp-duration), color var(--ccp-duration);
+  border-radius: var(--pnt-radius-xs);
+  transition: background var(--pnt-duration), color var(--pnt-duration);
 }
 
 .sp-pay-out [data-field].sp-pay-hi {
-  background: color-mix(in srgb, var(--ccp-accent) 22%, transparent);
-  color: var(--ccp-text);
+  background: color-mix(in srgb, var(--pnt-accent) 22%, transparent);
+  color: var(--pnt-text);
 }
 
 .sp-pay-note {
   margin: 0;
   min-height: 2lh;
-  font-size: var(--ccp-text-sm);
-  line-height: var(--ccp-leading-base);
-  color: var(--ccp-text-faint);
+  font-size: var(--pnt-text-sm);
+  line-height: var(--pnt-leading-base);
+  color: var(--pnt-text-faint);
 }
 
-.sp-pay-note b { color: var(--ccp-text-muted); font-weight: var(--ccp-weight-medium); }
-.sp-pay-warn { color: var(--ccp-accent); }
-.sp-pay-warn b { color: var(--ccp-accent); }
+.sp-pay-note b { color: var(--pnt-text-muted); font-weight: var(--pnt-weight-medium); }
+.sp-pay-warn { color: var(--pnt-accent); }
+.sp-pay-warn b { color: var(--pnt-accent); }
 
 .sp-pv-slot { display: grid; }
 .sp-pv-slot > * { grid-area: 1 / 1; }
@@ -653,19 +653,19 @@ details:not([open]) > .sp-summary .sp-caret {
 /* ===== Anatomy sheet (the Appearance mock) =====
    Chrome pinned as specimens under quiet captions: hover and selection side
    by side with the gear, then the info panel and toolbar full-width. */
-.ccp-mock {
+.pnt-mock {
   position: relative;
   display: grid;
   grid-template-columns: 1fr 1fr auto;
-  gap: var(--ccp-lg) var(--ccp-md);
+  gap: var(--pnt-lg) var(--pnt-md);
   align-items: start;
-  padding: var(--ccp-sm);
+  padding: var(--pnt-sm);
 }
 
 .an-item {
   display: flex;
   flex-direction: column;
-  gap: var(--ccp-sm);
+  gap: var(--pnt-sm);
   align-items: flex-start;
   min-width: 0;
 }
@@ -673,16 +673,16 @@ details:not([open]) > .sp-summary .sp-caret {
 .an-span { grid-column: 1 / -1; }
 
 /* Headroom for Clawd, who stands above the label's top edge. */
-.an-label #ccp-label { margin-top: 26px; }
+.an-label #pnt-label { margin-top: 26px; }
 
 .an-cap {
   margin: 0;
-  font-size: var(--ccp-text-sm);
-  font-weight: var(--ccp-weight-medium);
+  font-size: var(--pnt-text-sm);
+  font-weight: var(--pnt-weight-medium);
   text-transform: uppercase;
-  letter-spacing: var(--ccp-tracking-wide);
-  color: var(--ccp-text-faint);
-  border-bottom: 1px dotted var(--ccp-sep);
+  letter-spacing: var(--pnt-tracking-wide);
+  color: var(--pnt-text-faint);
+  border-bottom: 1px dotted var(--pnt-sep);
   padding-bottom: 2px;
 }
 
@@ -690,20 +690,20 @@ details:not([open]) > .sp-summary .sp-caret {
 .an-hover {
   display: flex;
   flex-direction: column;
-  gap: var(--ccp-gap-pair);
-  padding: var(--ccp-md) var(--ccp-btn-x);
-  border: 1.5px dashed var(--ccp-accent);
-  border-radius: var(--ccp-radius-md);
+  gap: var(--pnt-gap-pair);
+  padding: var(--pnt-md) var(--pnt-btn-x);
+  border: 1.5px dashed var(--pnt-accent);
+  border-radius: var(--pnt-radius-md);
 }
 
 /* The selection specimen carries the real sweep: the same conic gradient and
-   10s rotation as #ccp-sweep-spin in content.css, scaled to the ring width. */
+   10s rotation as #pnt-sweep-spin in content.css, scaled to the ring width. */
 .an-beam {
   position: relative;
-  padding: var(--ccp-ring);
-  border-radius: calc(var(--ccp-radius-md) + var(--ccp-ring));
+  padding: var(--pnt-ring);
+  border-radius: calc(var(--pnt-radius-md) + var(--pnt-ring));
   overflow: hidden;
-  background: rgb(from var(--ccp-accent) r g b / 0.45);
+  background: rgb(from var(--pnt-accent) r g b / 0.45);
 }
 
 .an-beam::before {
@@ -715,9 +715,9 @@ details:not([open]) > .sp-summary .sp-caret {
   aspect-ratio: 1;
   background: conic-gradient(
     transparent 0deg,
-    var(--ccp-accent) 90deg,
-    var(--ccp-accent-light) 180deg,
-    var(--ccp-accent) 270deg,
+    var(--pnt-accent) 90deg,
+    var(--pnt-accent-light) 180deg,
+    var(--pnt-accent) 270deg,
     transparent 360deg
   );
   animation: sp-sweep 10s linear infinite;
@@ -732,35 +732,35 @@ details:not([open]) > .sp-summary .sp-caret {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: var(--ccp-gap-pair);
-  padding: var(--ccp-md) var(--ccp-btn-x);
-  border-radius: var(--ccp-radius-md);
-  background: color-mix(in srgb, var(--ccp-surface) 93%, var(--ccp-accent));
+  gap: var(--pnt-gap-pair);
+  padding: var(--pnt-md) var(--pnt-btn-x);
+  border-radius: var(--pnt-radius-md);
+  background: color-mix(in srgb, var(--pnt-surface) 93%, var(--pnt-accent));
 }
 
-.ccp-mock #ccp-label,
-.ccp-mock #ccp-toolbar {
+.pnt-mock #pnt-label,
+.pnt-mock #pnt-toolbar {
   position: relative;
   top: auto;
   left: auto;
   transition: none;
 }
 
-.ccp-mock #ccp-label {
+.pnt-mock #pnt-label {
   width: max-content;
   max-width: 100%;
 }
 
 /* The gear is a specimen here, not a corner fixture. */
-.ccp-mock #ccp-settings-btn {
+.pnt-mock #pnt-settings-btn {
   position: static;
   cursor: default;
 }
 
 /* A still preview. Clawd's walk would carry him out of the clipped frame, and a
    pacing mascot beside a colour picker is a distraction from the colours. */
-.ccp-mock .ccp-clawd,
-.ccp-mock .ccp-clawd svg {
+.pnt-mock .pnt-clawd,
+.pnt-mock .pnt-clawd svg {
   animation: none;
 }
 
@@ -779,20 +779,20 @@ details:not([open]) > .sp-summary .sp-caret {
    fade, which read as a glitch. With both laid out, every box is the same
    height in both modes and nothing moves. (visibility's transition rule
    keeps the fading side visible until the fade completes.) */
-.ccp-mock,
+.pnt-mock,
 .sp-vig,
 .ep-mock,
 .sp-pay,
 .sp-rail [data-pv] {
-  transition: opacity var(--ccp-duration-fast) ease,
-              visibility var(--ccp-duration-fast);
+  transition: opacity var(--pnt-duration-fast) ease,
+              visibility var(--pnt-duration-fast);
 }
 
 /* Four modes now. Written as "hidden unless this is my mode" — one line per
    preview instead of a list of pairs that squares every time a section is
    added. The captions need the second block because CSS cannot compare an
    element's own attribute value against an ancestor's. */
-.sp-rail:not([data-mode="theme"]) .ccp-mock,
+.sp-rail:not([data-mode="theme"]) .pnt-mock,
 .sp-rail:not([data-mode="measure"]) .sp-vig,
 .sp-rail:not([data-mode="edit"]) .ep-mock,
 .sp-rail:not([data-mode="copy"]) .sp-pay,
@@ -811,10 +811,10 @@ details:not([open]) > .sp-summary .sp-caret {
 .ep-mock {
   display: grid;
   place-items: center;
-  padding: var(--ccp-md) 0;
+  padding: var(--pnt-md) 0;
 }
 
-.ep-mock #ccp-edit-panel {
+.ep-mock #pnt-edit-panel {
   position: static;
   max-height: none;
 }
@@ -822,27 +822,27 @@ details:not([open]) > .sp-summary .sp-caret {
 /* The live panel fills this from the element's own colour; the specimen has no
    element, so it stands in with the theme's ink — the swatch is showing that a
    colour is there, not which one. */
-.ep-mock .ccp-edit-swatch i { background: var(--ccp-text-dim); }
+.ep-mock .pnt-edit-swatch i { background: var(--pnt-text-dim); }
 
 /* The two settings act on the specimen the way they act on the live panel:
    "relevant" drops a group the element does not have, and the token control
    chooses which half of a token-bearing row is shown.
-   Each selector carries #ccp-edit-panel so it outranks the id-scoped rule in
+   Each selector carries #pnt-edit-panel so it outranks the id-scoped rule in
    content.css it is overriding — the same reason the anatomy sheet's overrides
    above are written class + id. */
 .ep-mock[data-groups="adaptive"] [data-ep="border"] { display: none; }
 
-.ep-mock[data-tokens="value"] #ccp-edit-panel .ccp-edit-tok { display: none; }
+.ep-mock[data-tokens="value"] #pnt-edit-panel .pnt-edit-tok { display: none; }
 
-.ep-mock[data-tokens="token"] #ccp-edit-panel [data-ep-row="token"] .ccp-edit-num {
+.ep-mock[data-tokens="token"] #pnt-edit-panel [data-ep-row="token"] .pnt-edit-num {
   width: 34px;
   border-color: transparent;
   background: transparent;
 }
-.ep-mock[data-tokens="token"] #ccp-edit-panel [data-ep-row="token"] .ccp-edit-input {
-  color: var(--ccp-text-faint);
+.ep-mock[data-tokens="token"] #pnt-edit-panel [data-ep-row="token"] .pnt-edit-input {
+  color: var(--pnt-text-faint);
 }
-.ep-mock[data-tokens="token"] #ccp-edit-panel [data-ep-row="token"] .ccp-edit-unit {
+.ep-mock[data-tokens="token"] #pnt-edit-panel [data-ep-row="token"] .pnt-edit-unit {
   display: none;
 }
 
@@ -850,9 +850,9 @@ details:not([open]) > .sp-summary .sp-caret {
    sheet marks the part of the panel it controls. */
 .ep-mock[data-hi="groups"] [data-ep="border"],
 .ep-mock[data-hi="tokens"] [data-ep-row="token"] {
-  outline: 2px solid rgb(from var(--ccp-accent) r g b / 0.45);
+  outline: 2px solid rgb(from var(--pnt-accent) r g b / 0.45);
   outline-offset: 3px;
-  border-radius: var(--ccp-radius-xs);
+  border-radius: var(--pnt-radius-xs);
 }
 
 /* ===== The measuring vignette =====
@@ -874,10 +874,10 @@ details:not([open]) > .sp-summary .sp-caret {
   position: absolute;
   left: 6px;
   top: 4px;
-  font-size: var(--ccp-text-sm);
+  font-size: var(--pnt-text-sm);
   text-transform: uppercase;
-  letter-spacing: var(--ccp-tracking-wide);
-  color: var(--ccp-text-faint);
+  letter-spacing: var(--pnt-tracking-wide);
+  color: var(--pnt-text-faint);
 }
 
 .sv-sel {
@@ -885,11 +885,11 @@ details:not([open]) > .sp-summary .sp-caret {
   top: 46px;
   width: 240px;
   height: 110px;
-  border: 1.5px dashed var(--ccp-accent);
-  border-radius: var(--ccp-radius-sm);
-  background: rgb(from var(--ccp-accent) r g b / 0.1);
-  transition: background var(--ccp-duration),
-              box-shadow var(--ccp-duration-fast) ease;
+  border: 1.5px dashed var(--pnt-accent);
+  border-radius: var(--pnt-radius-sm);
+  background: rgb(from var(--pnt-accent) r g b / 0.1);
+  transition: background var(--pnt-duration),
+              box-shadow var(--pnt-duration-fast) ease;
 }
 
 .sp-vig[data-quiet="on"] .sv-sel { background: transparent; }
@@ -899,8 +899,8 @@ details:not([open]) > .sp-summary .sp-caret {
   top: 46px;
   width: 96px;
   height: 70px;
-  border: 1px solid rgb(from var(--ccp-text-faint) r g b / 0.55);
-  border-radius: var(--ccp-radius-sm);
+  border: 1px solid rgb(from var(--pnt-text-faint) r g b / 0.55);
+  border-radius: var(--pnt-radius-sm);
 }
 
 .sv-hov {
@@ -908,18 +908,18 @@ details:not([open]) > .sp-summary .sp-caret {
   top: 226px;
   width: 140px;
   height: 76px;
-  border: 1px solid var(--ccp-accent);
-  border-radius: var(--ccp-radius-lg);
+  border: 1px solid var(--pnt-accent);
+  border-radius: var(--pnt-radius-lg);
 }
 
-.sv-line { position: absolute; background: var(--ccp-accent); }
+.sv-line { position: absolute; background: var(--pnt-accent); }
 .sv-line-v { left: 190px; top: 156px; width: 1px; height: 70px; }
 .sv-line-h { left: 310px; top: 101px; width: 86px; height: 1px; }
 
 .sv-guide {
   position: absolute;
-  transition: opacity var(--ccp-duration),
-              border-color var(--ccp-duration-fast) ease;
+  transition: opacity var(--pnt-duration),
+              border-color var(--pnt-duration-fast) ease;
 }
 .sp-vig[data-guides="off"] .sv-guide { opacity: 0; }
 .sv-guide-h {
@@ -927,25 +927,25 @@ details:not([open]) > .sp-summary .sp-caret {
   top: 226px;
   width: 210px;
   height: 0;
-  border-top: 1px dashed rgb(from var(--ccp-accent) r g b / 0.6);
+  border-top: 1px dashed rgb(from var(--pnt-accent) r g b / 0.6);
 }
 .sv-guide-v {
   left: 396px;
   top: 97px;
   width: 0;
   height: 129px;
-  border-left: 1px dashed rgb(from var(--ccp-accent) r g b / 0.6);
+  border-left: 1px dashed rgb(from var(--pnt-accent) r g b / 0.6);
 }
 
 /* Blueprint furniture: coordinate notes and the title block. The title
    block's second line is the live settings caption. */
 .sv-note {
   position: absolute;
-  font-size: var(--ccp-text-sm);
-  letter-spacing: var(--ccp-tracking-num);
+  font-size: var(--pnt-text-sm);
+  letter-spacing: var(--pnt-tracking-num);
   font-variant-numeric: tabular-nums;
   text-transform: uppercase;
-  color: var(--ccp-text-faint);
+  color: var(--pnt-text-faint);
 }
 
 .sv-title {
@@ -954,33 +954,33 @@ details:not([open]) > .sp-summary .sp-caret {
   bottom: 12px;
   display: grid;
   gap: 2px;
-  padding: var(--ccp-gap-base) var(--ccp-md);
-  background: var(--ccp-surface);
-  border: 1px solid var(--ccp-sep);
-  border-radius: var(--ccp-radius-xs);
-  font-size: var(--ccp-text-sm);
+  padding: var(--pnt-gap-base) var(--pnt-md);
+  background: var(--pnt-surface);
+  border: 1px solid var(--pnt-sep);
+  border-radius: var(--pnt-radius-xs);
+  font-size: var(--pnt-text-sm);
   text-transform: uppercase;
 }
 
 .sv-title b {
-  font-weight: var(--ccp-weight-bold);
+  font-weight: var(--pnt-weight-bold);
   letter-spacing: 0.12em;
-  color: var(--ccp-text-dim);
+  color: var(--pnt-text-dim);
 }
 
 .sv-pill {
   position: absolute;
   transform: translate(-50%, -50%);
-  background: var(--ccp-accent);
-  color: var(--ccp-on-accent);
-  font: var(--ccp-weight-medium) var(--ccp-text-sm)/1 var(--ccp-font);
-  letter-spacing: var(--ccp-tracking-num);
+  background: var(--pnt-accent);
+  color: var(--pnt-on-accent);
+  font: var(--pnt-weight-medium) var(--pnt-text-sm)/1 var(--pnt-font);
+  letter-spacing: var(--pnt-tracking-num);
   font-variant-numeric: tabular-nums;
-  padding: var(--ccp-gap-tight) var(--ccp-xs);
-  border-radius: var(--ccp-radius-sm);
+  padding: var(--pnt-gap-tight) var(--pnt-xs);
+  border-radius: var(--pnt-radius-sm);
   white-space: nowrap;
-  transition: left var(--ccp-duration), top var(--ccp-duration),
-              opacity var(--ccp-duration), box-shadow var(--ccp-duration-fast) ease;
+  transition: left var(--pnt-duration), top var(--pnt-duration),
+              opacity var(--pnt-duration), box-shadow var(--pnt-duration-fast) ease;
 }
 
 .sv-pill-a { left: 190px; top: 191px; }
@@ -999,32 +999,32 @@ details:not([open]) > .sp-summary .sp-caret {
 .sp-vig[data-hi="placement"] .sv-pill-b,
 .sp-vig[data-hi="zeros"] .sv-pill-z,
 .sp-vig[data-hi="quiet"] .sv-sel {
-  box-shadow: 0 0 0 2px rgb(from var(--ccp-accent) r g b / 0.45);
+  box-shadow: 0 0 0 2px rgb(from var(--pnt-accent) r g b / 0.45);
 }
 
-.sp-vig[data-hi="guides"] .sv-guide-h { border-top-color: var(--ccp-accent); }
-.sp-vig[data-hi="guides"] .sv-guide-v { border-left-color: var(--ccp-accent); }
+.sp-vig[data-hi="guides"] .sv-guide-h { border-top-color: var(--pnt-accent); }
+.sp-vig[data-hi="guides"] .sv-guide-v { border-left-color: var(--pnt-accent); }
 
 /* Current readout at a glance, in the controls' own words — the title
    block's second line. */
 .sv-caption {
   margin: 0;
-  font-size: var(--ccp-text-sm);
-  letter-spacing: var(--ccp-tracking-num);
+  font-size: var(--pnt-text-sm);
+  letter-spacing: var(--pnt-tracking-num);
   font-variant-numeric: tabular-nums;
-  color: var(--ccp-text-muted);
+  color: var(--pnt-text-muted);
   text-transform: none;
 }
 
 /* Specimen copy. Not part of the extension's chrome — it stands in for the
    page content inside the hover and selection specimens. */
 .sp-element-title {
-  font-size: var(--ccp-text-lg);
-  font-weight: var(--ccp-weight-bold);
-  color: var(--ccp-text);
+  font-size: var(--pnt-text-lg);
+  font-weight: var(--pnt-weight-bold);
+  color: var(--pnt-text);
 }
 
-.sp-element-body { font-size: var(--ccp-text-base); color: var(--ccp-text-muted); }
+.sp-element-body { font-size: var(--pnt-text-base); color: var(--pnt-text-muted); }
 
 /* The page's complete motion inventory dies here, zeroed rather than
    softened — same contract as content.css's block. */
@@ -1039,7 +1039,7 @@ details:not([open]) > .sp-summary .sp-caret {
   .sp-scroll,
   .sp-rail,
   .sp-section::details-content,
-  .ccp-mock,
+  .pnt-mock,
   .sp-vig,
   .sp-pay,
   .sp-pay-out [data-field],

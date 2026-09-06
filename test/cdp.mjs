@@ -33,7 +33,7 @@ const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const HEADFUL = process.argv.includes("--headful");
 const PORT = 8791;
 const DEBUG_PORT = 9333;
-const PROFILE = join(tmpdir(), "ccp-cdp-profile");
+const PROFILE = join(tmpdir(), "pnt-cdp-profile");
 
 // browser.kill() returns before Chrome has finished letting go of its profile,
 // so removing the directory straight afterwards loses a race often enough to
@@ -60,12 +60,12 @@ const BROWSERS = [
 ];
 
 function findBrowser() {
-  if (process.env.CCP_CHROME) return process.env.CCP_CHROME;
+  if (process.env.PNT_CHROME) return process.env.PNT_CHROME;
   const found = BROWSERS.find((p) => existsSync(p));
   if (!found) {
     console.error(
-      "No Chromium-based browser found. Install Chrome, or point CCP_CHROME at a binary:\n" +
-      "  CCP_CHROME='/path/to/browser' node test/cdp.mjs"
+      "No Chromium-based browser found. Install Chrome, or point PNT_CHROME at a binary:\n" +
+      "  PNT_CHROME='/path/to/browser' node test/cdp.mjs"
     );
     process.exit(1);
   }
@@ -172,10 +172,10 @@ async function waitFor(fn, what, timeout = 5000) {
 
 const HELPERS = `
   window.__t = {
-    panel: () => document.getElementById("ccp-edit-panel"),
-    row: (name) => document.querySelector('#ccp-edit-panel .ccp-edit-row[data-control="' + name + '"]'),
-    probeOn: () => window.__ccpHarness.setState(true),
-    probeOff: () => window.__ccpHarness.setState(false),
+    panel: () => document.getElementById("pnt-edit-panel"),
+    row: (name) => document.querySelector('#pnt-edit-panel .pnt-edit-row[data-control="' + name + '"]'),
+    probeOn: () => window.__pntHarness.setState(true),
+    probeOff: () => window.__pntHarness.setState(false),
     select: (sel, dx = 5, dy = 5) => {
       const el = document.querySelector(sel);
       // Selection resolves its target with elementFromPoint, so a click aimed
@@ -187,7 +187,7 @@ const HELPERS = `
       el.dispatchEvent(new MouseEvent("click", { bubbles: true, clientX: r.left + dx, clientY: r.top + dy }));
       return el;
     },
-    edit: () => document.querySelector("#ccp-toolbar .ccp-bar button.ccp-icon-btn").click(),
+    edit: () => document.querySelector("#pnt-toolbar .pnt-bar button.pnt-icon-btn").click(),
     esc: () => document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })),
     undo: (shift) => document.dispatchEvent(
       new KeyboardEvent("keydown", { key: "z", metaKey: true, shiftKey: !!shift, bubbles: true })),
@@ -195,7 +195,7 @@ const HELPERS = `
     // buttons, the typography grid steps its cells on the wheel.
     step: (name, dir) => {
       const row = window.__t.row(name);
-      const tok = row.querySelector(".ccp-edit-tok");
+      const tok = row.querySelector(".pnt-edit-tok");
       if (tok) {
         tok.querySelectorAll("button")[dir > 0 ? 1 : 0].click();
         return;
@@ -208,16 +208,16 @@ const HELPERS = `
     // on grid cells.
     resetProp: (name) => {
       const row = window.__t.row(name);
-      (row.querySelector(".ccp-edit-dot") || row.querySelector(".ccp-type-k")).click();
+      (row.querySelector(".pnt-edit-dot") || row.querySelector(".pnt-type-k")).click();
     },
     type: (name, value) => {
-      const input = window.__t.row(name).querySelector(".ccp-edit-input");
+      const input = window.__t.row(name).querySelector(".pnt-edit-input");
       input.focus();
       input.value = String(value);
       input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
     },
-    pop: () => document.getElementById("ccp-color-picker"),
-    swatch: (name) => window.__t.row(name).querySelector(".ccp-edit-swatch").click(),
+    pop: () => document.getElementById("pnt-color-picker"),
+    swatch: (name) => window.__t.row(name).querySelector(".pnt-edit-swatch").click(),
     css: (sel, prop) => getComputedStyle(document.querySelector(sel)).getPropertyValue(prop).trim(),
     // The edit guards sit capture-phase on document and swallow these five, so
     // whether one arrives is the direct measurement of "is the page still
@@ -249,9 +249,9 @@ const HELPERS = `
       navigator.clipboard.writeText = real;
       return text;
     },
-    copy: () => window.__t.press("#ccp-edit-panel .ccp-edit-copy"),
+    copy: () => window.__t.press("#pnt-edit-panel .pnt-edit-copy"),
     // The toolbar's first labelled button is Copy Code.
-    copyCode: () => window.__t.press("#ccp-toolbar .ccp-bar button"),
+    copyCode: () => window.__t.press("#pnt-toolbar .pnt-bar button"),
     // The storage stub fires the content script's onChanged listener
     // synchronously, so a pref written here is in force by the time the click
     // lands — no wait, and no polling for one.
@@ -280,7 +280,7 @@ const HELPERS = `
 async function loadHarness(ws) {
   await send(ws, "Page.navigate", { url: `http://127.0.0.1:${PORT}/test/edit-harness.html` });
   await waitFor(
-    async () => await evaluate(ws, "return !!(window.__ccpHarness && window.__ccpProbe)"),
+    async () => await evaluate(ws, "return !!(window.__pntHarness && window.__pntProbe)"),
     "the harness to boot"
   );
   // The harness re-fetches its stylesheets with a cache-busting query, so the
@@ -288,7 +288,7 @@ async function loadHarness(ws) {
   // an empty document.styleSheets and every token case fails for the wrong
   // reason. This waits for the real signal rather than guessing at a delay.
   await waitFor(
-    async () => await evaluate(ws, "return window.__ccpProbe.stylesheetsReady()"),
+    async () => await evaluate(ws, "return window.__pntProbe.stylesheetsReady()"),
     "stylesheets to parse"
   );
   await evaluate(ws, HELPERS);
@@ -358,7 +358,7 @@ try {
       window.__t.edit();
       return true;
     `);
-    const size = await evaluate(ws, "return window.__ccpProbe.tokenIndexSize()");
+    const size = await evaluate(ws, "return window.__pntProbe.tokenIndexSize()");
     if (!size || size.rules === 0) fail(`collector read ${size && size.rules} rules from the page`);
     if (!size || size.varNames === 0) fail(`collector found ${size && size.varNames} custom properties`);
   });
@@ -366,11 +366,11 @@ try {
   await check("palette offers the page's own tokens", async (fail) => {
     const names = await evaluate(ws, `
       window.__t.row("color") || window.__t.row("background-color");
-      const row = document.querySelector('#ccp-edit-panel .ccp-edit-row[data-control="color"]')
-        || document.querySelector('#ccp-edit-panel .ccp-edit-row[data-control="background-color"]');
-      row.querySelector(".ccp-edit-swatch").click();
-      const pop = document.querySelector(".ccp-edit-pop");
-      return [...pop.querySelectorAll(".ccp-edit-pal")].map((b) => b.title.split(" — ")[0]);
+      const row = document.querySelector('#pnt-edit-panel .pnt-edit-row[data-control="color"]')
+        || document.querySelector('#pnt-edit-panel .pnt-edit-row[data-control="background-color"]');
+      row.querySelector(".pnt-edit-swatch").click();
+      const pop = document.querySelector(".pnt-edit-pop");
+      return [...pop.querySelectorAll(".pnt-edit-pal")].map((b) => b.title.split(" — ")[0]);
     `);
     if (!names.length) fail("palette was empty");
     if (!names.includes("--terra")) fail(`page tokens missing; got ${JSON.stringify(names.slice(0, 5))}`);
@@ -378,13 +378,13 @@ try {
 
   // ===== 2. Regression: our own tokens leaked into the page's palette =====
   // tokens.css and content.css ride along on every page as content scripts, so
-  // the collector was offering --ccp-accent as a fill for the user's elements.
+  // the collector was offering --pnt-accent as a fill for the user's elements.
 
   await check("palette excludes our own chrome tokens", async (fail) => {
     const leaked = await evaluate(ws, `
-      const pop = document.querySelector(".ccp-edit-pop");
-      return [...pop.querySelectorAll(".ccp-edit-pal")]
-        .map((b) => b.title.split(" — ")[0]).filter((n) => n.startsWith("--ccp-"));
+      const pop = document.querySelector(".pnt-edit-pop");
+      return [...pop.querySelectorAll(".pnt-edit-pal")]
+        .map((b) => b.title.split(" — ")[0]).filter((n) => n.startsWith("--pnt-"));
     `);
     if (leaked.length) fail(`leaked ${JSON.stringify(leaked.slice(0, 4))}`);
     await evaluate(ws, "window.__t.esc(); return true;"); // close the picker
@@ -443,7 +443,7 @@ try {
     for (const [label, undoExpr] of [
       ["undo", `window.__t.undo();`],
       ["dirty dot", `window.__t.resetProp("font-size");`],
-      ["reset all", `document.querySelector("#ccp-edit-panel .ccp-edit-resetall").click();`],
+      ["reset all", `document.querySelector("#pnt-edit-panel .pnt-edit-resetall").click();`],
     ]) {
       // A fresh page each time: this asserts "one edit, one way back, nothing
       // left" and would otherwise inherit whatever the previous case left in
@@ -527,7 +527,7 @@ try {
         hadPicker,
         panel: !!window.__t.panel(),
         picker: !!window.__t.pop(),
-        editingClass: document.documentElement.classList.contains("ccp-editing"),
+        editingClass: document.documentElement.classList.contains("pnt-editing"),
         style: el.getAttribute("style"),
         size: window.__t.css(".card h2", "font-size"),
         // The page has to be live again, not just uncluttered.
@@ -538,7 +538,7 @@ try {
     if (!seen.hadPicker) fail("fixture never opened a picker to begin with");
     if (seen.panel) fail("the edit panel outlived the switch-off");
     if (seen.picker) fail("the colour picker outlived the switch-off");
-    if (seen.editingClass) fail("ccp-editing is still on <html>");
+    if (seen.editingClass) fail("pnt-editing is still on <html>");
     if (!seen.mousedown) fail("the page is still inert — mousedown never arrived");
     if (!seen.dblclick) fail("the page is still inert — dblclick never arrived");
     if (seen.style !== null) fail(`the page kept style=${JSON.stringify(seen.style)}`);
@@ -552,7 +552,7 @@ try {
     const seen = await evaluate(ws, `
       window.__t.probeOn();
       window.__t.select(".card h2");
-      return { toolbar: !!document.getElementById("ccp-toolbar") };
+      return { toolbar: !!document.getElementById("pnt-toolbar") };
     `);
     if (!seen.toolbar) fail("nothing was selectable after an off/on cycle");
   });
@@ -572,7 +572,7 @@ try {
       window.__t.swatch("background-color");
       const pop = window.__t.pop();
       const detached = !!pop && !window.__t.panel().contains(pop);
-      const closeBtn = !!pop && !!pop.querySelector(".ccp-edit-popclose");
+      const closeBtn = !!pop && !!pop.querySelector(".pnt-edit-popclose");
 
       // Re-clicking the swatch closes rather than silently rebuilding.
       window.__t.swatch("background-color");
@@ -581,7 +581,7 @@ try {
       // ...and a third click brings it back, so the toggle goes both ways.
       window.__t.swatch("background-color");
       const reopened = !!window.__t.pop();
-      window.__t.pop().querySelector(".ccp-edit-popclose").click();
+      window.__t.pop().querySelector(".pnt-edit-popclose").click();
       const afterCloseBtn = !!window.__t.pop();
 
       // Escape still steps out of the picker before it leaves Edit Mode.
@@ -617,7 +617,7 @@ try {
       window.__t.select(".v4-card", 4, 4);
       window.__t.edit();
       const row = window.__t.row("padding");
-      const tok = row && row.querySelector(".ccp-edit-tok");
+      const tok = row && row.querySelector(".pnt-edit-tok");
       const before = window.__t.css(".v4-card", "padding-top");
       if (tok) tok.querySelectorAll("button")[1].click();   // step up one rung
       return {
@@ -638,7 +638,7 @@ try {
   await check("oklch and friends reach the palette", async (fail) => {
     const seen = await evaluate(ws, `
       window.__t.swatch("background-color");
-      const pals = [...window.__t.pop().querySelectorAll(".ccp-edit-pal")];
+      const pals = [...window.__t.pop().querySelectorAll(".pnt-edit-pal")];
       return Object.fromEntries(pals.map((b) => {
         const [name, hex] = b.title.split(" — ");
         return [name, hex];
@@ -674,7 +674,7 @@ try {
       window.__t.probeOn();
       window.__t.select(".p-3-only", 3, 3);
       window.__t.edit();
-      const tok = window.__t.row("padding").querySelector(".ccp-edit-tok");
+      const tok = window.__t.row("padding").querySelector(".pnt-edit-tok");
       const before = window.__t.css(".p-3-only", "padding-top");
       if (tok) tok.querySelectorAll("button")[1].click();   // one rung up
       return {
@@ -743,7 +743,7 @@ try {
       window.__t.edit();
       const stepper = () => {
         const row = window.__t.row("padding");
-        const tok = row && row.querySelector(".ccp-edit-tok");
+        const tok = row && row.querySelector(".pnt-edit-tok");
         return tok ? tok.querySelector("b").textContent : null;
       };
       const before = stepper();
@@ -775,7 +775,7 @@ try {
       window.__t.select(".themed-title");   // color: var(--ink), which .themed overrides
       window.__t.edit();
       window.__t.swatch("color");
-      const hexIn = window.__t.pop().querySelector(".ccp-edit-hexin");
+      const hexIn = window.__t.pop().querySelector(".pnt-edit-hexin");
       hexIn.focus();
       hexIn.value = "#112233";
       hexIn.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
@@ -801,7 +801,7 @@ try {
       window.__t.select(".card p");
       window.__t.edit();
       window.__t.swatch("color");
-      const hexIn = window.__t.pop().querySelector(".ccp-edit-hexin");
+      const hexIn = window.__t.pop().querySelector(".pnt-edit-hexin");
       hexIn.focus();
       hexIn.value = "#0a0a0a";
       hexIn.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
@@ -835,7 +835,7 @@ try {
       window.__t.edit();
 
       // What a stylesheet walk can see, measured from the page rather than
-      // from the extension — the same argument __ccpProbe already makes.
+      // from the extension — the same argument __pntProbe already makes.
       const reachable = new Set();
       const walk = (rules) => {
         for (const r of rules) {
@@ -853,9 +853,9 @@ try {
       }
 
       window.__t.swatch("background-color");
-      const palette = [...window.__t.pop().querySelectorAll(".ccp-edit-pal")]
+      const palette = [...window.__t.pop().querySelectorAll(".pnt-edit-pal")]
         .map((b) => b.title.split(" — ")[0]);
-      const step = window.__t.row("font-size").querySelector(".ccp-edit-tok");
+      const step = window.__t.row("font-size").querySelector(".pnt-edit-tok");
       return {
         walkSees: [...reachable].filter((n) => n.startsWith("--imported")),
         palette,
@@ -889,7 +889,7 @@ try {
     await loadHarness(ws);
     const seen = await evaluate(ws, `
       const palette = () => Object.fromEntries(
-        [...window.__t.pop().querySelectorAll(".ccp-edit-pal")]
+        [...window.__t.pop().querySelectorAll(".pnt-edit-pal")]
           .map((b) => { const [n, h] = b.title.split(" — "); return [n, h.toLowerCase()]; })
       );
       const read = (sel, dx, dy) => {
@@ -991,13 +991,13 @@ try {
       window.__t.edit();
       window.__t.swatch("background-color");
 
-      const cap = document.querySelector("#ccp-color-picker .ccp-edit-palcap");
+      const cap = document.querySelector("#pnt-color-picker .pnt-edit-palcap");
       if (!cap) return { missing: true };
       const read = () => ({
         name: cap.querySelector("b").textContent,
         value: cap.querySelector("span").textContent,
       });
-      const pals = [...document.querySelectorAll("#ccp-color-picker .ccp-edit-pal")];
+      const pals = [...document.querySelectorAll("#pnt-color-picker .pnt-edit-pal")];
       const terra = pals.find((p) => p.title.startsWith("--terra "));
 
       const idle = read();
@@ -1049,7 +1049,7 @@ try {
       const rowsFor = (sel, dx, dy) => {
         window.__t.select(sel, dx, dy);
         window.__t.edit();
-        const out = [...document.querySelectorAll("#ccp-edit-panel .ccp-edit-row")]
+        const out = [...document.querySelectorAll("#pnt-edit-panel .pnt-edit-row")]
           .map((r) => r.dataset.control);
         window.__t.esc();   // out of Edit Mode
         window.__t.esc();   // and drop the selection
@@ -1100,16 +1100,16 @@ try {
       window.__t.edit();
       const el = document.querySelector(".card h2");
       const original = el.textContent;
-      const input = window.__t.row("text").querySelector(".ccp-edit-textin");
+      const input = window.__t.row("text").querySelector(".pnt-edit-textin");
       const shown = input.value;
       input.focus();
       input.value = "Renamed by the probe";
       input.dispatchEvent(new Event("input", { bubbles: true }));
       const after = el.textContent;
       input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
-      const dirty = window.__t.row("text").classList.contains("ccp-edit-dirty");
+      const dirty = window.__t.row("text").classList.contains("pnt-edit-dirty");
       const block = await window.__t.copy();
-      window.__t.row("text").querySelector(".ccp-edit-dot").click();
+      window.__t.row("text").querySelector(".pnt-edit-dot").click();
       const restored = el.textContent;
       window.__t.esc();
       window.__t.esc();
@@ -1135,12 +1135,12 @@ try {
       window.__t.select(".ts-on");
       window.__t.edit();
       const chipName = () => {
-        const n = document.querySelector("#ccp-edit-panel .ccp-type-name");
+        const n = document.querySelector("#pnt-edit-panel .pnt-type-name");
         return n ? n.textContent : null;
       };
       const claimed = chipName();
       // ‹ steps down the ladder: type-lg → type-sm.
-      document.querySelector("#ccp-edit-panel .ccp-type-st").click();
+      document.querySelector("#pnt-edit-panel .pnt-type-st").click();
       const el = document.querySelector(".ts-on");
       const afterStep = {
         cls: el.getAttribute("class"),
@@ -1177,12 +1177,12 @@ try {
       window.__t.probeOn();
       window.__t.select(".ts-drift");
       window.__t.edit();
-      const chip = () => document.querySelector("#ccp-edit-panel .ccp-type-chip");
-      const wasDrifted = chip().classList.contains("ccp-type-drifted");
+      const chip = () => document.querySelector("#pnt-edit-panel .pnt-type-chip");
+      const wasDrifted = chip().classList.contains("pnt-type-drifted");
       chip().click();
       const lead = window.__t.css(".ts-drift", "line-height");
       const block = await window.__t.copy();
-      const stillDrifted = chip().classList.contains("ccp-type-drifted");
+      const stillDrifted = chip().classList.contains("pnt-type-drifted");
       window.__t.esc();
       window.__t.esc();
       return { wasDrifted, lead, block, stillDrifted };
@@ -1201,8 +1201,8 @@ try {
       window.__t.probeOn();
       window.__t.select(".stem-title");
       window.__t.edit();
-      const name = document.querySelector("#ccp-edit-panel .ccp-type-name");
-      const arrows = document.querySelectorAll("#ccp-edit-panel .ccp-type-st").length;
+      const name = document.querySelector("#pnt-edit-panel .pnt-type-name");
+      const arrows = document.querySelectorAll("#pnt-edit-panel .pnt-type-st").length;
       window.__t.esc();
       window.__t.esc();
       return { name: name ? name.textContent : null, arrows };
@@ -1353,7 +1353,7 @@ try {
                          "copyText", "copyLayout", "copyStyles", "copyProps"]) off[key] = "off";
       window.__t.prefs({ ...off, copyHtml: "none", copyHtmlFallback: "off" });
       const payload = await window.__t.copyCode();
-      const toast = document.querySelector("#ccp-toast, .ccp-toast");
+      const toast = document.querySelector("#pnt-toast, .pnt-toast");
       return { payload, toast: toast ? toast.textContent : null };
     `);
     if (seen.payload !== null) fail(`wrote ${JSON.stringify(seen.payload)} to the clipboard`);
@@ -1399,7 +1399,7 @@ try {
     if (!body.includes("{")) fail(`no declarations in the styles field: ${body}`);
     if (!/\.card/.test(body)) fail(`the element's own rule is missing: ${body}`);
     // Our own stylesheets ride along on every page; they are never the page's.
-    if (/ccp-/.test(body)) fail(`our own chrome leaked into the styles field: ${body}`);
+    if (/pnt-/.test(body)) fail(`our own chrome leaked into the styles field: ${body}`);
   });
 
   await check("copy · a page with no framework offers no props", async (fail) => {

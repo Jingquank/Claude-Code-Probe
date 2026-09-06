@@ -80,8 +80,8 @@ const RULES = [
   // and nowhere else in content.js. (The agent's own copies live in
   // shader-agent.js, which this audit deliberately does not parse: that file
   // receives the verbs, it does not originate them.)
-  { name: 'send "CCP_SHADER_SET"', re: /["']CCP_SHADER_SET["']/ },
-  { name: 'send "CCP_SHADER_CLEAR"', re: /["']CCP_SHADER_CLEAR["']/ },
+  { name: 'send "PNT_SHADER_SET"', re: /["']PNT_SHADER_SET["']/ },
+  { name: 'send "PNT_SHADER_CLEAR"', re: /["']PNT_SHADER_CLEAR["']/ },
   // The third thing behind the door: the element's own words. The panel's
   // text field writes them through nodeValue — chosen precisely because the
   // extension's own chrome builds itself with textContent and never touches
@@ -187,8 +187,8 @@ check("the audit detects a planted violation", (fail) => {
     ["el.removeAttribute(attr);", "setAttribute/removeAttribute with a computed name"],
     ["el.setAttribute(ATTRS[i], v);", "setAttribute/removeAttribute with a computed name"],
     // A uniform write escaping the door would look exactly like this.
-    ['postShaderMessage("CCP_SHADER_SET", { name, value });', 'send "CCP_SHADER_SET"'],
-    ["window.postMessage({ type: 'CCP_SHADER_CLEAR' }, o);", 'send "CCP_SHADER_CLEAR"'],
+    ['postShaderMessage("PNT_SHADER_SET", { name, value });', 'send "PNT_SHADER_SET"'],
+    ["window.postMessage({ type: 'PNT_SHADER_CLEAR' }, o);", 'send "PNT_SHADER_CLEAR"'],
     // ...and a stray text write like this.
     ["node.nodeValue = wanted;", "nodeValue assignment"],
   ];
@@ -204,9 +204,9 @@ check("the audit ignores the extension's own chrome", (fail) => {
   const benign = [
     'node.style.left = Math.round(x) + "px";',
     'labelEl.style.top = top + "px";',
-    'node.classList.add("ccp-no-transition");',
+    'node.classList.add("pnt-no-transition");',
     "node.className = cls;",
-    'document.documentElement.classList.add("ccp-editing");',
+    'document.documentElement.classList.add("pnt-editing");',
     'settingsButtonEl.setAttribute("aria-label", "Probe settings");',
     'path.setAttribute("d", roundedRectPath(w, h, r));',
     'ants.setAttribute("viewBox", `0 0 ${w} ${h}`);',

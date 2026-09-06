@@ -1,6 +1,6 @@
 # Selection chrome placement — design & implementation plan
 
-How `#ccp-label` and `#ccp-toolbar` get positioned when an element is hovered or
+How `#pnt-label` and `#pnt-toolbar` get positioned when an element is hovered or
 selected. Replaces two independent positioners with one layout pass.
 
 ---
@@ -134,15 +134,15 @@ full matrix in both states.
    `updateOverlay` + `layoutChrome`.
 6. **Split animate from track.** Selection changes keep the 150ms glide;
    viewport-driven relayout must be instant or the chrome smears while scrolling.
-   Toggle a `.ccp-no-transition` class rather than writing inline `transition`.
+   Toggle a `.pnt-no-transition` class rather than writing inline `transition`.
 
 ### `content.css`
 
-7. `#ccp-label` — `max-width: min(460px, calc(100vw - 8px))`, plus `max-height`
+7. `#pnt-label` — `max-width: min(460px, calc(100vw - 8px))`, plus `max-height`
    (set inline by the layout pass) and `overflow: hidden` for the shrink step.
-8. `#ccp-toolbar` — collapse buttons to icon-only below ~470px so it stops
+8. `#pnt-toolbar` — collapse buttons to icon-only below ~470px so it stops
    exceeding narrow viewports.
-9. Add `.ccp-no-transition { transition: none !important; }`.
+9. Add `.pnt-no-transition { transition: none !important; }`.
 
 ### Keeping the spec honest
 
@@ -159,7 +159,7 @@ classic-script `placement.js` from the module in `build.sh`.
 
 1. Iterate in the simulator until the matrix is green — **done, 8280/8280**
 2. Port to `content.js` / `content.css`
-3. Reload the extension, open the harness, turn on probe mode, press `r`
+3. Reload the extension, open the harness, turn on point mode, press `r`
 4. Confirm the live sweep reports `sim matches live on every case`
 5. Spot-check the two originally reported cases by hand
 
@@ -178,5 +178,5 @@ classic-script `placement.js` from the module in `build.sh`.
 | `test/harness.html` | browser harness: simulate (`s`), live sweep (`r`), walk cases (`n`/`p`) |
 
 Serve over HTTP (`python3 -m http.server 8765`) — `file://` needs the extension's
-"Allow access to file URLs". The harness is keyboard-driven because probe mode
+"Allow access to file URLs". The harness is keyboard-driven because point mode
 captures every click on the page.

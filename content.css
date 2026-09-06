@@ -3,106 +3,106 @@
    test/tokens.mjs fails the build if one does. */
 
 /* ===== Overlay Container ===== */
-#ccp-overlay-container {
+#pnt-overlay-container {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: var(--ccp-z-overlay);
+  z-index: var(--pnt-z-overlay);
   pointer-events: none;
 }
 
 /* Every box carries the inspected element's own corner radii, written per corner
    from JS — see applyRadii() in content.js for why a single calc() won't do. */
-#ccp-overlay-container > div,
-#ccp-overlay-container > svg {
+#pnt-overlay-container > div,
+#pnt-overlay-container > svg {
   position: fixed;
   box-sizing: border-box;
-  transition: top var(--ccp-duration) var(--ccp-ease),
-              left var(--ccp-duration) var(--ccp-ease),
-              width var(--ccp-duration) var(--ccp-ease),
-              height var(--ccp-duration) var(--ccp-ease),
-              opacity var(--ccp-duration) ease;
+  transition: top var(--pnt-duration) var(--pnt-ease),
+              left var(--pnt-duration) var(--pnt-ease),
+              width var(--pnt-duration) var(--pnt-ease),
+              height var(--pnt-duration) var(--pnt-ease),
+              opacity var(--pnt-duration) ease;
 }
 
 /* Hover — box-model hints, with the outline itself drawn as marching dashes.
    The padding band borrows the id colour so the two bands stay distinguishable
    in every theme without needing tokens of their own. */
-#ccp-margin-box  { border: 1px dashed rgb(from var(--ccp-accent) r g b / 0.3); }
-#ccp-padding-box { border: 1px dashed rgb(from var(--ccp-syntax-id) r g b / 0.3); }
-#ccp-content-box { border: none; }
+#pnt-margin-box  { border: 1px dashed rgb(from var(--pnt-accent) r g b / 0.3); }
+#pnt-padding-box { border: 1px dashed rgb(from var(--pnt-syntax-id) r g b / 0.3); }
+#pnt-content-box { border: none; }
 
 /* An SVG path rather than a border, so the dashes travel around the corner arc
    instead of breaking at it — and so per-corner radii come out right. */
-#ccp-ants { overflow: visible; }
-#ccp-ants path {
+#pnt-ants { overflow: visible; }
+#pnt-ants path {
   fill: none;
-  stroke: rgb(from var(--ccp-accent) r g b / 0.85);
-  stroke-width: var(--ccp-ring);
+  stroke: rgb(from var(--pnt-accent) r g b / 0.85);
+  stroke-width: var(--pnt-ring);
   stroke-dasharray: 7 5;
-  animation: ccp-march 0.55s linear infinite;
+  animation: pnt-march 0.55s linear infinite;
 }
-@keyframes ccp-march { to { stroke-dashoffset: -12; } }
+@keyframes pnt-march { to { stroke-dashoffset: -12; } }
 
 /* Selected — a gradient sweeping the stroke, and the same gradient blurred inward.
    Both are one oversized square spun by transform: composited, so the cost doesn't
    grow with the element. */
-#ccp-border-box,
-#ccp-bloom { display: none; }
+#pnt-border-box,
+#pnt-bloom { display: none; }
 
-#ccp-overlay-container.ccp-selected #ccp-ants { display: none; }
-#ccp-overlay-container.ccp-selected #ccp-border-box,
-#ccp-overlay-container.ccp-selected #ccp-bloom { display: block; }
-#ccp-overlay-container.ccp-selected #ccp-margin-box,
-#ccp-overlay-container.ccp-selected #ccp-padding-box {
+#pnt-overlay-container.pnt-selected #pnt-ants { display: none; }
+#pnt-overlay-container.pnt-selected #pnt-border-box,
+#pnt-overlay-container.pnt-selected #pnt-bloom { display: block; }
+#pnt-overlay-container.pnt-selected #pnt-margin-box,
+#pnt-overlay-container.pnt-selected #pnt-padding-box {
   border-color: transparent;
 }
 
-#ccp-border-box {
-  padding: var(--ccp-ring);
+#pnt-border-box {
+  padding: var(--pnt-ring);
   overflow: hidden;
-  -webkit-mask: linear-gradient(var(--ccp-mask) 0 0) content-box, linear-gradient(var(--ccp-mask) 0 0);
+  -webkit-mask: linear-gradient(var(--pnt-mask) 0 0) content-box, linear-gradient(var(--pnt-mask) 0 0);
   -webkit-mask-composite: xor;
-  mask: linear-gradient(var(--ccp-mask) 0 0) content-box, linear-gradient(var(--ccp-mask) 0 0);
+  mask: linear-gradient(var(--pnt-mask) 0 0) content-box, linear-gradient(var(--pnt-mask) 0 0);
   mask-composite: exclude;
 }
 
-#ccp-bloom {
+#pnt-bloom {
   overflow: hidden;
-  -webkit-mask: radial-gradient(closest-side, transparent 25%, var(--ccp-mask) 95%);
-  mask: radial-gradient(closest-side, transparent 25%, var(--ccp-mask) 95%);
+  -webkit-mask: radial-gradient(closest-side, transparent 25%, var(--pnt-mask) 95%);
+  mask: radial-gradient(closest-side, transparent 25%, var(--pnt-mask) 95%);
 }
 
-.ccp-spin {
+.pnt-spin {
   position: absolute;
   top: 50%;
   left: 50%;
-  animation: ccp-spin 10s linear infinite;
+  animation: pnt-spin 10s linear infinite;
   will-change: transform;
 }
 
-@keyframes ccp-spin {
+@keyframes pnt-spin {
   from { transform: translate(-50%, -50%) rotate(0deg); }
   to   { transform: translate(-50%, -50%) rotate(360deg); }
 }
 
-#ccp-sweep-spin {
+#pnt-sweep-spin {
   background: conic-gradient(
     transparent 0deg,
-    var(--ccp-accent) 90deg,
-    var(--ccp-accent-light) 180deg,
-    var(--ccp-accent) 270deg,
+    var(--pnt-accent) 90deg,
+    var(--pnt-accent-light) 180deg,
+    var(--pnt-accent) 270deg,
     transparent 360deg
   );
 }
 
-#ccp-bloom-spin {
+#pnt-bloom-spin {
   background: conic-gradient(
     transparent 0deg,
-    rgb(from var(--ccp-accent) r g b / 0.75) 90deg,
-    rgb(from var(--ccp-accent-light) r g b / 0.6) 180deg,
-    rgb(from var(--ccp-accent) r g b / 0.75) 270deg,
+    rgb(from var(--pnt-accent) r g b / 0.75) 90deg,
+    rgb(from var(--pnt-accent-light) r g b / 0.6) 180deg,
+    rgb(from var(--pnt-accent) r g b / 0.75) 270deg,
     transparent 360deg
   );
   filter: blur(16px);
@@ -110,20 +110,20 @@
 
 /* Elements too big for the effect to read (a whole page, say) get a plain stroke
    rather than a spun square the size of the document */
-#ccp-overlay-container.ccp-plain #ccp-sweep-spin { display: none; }
-#ccp-overlay-container.ccp-plain #ccp-border-box { background: var(--ccp-accent); }
-#ccp-overlay-container.ccp-plain #ccp-bloom { display: none; }
+#pnt-overlay-container.pnt-plain #pnt-sweep-spin { display: none; }
+#pnt-overlay-container.pnt-plain #pnt-border-box { background: var(--pnt-accent); }
+#pnt-overlay-container.pnt-plain #pnt-bloom { display: none; }
 
 /* Everything that moves on its own has to stop here. Clawd's walk and bob were
    missing from this list — the mascot kept pacing for anyone who had asked the
    OS for stillness. The marquee is included for the same reason. */
 @media (prefers-reduced-motion: reduce) {
-  #ccp-ants path,
-  .ccp-spin,
-  #ccp-label .ccp-clawd,
-  #ccp-label .ccp-clawd svg,
-  #ccp-label .ccp-marquee-inner,
-  #ccp-edit-flash.ccp-edit-flashing {
+  #pnt-ants path,
+  .pnt-spin,
+  #pnt-label .pnt-clawd,
+  #pnt-label .pnt-clawd svg,
+  #pnt-label .pnt-marquee-inner,
+  #pnt-edit-flash.pnt-edit-flashing {
     animation: none;
   }
 
@@ -131,7 +131,7 @@
      itself, so zeroing the animation would remove information rather than
      motion. It stays put and visible instead — the toast still says what
      happened, and the ring says where. */
-  #ccp-edit-flash.ccp-edit-flashing {
+  #pnt-edit-flash.pnt-edit-flashing {
     opacity: 1;
   }
 
@@ -143,12 +143,12 @@
      Scoped through the container on purpose. Everything else in this block
      quiets a rule declared ABOVE it and so wins on source order; the tether's
      transitions are declared below, in its own section, and a matching
-     `#ccp-tether .ccp-tether-tick` at (1,1,0) would silently lose to them.
+     `#pnt-tether .pnt-tether-tick` at (1,1,0) would silently lose to them.
      Adding the container makes it (2,1,0) — the same specificity-over-order
      argument the Edit Mode section makes, and for the same reason: a section
      reorder must not be able to break it. */
-  #ccp-overlay-container #ccp-tether .ccp-tether-tick,
-  #ccp-overlay-container #ccp-tether .ccp-tether-seg {
+  #pnt-overlay-container #pnt-tether .pnt-tether-tick,
+  #pnt-overlay-container #pnt-tether .pnt-tether-seg {
     transition: none;
   }
 }
@@ -156,74 +156,74 @@
 /* ===== Redline =====
    Held-Option spacing measurements. The nodes glide between hover targets on
    the overlay's own curve; renderRedline() lifts them out of the glide with
-   .ccp-no-transition when tracking scroll, when a node fades back in, and
+   .pnt-no-transition when tracking scroll, when a node fades back in, and
    when a guide changes orientation. Nothing here self-animates — the dashed
    guides deliberately don't march — so, like the overlay glide itself, this
    section adds nothing to the reduced-motion block above (which quiets
    animations, not positional transitions).
 
-   The wrapper is a direct child of #ccp-overlay-container and never moves;
+   The wrapper is a direct child of #pnt-overlay-container and never moves;
    the measurement nodes are its children, which keeps them out of reach of
    the blanket `> div` glide at the top of this file — their transitions are
    declared here, where the per-frame snap logic can reason about them. */
-#ccp-redline {
+#pnt-redline {
   position: fixed;
   inset: 0;
   display: none;
 }
 
-.ccp-redlining #ccp-redline {
+.pnt-redlining #pnt-redline {
   display: block;
 }
 
 /* border-radius is in the list for the hover box's corner morph; it is inert
    on the square nodes. Pills size to their text — width/height never tween. */
-#ccp-redline .ccp-redline-hover,
-#ccp-redline .ccp-redline-line,
-#ccp-redline .ccp-redline-guide-h,
-#ccp-redline .ccp-redline-guide-v,
-#ccp-redline .ccp-redline-pill {
-  transition: top var(--ccp-duration) var(--ccp-ease),
-              left var(--ccp-duration) var(--ccp-ease),
-              width var(--ccp-duration) var(--ccp-ease),
-              height var(--ccp-duration) var(--ccp-ease),
-              border-radius var(--ccp-duration) var(--ccp-ease),
-              opacity var(--ccp-duration) ease;
+#pnt-redline .pnt-redline-hover,
+#pnt-redline .pnt-redline-line,
+#pnt-redline .pnt-redline-guide-h,
+#pnt-redline .pnt-redline-guide-v,
+#pnt-redline .pnt-redline-pill {
+  transition: top var(--pnt-duration) var(--pnt-ease),
+              left var(--pnt-duration) var(--pnt-ease),
+              width var(--pnt-duration) var(--pnt-ease),
+              height var(--pnt-duration) var(--pnt-ease),
+              border-radius var(--pnt-duration) var(--pnt-ease),
+              opacity var(--pnt-duration) ease;
 }
 
-#ccp-redline .ccp-redline-hover {
+#pnt-redline .pnt-redline-hover {
   position: absolute;
   box-sizing: border-box;
-  border: 1px solid var(--ccp-accent);
+  border: 1px solid var(--pnt-accent);
 }
 
-#ccp-redline .ccp-redline-line {
+#pnt-redline .pnt-redline-line {
   position: absolute;
-  background: var(--ccp-accent);
+  background: var(--pnt-accent);
 }
 
-#ccp-redline .ccp-redline-guide-h {
+#pnt-redline .pnt-redline-guide-h {
   position: absolute;
   height: 0;
-  border-top: 1px dashed rgb(from var(--ccp-accent) r g b / 0.6);
+  border-top: 1px dashed rgb(from var(--pnt-accent) r g b / 0.6);
 }
 
-#ccp-redline .ccp-redline-guide-v {
+#pnt-redline .pnt-redline-guide-v {
   position: absolute;
   width: 0;
-  border-left: 1px dashed rgb(from var(--ccp-accent) r g b / 0.6);
+  border-left: 1px dashed rgb(from var(--pnt-accent) r g b / 0.6);
 }
 
-#ccp-redline .ccp-redline-pill {
+#pnt-redline .pnt-redline-pill {
   position: absolute;
   transform: translate(-50%, -50%);
-  background: var(--ccp-accent);
-  color: var(--ccp-on-accent);
-  font: var(--ccp-weight-medium) var(--ccp-text-sm)/1 var(--ccp-font);
-  letter-spacing: var(--ccp-tracking-num);
+  background: var(--pnt-accent);
+  color: var(--pnt-on-accent);
+  font: var(--pnt-weight-medium) var(--pnt-text-sm)/1 var(--pnt-font);
+  letter-spacing: var(--pnt-tracking-num);
   font-variant-numeric: tabular-nums;
-  padding: var(--ccp-gap-tight) var(--ccp-xs);
-  border-radius: var(--ccp-radius-sm);
+  padding: var(--pnt-gap-tight) var(--pnt-xs);
+  border-radius: var(--pnt-radius-sm);
   white-space: nowrap;
 }
 
@@ -232,11 +232,11 @@
    sits under the measurement lines; the marching-ants outline stays, because
    you must still see what you're measuring from. Opacity, so the container's
    own transition fades them out and back. */
-.ccp-redline-quiet.ccp-redlining #ccp-margin-box,
-.ccp-redline-quiet.ccp-redlining #ccp-padding-box,
-.ccp-redline-quiet.ccp-redlining #ccp-content-box,
-.ccp-redline-quiet.ccp-redlining #ccp-bloom,
-.ccp-redline-quiet.ccp-redlining .ccp-spin {
+.pnt-redline-quiet.pnt-redlining #pnt-margin-box,
+.pnt-redline-quiet.pnt-redlining #pnt-padding-box,
+.pnt-redline-quiet.pnt-redlining #pnt-content-box,
+.pnt-redline-quiet.pnt-redlining #pnt-bloom,
+.pnt-redline-quiet.pnt-redlining .pnt-spin {
   opacity: 0;
 }
 
@@ -245,10 +245,10 @@
    sizes); opacity would leave the toolbar hit-testable and the label in
    elementFromPoint's way. visibility keeps both laid out — so they reappear
    exactly where layoutChrome kept them — while the page underneath becomes
-   a measurable redline target. Same precedent as #ccp-settings-btn.ccp-yielded
+   a measurable redline target. Same precedent as #pnt-settings-btn.pnt-yielded
    below, for the same reason. */
-.ccp-redlining #ccp-label,
-.ccp-redlining #ccp-toolbar {
+.pnt-redlining #pnt-label,
+.pnt-redlining #pnt-toolbar {
   visibility: hidden;
   pointer-events: none;
 }
@@ -261,7 +261,7 @@
    pointer-events gets the same treatment, or the invisible buttons would still
    swallow the clicks that redline's re-anchoring depends on. The label needs
    none of this — its children never reset, so they inherit the hide. */
-.ccp-redlining #ccp-toolbar * {
+.pnt-redlining #pnt-toolbar * {
   visibility: hidden !important;
   pointer-events: none !important;
 }
@@ -284,28 +284,28 @@
    Nothing here self-animates, so like the redline nodes this section adds no
    animations to the reduced-motion block; its transitions are listed there
    only so a stated preference for stillness also stops the glide. */
-#ccp-tether {
+#pnt-tether {
   position: fixed;
   inset: 0;
   display: none;
 }
 
-.ccp-editing #ccp-tether {
+.pnt-editing #pnt-tether {
   display: block;
 }
 
-#ccp-tether .ccp-tether-tick,
-#ccp-tether .ccp-tether-seg {
+#pnt-tether .pnt-tether-tick,
+#pnt-tether .pnt-tether-seg {
   position: fixed;
-  transition: top var(--ccp-duration) var(--ccp-ease),
-              left var(--ccp-duration) var(--ccp-ease),
-              width var(--ccp-duration) var(--ccp-ease),
-              height var(--ccp-duration) var(--ccp-ease),
-              opacity var(--ccp-duration) var(--ccp-ease);
+  transition: top var(--pnt-duration) var(--pnt-ease),
+              left var(--pnt-duration) var(--pnt-ease),
+              width var(--pnt-duration) var(--pnt-ease),
+              height var(--pnt-duration) var(--pnt-ease),
+              opacity var(--pnt-duration) var(--pnt-ease);
 }
 
-#ccp-tether .ccp-tether-tick {
-  background: var(--ccp-accent);
+#pnt-tether .pnt-tether-tick {
+  background: var(--pnt-accent);
   border-radius: 1px;
 }
 
@@ -332,13 +332,13 @@
    stroke, the further off. Pulling back half the weight puts the stroke's
    centreline back on the geometric path, which is what "the run lands on the
    middle of the tick" has always meant. */
-#ccp-tether .ccp-tether-seg-h {
-  border-top: 2px dashed rgb(from var(--ccp-accent) r g b / 0.55);
+#pnt-tether .pnt-tether-seg-h {
+  border-top: 2px dashed rgb(from var(--pnt-accent) r g b / 0.55);
   margin-top: -1px;
 }
 
-#ccp-tether .ccp-tether-seg-v {
-  border-left: 2px dashed rgb(from var(--ccp-accent) r g b / 0.55);
+#pnt-tether .pnt-tether-seg-v {
+  border-left: 2px dashed rgb(from var(--pnt-accent) r g b / 0.55);
   margin-left: -1px;
 }
 
@@ -346,12 +346,12 @@
    The ticks lengthen and the run comes up to full strength. Nothing moves
    closer to the element — the clearance is fixed, and amplifying it would be
    the one change that could break the constraint. */
-.ccp-tether-loud #ccp-tether .ccp-tether-seg-h {
-  border-top-color: var(--ccp-accent);
+.pnt-tether-loud #pnt-tether .pnt-tether-seg-h {
+  border-top-color: var(--pnt-accent);
 }
 
-.ccp-tether-loud #ccp-tether .ccp-tether-seg-v {
-  border-left-color: var(--ccp-accent);
+.pnt-tether-loud #pnt-tether .pnt-tether-seg-v {
+  border-left-color: var(--pnt-accent);
 }
 
 /* ===== Edit Mode =====
@@ -366,31 +366,31 @@
    judge a 2px stroke through an accent stroke, or watch a corner round under
    one. The whole box goes, and the tether takes over the job of saying which
    element this panel belongs to, working only in the space outside it. */
-.ccp-editing #ccp-label,
-.ccp-editing #ccp-toolbar {
+.pnt-editing #pnt-label,
+.pnt-editing #pnt-toolbar {
   visibility: hidden;
   pointer-events: none;
 }
-.ccp-editing #ccp-toolbar * {
+.pnt-editing #pnt-toolbar * {
   visibility: hidden !important;
   pointer-events: none !important;
 }
-/* Scoped through the container *and* .ccp-selected on purpose: the rule that
-   turns these on for a selection is `#ccp-overlay-container.ccp-selected
-   #ccp-bloom` at (2,1,0), so a plain `.ccp-editing #ccp-bloom` at (1,1,0)
+/* Scoped through the container *and* .pnt-selected on purpose: the rule that
+   turns these on for a selection is `#pnt-overlay-container.pnt-selected
+   #pnt-bloom` at (2,1,0), so a plain `.pnt-editing #pnt-bloom` at (1,1,0)
    loses and the bloom keeps rotating behind the panel. Matching the shape and
    adding the mode class makes it (2,2,0) — a win on specificity rather than on
    source order, which would break the first time these sections were reordered. */
-.ccp-editing #ccp-overlay-container.ccp-selected #ccp-sweep-spin,
-.ccp-editing #ccp-overlay-container.ccp-selected #ccp-bloom,
-.ccp-editing #ccp-overlay-container.ccp-selected #ccp-border-box {
+.pnt-editing #pnt-overlay-container.pnt-selected #pnt-sweep-spin,
+.pnt-editing #pnt-overlay-container.pnt-selected #pnt-bloom,
+.pnt-editing #pnt-overlay-container.pnt-selected #pnt-border-box {
   display: none;
 }
 /* The box-model tints go with it. They are drawn on the element's own padding
    and content areas, which is the interior the tether exists to keep clear. */
-.ccp-editing #ccp-overlay-container.ccp-selected #ccp-margin-box,
-.ccp-editing #ccp-overlay-container.ccp-selected #ccp-padding-box,
-.ccp-editing #ccp-overlay-container.ccp-selected #ccp-content-box {
+.pnt-editing #pnt-overlay-container.pnt-selected #pnt-margin-box,
+.pnt-editing #pnt-overlay-container.pnt-selected #pnt-padding-box,
+.pnt-editing #pnt-overlay-container.pnt-selected #pnt-content-box {
   display: none;
 }
 
@@ -398,28 +398,28 @@
    so the measurement has the page to itself. The panel's roots declare
    `all: initial` too, so the descendant rule is as load-bearing here as it is
    above. Releasing Option brings it back where it was. */
-.ccp-redlining #ccp-edit-panel {
+.pnt-redlining #pnt-edit-panel {
   visibility: hidden;
   pointer-events: none;
 }
-.ccp-redlining #ccp-edit-panel * {
+.pnt-redlining #pnt-edit-panel * {
   visibility: hidden !important;
   pointer-events: none !important;
 }
 
 /* ===== Element Label ===== */
-#ccp-label {
+#pnt-label {
   position: fixed;
-  background: var(--ccp-surface);
-  color: var(--ccp-text);
-  font: var(--ccp-text-base)/var(--ccp-leading-base) var(--ccp-font);
-  padding: var(--ccp-sm) var(--ccp-md);
-  border-radius: var(--ccp-radius-md);
+  background: var(--pnt-surface);
+  color: var(--pnt-text);
+  font: var(--pnt-text-base)/var(--pnt-leading-base) var(--pnt-font);
+  padding: var(--pnt-sm) var(--pnt-md);
+  border-radius: var(--pnt-radius-md);
   white-space: nowrap;
   pointer-events: none;
-  z-index: var(--ccp-z-chrome);
-  border: 1px solid rgb(from var(--ccp-accent) r g b / 0.25);
-  box-shadow: var(--ccp-shadow-card);
+  z-index: var(--pnt-z-chrome);
+  border: 1px solid rgb(from var(--pnt-accent) r g b / 0.25);
+  box-shadow: var(--pnt-shadow-card);
   /* box-sizing so the max-height the layout pass sets means the whole box */
   box-sizing: border-box;
   max-width: min(460px, calc(100vw - 8px));
@@ -427,24 +427,24 @@
      hidden only when the label has to be capped to fit a very short viewport */
   overflow: visible;
   display: block;
-  transition: top var(--ccp-duration) var(--ccp-ease),
-              left var(--ccp-duration) var(--ccp-ease),
-              opacity var(--ccp-duration-fast) ease;
+  transition: top var(--pnt-duration) var(--pnt-ease),
+              left var(--pnt-duration) var(--pnt-ease),
+              opacity var(--pnt-duration-fast) ease;
 }
 
 /* Clawd mascot — escapes the popup and walks along the top edge */
-#ccp-label .ccp-clawd {
+#pnt-label .pnt-clawd {
   position: absolute;
   top: -17px;
-  left: var(--ccp-xs);
+  left: var(--pnt-xs);
   width: 26px;
   height: 20px;
   pointer-events: none;
-  animation: ccp-clawd-walk 24s linear infinite;
+  animation: pnt-clawd-walk 24s linear infinite;
   transform-origin: 50% 100%;
 }
 
-@keyframes ccp-clawd-walk {
+@keyframes pnt-clawd-walk {
   0%   { left: 4px;                    transform: scaleX(1); }
   47%  { left: calc(100% - 30px);      transform: scaleX(1); }
   50%  { left: calc(100% - 30px);      transform: scaleX(-1); }
@@ -452,14 +452,14 @@
   100% { left: 4px;                    transform: scaleX(1); }
 }
 
-#ccp-label .ccp-clawd svg {
+#pnt-label .pnt-clawd svg {
   width: 100%;
   height: 100%;
   overflow: visible;
-  animation: ccp-clawd-bob 1.1s ease-in-out infinite;
+  animation: pnt-clawd-bob 1.1s ease-in-out infinite;
 }
 
-@keyframes ccp-clawd-bob {
+@keyframes pnt-clawd-bob {
   0%, 100% { transform: translateY(0); }
   40% { transform: translateY(-5px); }
   60% { transform: translateY(-5px); }
@@ -468,82 +468,82 @@
 }
 
 /* Clawd's sparkle and blink are <animate> elements inside CLAWD_SVG itself, not
-   CSS — the ccp-sparkle and ccp-blink keyframes that used to sit here were
+   CSS — the pnt-sparkle and pnt-blink keyframes that used to sit here were
    referenced by no rule and have been removed. */
 
 /* Clawd's palette. These are rules rather than fill="" attributes on the SVG
    because var() is not resolved inside an SVG presentation attribute. Not scoped
-   under #ccp-label: CLAWD_MINI also appears inside a toolbar button and the
+   under #pnt-label: CLAWD_MINI also appears inside a toolbar button and the
    toast, both of which are outside the label. */
-.ccp-clawd-body   { fill: var(--ccp-clawd-body); }
-.ccp-clawd-leg    { fill: var(--ccp-clawd-leg); }
-.ccp-clawd-eye    { fill: var(--ccp-clawd-eye); }
-.ccp-clawd-spark  { fill: var(--ccp-accent); }
-.ccp-clawd-shadow { fill: var(--ccp-clawd-shadow); }
+.pnt-clawd-body   { fill: var(--pnt-clawd-body); }
+.pnt-clawd-leg    { fill: var(--pnt-clawd-leg); }
+.pnt-clawd-eye    { fill: var(--pnt-clawd-eye); }
+.pnt-clawd-spark  { fill: var(--pnt-accent); }
+.pnt-clawd-shadow { fill: var(--pnt-clawd-shadow); }
 
-#ccp-label .ccp-label-content {
+#pnt-label .pnt-label-content {
   display: flex;
   flex-direction: column;
   min-width: 0;
   overflow: hidden;
 }
 
-#ccp-label .ccp-label-line {
+#pnt-label .pnt-label-line {
   display: flex;
   align-items: center;
-  gap: var(--ccp-sm);
+  gap: var(--pnt-sm);
 }
 
 /* Identity line — primary, slightly heavier */
-#ccp-label .ccp-line-identity {
-  font-size: var(--ccp-text-lg);
+#pnt-label .pnt-line-identity {
+  font-size: var(--pnt-text-lg);
 }
 
 /* Vertical rhythm — tight within a category, generous between categories */
-#ccp-label .ccp-label-line + .ccp-label-line {
-  margin-top: var(--ccp-gap-base);
+#pnt-label .pnt-label-line + .pnt-label-line {
+  margin-top: var(--pnt-gap-base);
 }
-#ccp-label .ccp-line-identity + .ccp-line-text {
-  margin-top: var(--ccp-gap-tight);
+#pnt-label .pnt-line-identity + .pnt-line-text {
+  margin-top: var(--pnt-gap-tight);
 }
-#ccp-label .ccp-line-meta + .ccp-line-visual {
-  margin-top: var(--ccp-gap-pair);
+#pnt-label .pnt-line-meta + .pnt-line-visual {
+  margin-top: var(--pnt-gap-pair);
 }
-#ccp-label .ccp-label-line + .ccp-line-breadcrumb {
-  margin-top: var(--ccp-gap-section);
-}
-
-#ccp-label .ccp-label-tag {
-  color: var(--ccp-accent);
-  font-weight: var(--ccp-weight-bold);
+#pnt-label .pnt-label-line + .pnt-line-breadcrumb {
+  margin-top: var(--pnt-gap-section);
 }
 
-#ccp-label .ccp-label-id {
-  color: var(--ccp-syntax-id);
-  font-weight: var(--ccp-weight-medium);
+#pnt-label .pnt-label-tag {
+  color: var(--pnt-accent);
+  font-weight: var(--pnt-weight-bold);
 }
 
-#ccp-label .ccp-label-class {
-  color: var(--ccp-syntax-class);
+#pnt-label .pnt-label-id {
+  color: var(--pnt-syntax-id);
+  font-weight: var(--pnt-weight-medium);
 }
 
-#ccp-label .ccp-label-size {
-  color: var(--ccp-text-faint);
+#pnt-label .pnt-label-class {
+  color: var(--pnt-syntax-class);
+}
+
+#pnt-label .pnt-label-size {
+  color: var(--pnt-text-faint);
   margin-left: auto;
-  padding-left: var(--ccp-md);
-  font-size: var(--ccp-text-sm);
+  padding-left: var(--pnt-md);
+  font-size: var(--pnt-text-sm);
   font-variant-numeric: tabular-nums;
-  letter-spacing: var(--ccp-tracking-num);
+  letter-spacing: var(--pnt-tracking-num);
 }
 
-#ccp-label .ccp-label-prop {
-  color: var(--ccp-text-muted);
-  font-size: var(--ccp-text-sm);
+#pnt-label .pnt-label-prop {
+  color: var(--pnt-text-muted);
+  font-size: var(--pnt-text-sm);
 }
 
-#ccp-label .ccp-label-text {
-  color: var(--ccp-text-dim);
-  font-size: var(--ccp-text-sm);
+#pnt-label .pnt-label-text {
+  color: var(--pnt-text-dim);
+  font-size: var(--pnt-text-sm);
   font-style: italic;
   max-width: 100%;
   overflow: hidden;
@@ -551,175 +551,175 @@
 }
 
 /* The swatch's fill is the inspected page's own colour, written inline from JS.
-   It is never themed — see --ccp-checker in tokens.css. Only its border is
+   It is never themed — see --pnt-checker in tokens.css. Only its border is
    chrome, so only the border follows the theme. */
-#ccp-label .ccp-color-swatch {
+#pnt-label .pnt-color-swatch {
   display: inline-block;
-  width: var(--ccp-swatch);
-  height: var(--ccp-swatch);
-  border-radius: var(--ccp-radius-xs);
-  margin: 0 var(--ccp-gap-pair) -1px 0;
+  width: var(--pnt-swatch);
+  height: var(--pnt-swatch);
+  border-radius: var(--pnt-radius-xs);
+  margin: 0 var(--pnt-gap-pair) -1px 0;
   vertical-align: baseline;
-  border: 1px solid var(--ccp-swatch-border);
+  border: 1px solid var(--pnt-swatch-border);
   box-sizing: border-box;
 }
 
-#ccp-label .ccp-color-swatch.ccp-color-swatch-alpha {
+#pnt-label .pnt-color-swatch.pnt-color-swatch-alpha {
   background-image:
-    linear-gradient(45deg, var(--ccp-checker) 25%, transparent 25%),
-    linear-gradient(-45deg, var(--ccp-checker) 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, var(--ccp-checker) 75%),
-    linear-gradient(-45deg, transparent 75%, var(--ccp-checker) 75%);
+    linear-gradient(45deg, var(--pnt-checker) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--pnt-checker) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--pnt-checker) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--pnt-checker) 75%);
   background-size: 6px 6px;
   background-position: 0 0, 0 3px, 3px -3px, -3px 0px;
 }
 
-#ccp-label .ccp-label-sep {
-  color: var(--ccp-sep);
-  margin: 0 var(--ccp-xs);
+#pnt-label .pnt-label-sep {
+  color: var(--pnt-sep);
+  margin: 0 var(--pnt-xs);
 }
 
-#ccp-label .ccp-label-marquee {
+#pnt-label .pnt-label-marquee {
   overflow: hidden;
   max-width: 380px;
-  mask-image: linear-gradient(to right, transparent, var(--ccp-mask) 8px, var(--ccp-mask) calc(100% - 16px), transparent);
-  -webkit-mask-image: linear-gradient(to right, transparent, var(--ccp-mask) 8px, var(--ccp-mask) calc(100% - 16px), transparent);
+  mask-image: linear-gradient(to right, transparent, var(--pnt-mask) 8px, var(--pnt-mask) calc(100% - 16px), transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, var(--pnt-mask) 8px, var(--pnt-mask) calc(100% - 16px), transparent);
 }
 
-#ccp-label .ccp-marquee-inner {
+#pnt-label .pnt-marquee-inner {
   display: inline-block;
   white-space: nowrap;
-  animation: ccp-marquee 12s linear infinite;
+  animation: pnt-marquee 12s linear infinite;
 }
 
-@keyframes ccp-marquee {
+@keyframes pnt-marquee {
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }
 }
 
-#ccp-label .ccp-label-breadcrumb {
-  color: var(--ccp-text-faint);
-  font-size: var(--ccp-text-sm);
+#pnt-label .pnt-label-breadcrumb {
+  color: var(--pnt-text-faint);
+  font-size: var(--pnt-text-sm);
 }
 
-#ccp-label .ccp-label-breadcrumb .ccp-label-tag {
-  color: var(--ccp-accent-dark);
-  font-weight: var(--ccp-weight-medium);
+#pnt-label .pnt-label-breadcrumb .pnt-label-tag {
+  color: var(--pnt-accent-dark);
+  font-weight: var(--pnt-weight-medium);
 }
 
-#ccp-label .ccp-label-breadcrumb .ccp-label-sep {
-  color: var(--ccp-sep);
+#pnt-label .pnt-label-breadcrumb .pnt-label-sep {
+  color: var(--pnt-sep);
 }
 
 /* ===== Action Toolbar =====
-   #ccp-toolbar is a transparent rail holding two siblings: the action bar and
+   #pnt-toolbar is a transparent rail holding two siblings: the action bar and
    the Select Parent button. align-items:stretch keeps them exactly the same
    height, and the rail glides on the same curve as the selection outline.
 
    `all: initial` on this and its descendants resets every regular property, so
    font-family and box-sizing have to be re-declared below. Custom properties are
    the one thing `all` does not reset (CSS Cascade 4 §3.2), which is why the
-   --ccp-* tokens still reach in here from :root. */
-#ccp-toolbar {
+   --pnt-* tokens still reach in here from :root. */
+#pnt-toolbar {
   all: initial;
   position: fixed;
-  z-index: var(--ccp-z-chrome);
+  z-index: var(--pnt-z-chrome);
   display: flex;
   align-items: stretch;
-  gap: var(--ccp-gap-section);
-  font-family: var(--ccp-font);
+  gap: var(--pnt-gap-section);
+  font-family: var(--pnt-font);
   box-sizing: border-box;
-  transition: top var(--ccp-duration) var(--ccp-ease),
-              left var(--ccp-duration) var(--ccp-ease);
+  transition: top var(--pnt-duration) var(--pnt-ease),
+              left var(--pnt-duration) var(--pnt-ease);
 }
 
-#ccp-toolbar .ccp-bar {
+#pnt-toolbar .pnt-bar {
   all: initial;
-  background: var(--ccp-surface);
-  border: 1px solid rgb(from var(--ccp-accent) r g b / 0.5);
-  border-radius: var(--ccp-radius-lg);
-  padding: var(--ccp-xs);
+  background: var(--pnt-surface);
+  border: 1px solid rgb(from var(--pnt-accent) r g b / 0.5);
+  border-radius: var(--pnt-radius-lg);
+  padding: var(--pnt-xs);
   display: flex;
-  gap: var(--ccp-xs);
-  box-shadow: var(--ccp-shadow-bar);
-  font-family: var(--ccp-font);
+  gap: var(--pnt-xs);
+  box-shadow: var(--pnt-shadow-bar);
+  font-family: var(--pnt-font);
   box-sizing: border-box;
 }
 
-#ccp-toolbar .ccp-bar button {
+#pnt-toolbar .pnt-bar button {
   all: initial;
   background: transparent;
-  color: var(--ccp-text);
+  color: var(--pnt-text);
   border: 1px solid transparent;
-  border-radius: var(--ccp-radius-sm);
-  padding: var(--ccp-btn-y) var(--ccp-btn-x);
-  font: var(--ccp-weight-medium) var(--ccp-text-base)/var(--ccp-leading-tight) var(--ccp-font);
+  border-radius: var(--pnt-radius-sm);
+  padding: var(--pnt-btn-y) var(--pnt-btn-x);
+  font: var(--pnt-weight-medium) var(--pnt-text-base)/var(--pnt-leading-tight) var(--pnt-font);
   text-transform: uppercase;
-  letter-spacing: var(--ccp-tracking-wide);
+  letter-spacing: var(--pnt-tracking-wide);
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: var(--ccp-sm);
+  gap: var(--pnt-sm);
   white-space: nowrap;
   justify-content: center;
-  transition: background var(--ccp-duration), border-color var(--ccp-duration);
+  transition: background var(--pnt-duration), border-color var(--pnt-duration);
   box-sizing: border-box;
 }
 
-#ccp-toolbar .ccp-bar button:hover {
-  background: rgb(from var(--ccp-accent) r g b / 0.15);
-  border-color: rgb(from var(--ccp-accent) r g b / 0.5);
+#pnt-toolbar .pnt-bar button:hover {
+  background: rgb(from var(--pnt-accent) r g b / 0.15);
+  border-color: rgb(from var(--pnt-accent) r g b / 0.5);
 }
 
-#ccp-toolbar .ccp-bar button:active {
-  background: rgb(from var(--ccp-accent) r g b / 0.25);
+#pnt-toolbar .pnt-bar button:active {
+  background: rgb(from var(--pnt-accent) r g b / 0.25);
 }
 
-#ccp-toolbar button svg,
-#ccp-settings-btn svg {
-  width: var(--ccp-icon);
-  height: var(--ccp-icon);
+#pnt-toolbar button svg,
+#pnt-settings-btn svg {
+  width: var(--pnt-icon);
+  height: var(--pnt-icon);
   flex-shrink: 0;
 }
 
 /* Select Parent — navigation, not a copy action, so it reads as the accent on
    the same chrome. No vertical padding: the height comes from stretch. */
-#ccp-toolbar .ccp-parent-btn {
+#pnt-toolbar .pnt-parent-btn {
   all: initial;
-  background: var(--ccp-surface);
-  color: var(--ccp-accent);
-  border: 1px solid var(--ccp-accent);
-  border-radius: var(--ccp-radius-lg);
-  padding: 0 var(--ccp-lg);
-  font: var(--ccp-weight-medium) var(--ccp-text-base)/var(--ccp-leading-tight) var(--ccp-font);
+  background: var(--pnt-surface);
+  color: var(--pnt-accent);
+  border: 1px solid var(--pnt-accent);
+  border-radius: var(--pnt-radius-lg);
+  padding: 0 var(--pnt-lg);
+  font: var(--pnt-weight-medium) var(--pnt-text-base)/var(--pnt-leading-tight) var(--pnt-font);
   text-transform: uppercase;
-  letter-spacing: var(--ccp-tracking-wide);
+  letter-spacing: var(--pnt-tracking-wide);
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: var(--ccp-sm);
+  gap: var(--pnt-sm);
   white-space: nowrap;
-  box-shadow: var(--ccp-shadow-bar);
+  box-shadow: var(--pnt-shadow-bar);
   box-sizing: border-box;
-  transition: background var(--ccp-duration), border-color var(--ccp-duration),
-              color var(--ccp-duration), opacity var(--ccp-duration);
+  transition: background var(--pnt-duration), border-color var(--pnt-duration),
+              color var(--pnt-duration), opacity var(--pnt-duration);
 }
 
 /* Solid invert — the fill floods to the accent and the label flips to the
    on-accent ink. Both states must stay fully opaque: unlike the bar's buttons,
    this one sits on the page, so a translucent fill lets the page show through. */
-#ccp-toolbar .ccp-parent-btn:hover {
-  background: var(--ccp-accent);
-  color: var(--ccp-on-accent);
+#pnt-toolbar .pnt-parent-btn:hover {
+  background: var(--pnt-accent);
+  color: var(--pnt-on-accent);
 }
 
-#ccp-toolbar .ccp-parent-btn:active {
-  background: var(--ccp-accent-dark);
-  color: var(--ccp-on-accent);
+#pnt-toolbar .pnt-parent-btn:active {
+  background: var(--pnt-accent-dark);
+  color: var(--pnt-on-accent);
 }
 
-#ccp-toolbar .ccp-parent-btn.ccp-button-disabled {
-  opacity: var(--ccp-opacity-disabled);
+#pnt-toolbar .pnt-parent-btn.pnt-button-disabled {
+  opacity: var(--pnt-opacity-disabled);
   cursor: not-allowed;
   pointer-events: none;
 }
@@ -727,50 +727,50 @@
 /* Narrow viewports: drop to icons so the rail stops overflowing the screen.
    Driven by a class rather than a media query because the JS has to re-measure
    the buttons' locked widths whenever the density flips. */
-#ccp-toolbar.ccp-compact .ccp-bar button span,
-#ccp-toolbar.ccp-compact .ccp-parent-btn span {
+#pnt-toolbar.pnt-compact .pnt-bar button span,
+#pnt-toolbar.pnt-compact .pnt-parent-btn span {
   display: none;
 }
 
-#ccp-toolbar.ccp-compact .ccp-bar button,
-#ccp-toolbar.ccp-compact .ccp-parent-btn {
-  padding-left: var(--ccp-md);
-  padding-right: var(--ccp-md);
+#pnt-toolbar.pnt-compact .pnt-bar button,
+#pnt-toolbar.pnt-compact .pnt-parent-btn {
+  padding-left: var(--pnt-md);
+  padding-right: var(--pnt-md);
 }
 
 /* Placement that tracks the viewport has to be instantaneous — gliding to each
    new scroll position smears the chrome across the page. !important because
-   #ccp-label and #ccp-toolbar both set transition at ID specificity. */
-.ccp-no-transition {
+   #pnt-label and #pnt-toolbar both set transition at ID specificity. */
+.pnt-no-transition {
   transition: none !important;
 }
 
 /* Edit opens a mode rather than performing an action, so it stays an icon at
    every density — the two labelled buttons beside it are what the bar is for,
    and a third word would make the rail the widest thing on the page. */
-#ccp-toolbar .ccp-bar button.ccp-icon-btn {
-  padding-left: var(--ccp-md);
-  padding-right: var(--ccp-md);
-  color: var(--ccp-accent);
+#pnt-toolbar .pnt-bar button.pnt-icon-btn {
+  padding-left: var(--pnt-md);
+  padding-right: var(--pnt-md);
+  color: var(--pnt-accent);
 }
 
 /* An undo can land on an element other than the one being edited. It gets a
    single pulse where it stands, so the change is never invisible — and it
    lives in the overlay container, which is already pointer-events:none, so it
    cannot get in the way of the page underneath. */
-#ccp-edit-flash {
+#pnt-edit-flash {
   position: fixed;
-  border: var(--ccp-ring) solid var(--ccp-accent);
-  border-radius: var(--ccp-radius-sm);
+  border: var(--pnt-ring) solid var(--pnt-accent);
+  border-radius: var(--pnt-radius-sm);
   opacity: 0;
   pointer-events: none;
 }
 
-#ccp-edit-flash.ccp-edit-flashing {
-  animation: ccp-edit-flash var(--ccp-duration-slow) var(--ccp-ease) 2 alternate;
+#pnt-edit-flash.pnt-edit-flashing {
+  animation: pnt-edit-flash var(--pnt-duration-slow) var(--pnt-ease) 2 alternate;
 }
 
-@keyframes ccp-edit-flash {
+@keyframes pnt-edit-flash {
   from { opacity: 0; }
   to { opacity: 1; }
 }
@@ -781,22 +781,22 @@
    which is why it has no positional transition at all: every other box in this
    file is placed by the solver and glides between solutions, but a panel that
    eased toward the pointer would smear behind the drag. */
-#ccp-edit-panel {
+#pnt-edit-panel {
   all: initial;
   position: fixed;
-  z-index: var(--ccp-z-chrome);
+  z-index: var(--pnt-z-chrome);
   box-sizing: border-box;
-  font-family: var(--ccp-font);
-  color: var(--ccp-text);
-  background: var(--ccp-surface);
-  border: 1px solid rgb(from var(--ccp-accent) r g b / 0.5);
-  border-radius: var(--ccp-radius-lg);
-  box-shadow: var(--ccp-shadow-card);
+  font-family: var(--pnt-font);
+  color: var(--pnt-text);
+  background: var(--pnt-surface);
+  border: 1px solid rgb(from var(--pnt-accent) r g b / 0.5);
+  border-radius: var(--pnt-radius-lg);
+  box-shadow: var(--pnt-shadow-card);
   width: 248px;
   /* Taller than the viewport is a real case on a short window; the panel
      scrolls inside itself rather than growing past the screen, which is what
      lets the placement solver always find room for it. */
-  max-height: calc(100vh - 2 * var(--ccp-xs));
+  max-height: calc(100vh - 2 * var(--pnt-xs));
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -805,26 +805,26 @@
   user-select: none;
 }
 
-#ccp-edit-panel .ccp-edit-head {
+#pnt-edit-panel .pnt-edit-head {
   all: initial;
   box-sizing: border-box;
   display: flex;
   align-items: center;
-  gap: var(--ccp-gap-base);
-  padding: var(--ccp-gap-base) var(--ccp-sm);
-  border-bottom: 1px solid var(--ccp-sep);
-  font-family: var(--ccp-font);
+  gap: var(--pnt-gap-base);
+  padding: var(--pnt-gap-base) var(--pnt-sm);
+  border-bottom: 1px solid var(--pnt-sep);
+  font-family: var(--pnt-font);
   cursor: grab;
   /* Without this the browser claims the gesture for scrolling and the panel
      stutters or stops following the pointer on trackpads and touch. */
   touch-action: none;
 }
 
-#ccp-edit-panel .ccp-edit-head.ccp-edit-dragging {
+#pnt-edit-panel .pnt-edit-head.pnt-edit-dragging {
   cursor: grabbing;
 }
 
-#ccp-edit-panel .ccp-edit-back {
+#pnt-edit-panel .pnt-edit-back {
   all: initial;
   box-sizing: border-box;
   display: flex;
@@ -833,32 +833,32 @@
   flex: none;
   width: 20px;
   height: 20px;
-  border: 1px solid var(--ccp-sep);
-  border-radius: var(--ccp-radius-xs);
+  border: 1px solid var(--pnt-sep);
+  border-radius: var(--pnt-radius-xs);
   background: transparent;
-  color: var(--ccp-text-dim);
+  color: var(--pnt-text-dim);
   cursor: pointer;
-  transition: border-color var(--ccp-duration), color var(--ccp-duration),
-              background var(--ccp-duration);
+  transition: border-color var(--pnt-duration), color var(--pnt-duration),
+              background var(--pnt-duration);
 }
 
-#ccp-edit-panel .ccp-edit-back:hover {
-  border-color: var(--ccp-accent);
-  color: var(--ccp-accent);
-  background: rgb(from var(--ccp-accent) r g b / 0.15);
+#pnt-edit-panel .pnt-edit-back:hover {
+  border-color: var(--pnt-accent);
+  color: var(--pnt-accent);
+  background: rgb(from var(--pnt-accent) r g b / 0.15);
 }
 
-#ccp-edit-panel .ccp-edit-back svg {
+#pnt-edit-panel .pnt-edit-back svg {
   width: 12px;
   height: 12px;
 }
 
 /* The same tag / #id / .class colouring the info label uses, so the panel
    reads as the same tool looking at the same element. */
-#ccp-edit-panel .ccp-edit-id {
+#pnt-edit-panel .pnt-edit-id {
   all: initial;
-  font: var(--ccp-weight-medium) var(--ccp-text-sm)/var(--ccp-leading-tight) var(--ccp-font);
-  color: var(--ccp-text-dim);
+  font: var(--pnt-weight-medium) var(--pnt-text-sm)/var(--pnt-leading-tight) var(--pnt-font);
+  color: var(--pnt-text-dim);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -866,80 +866,80 @@
   flex: 1;
 }
 
-#ccp-edit-panel .ccp-edit-id-tag { color: var(--ccp-accent); font-weight: var(--ccp-weight-bold); }
-#ccp-edit-panel .ccp-edit-id-id { color: var(--ccp-syntax-id); font-weight: var(--ccp-weight-medium); }
-#ccp-edit-panel .ccp-edit-id-class { color: var(--ccp-syntax-class); font-weight: var(--ccp-weight-medium); }
+#pnt-edit-panel .pnt-edit-id-tag { color: var(--pnt-accent); font-weight: var(--pnt-weight-bold); }
+#pnt-edit-panel .pnt-edit-id-id { color: var(--pnt-syntax-id); font-weight: var(--pnt-weight-medium); }
+#pnt-edit-panel .pnt-edit-id-class { color: var(--pnt-syntax-class); font-weight: var(--pnt-weight-medium); }
 
 /* The header's two actions. Copy carries a count of what it would write, so
    the panel always says how much is pending without opening anything. */
-#ccp-edit-panel .ccp-edit-act {
+#pnt-edit-panel .pnt-edit-act {
   all: initial;
   box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--ccp-gap-pair);
+  gap: var(--pnt-gap-pair);
   flex: none;
   height: 20px;
   min-width: 20px;
-  padding: 0 var(--ccp-xs);
-  border: 1px solid var(--ccp-sep);
-  border-radius: var(--ccp-radius-xs);
+  padding: 0 var(--pnt-xs);
+  border: 1px solid var(--pnt-sep);
+  border-radius: var(--pnt-radius-xs);
   background: transparent;
-  color: var(--ccp-text-dim);
-  font: var(--ccp-weight-medium) var(--ccp-text-sm)/1 var(--ccp-font);
+  color: var(--pnt-text-dim);
+  font: var(--pnt-weight-medium) var(--pnt-text-sm)/1 var(--pnt-font);
   cursor: pointer;
-  transition: border-color var(--ccp-duration), color var(--ccp-duration),
-              background var(--ccp-duration);
+  transition: border-color var(--pnt-duration), color var(--pnt-duration),
+              background var(--pnt-duration);
 }
 
-#ccp-edit-panel .ccp-edit-act:hover {
-  border-color: var(--ccp-accent);
-  color: var(--ccp-accent);
-  background: rgb(from var(--ccp-accent) r g b / 0.15);
+#pnt-edit-panel .pnt-edit-act:hover {
+  border-color: var(--pnt-accent);
+  color: var(--pnt-accent);
+  background: rgb(from var(--pnt-accent) r g b / 0.15);
 }
 
-#ccp-edit-panel .ccp-edit-act svg { width: 11px; height: 11px; }
+#pnt-edit-panel .pnt-edit-act svg { width: 11px; height: 11px; }
 
-#ccp-edit-panel .ccp-edit-act.ccp-edit-on { color: var(--ccp-accent); }
+#pnt-edit-panel .pnt-edit-act.pnt-edit-on { color: var(--pnt-accent); }
 
-#ccp-edit-panel .ccp-edit-count {
+#pnt-edit-panel .pnt-edit-count {
   all: initial;
-  font: var(--ccp-weight-bold) 8px/1 var(--ccp-font);
+  font: var(--pnt-weight-bold) 8px/1 var(--pnt-font);
   font-variant-numeric: tabular-nums;
-  color: var(--ccp-on-accent);
-  background: var(--ccp-accent);
-  border-radius: var(--ccp-radius-xs);
+  color: var(--pnt-on-accent);
+  background: var(--pnt-accent);
+  border-radius: var(--pnt-radius-xs);
   padding: 1px 3px;
 }
 
-#ccp-edit-panel .ccp-edit-count:empty { display: none; }
+#pnt-edit-panel .pnt-edit-count:empty { display: none; }
 
 /* Something about this page kept the token layer from reading it — usually a
    cross-origin stylesheet. Deliberately not a warning: nothing is broken and
    the user has done nothing wrong, so this is the same quiet dashed outline
    the panel already uses for "off the scale", meaning "a thing that would
    normally be here isn't". Hovering says why. */
-#ccp-edit-panel .ccp-edit-degraded {
+#pnt-edit-panel .pnt-edit-degraded {
   all: initial;
   box-sizing: border-box;
   display: none;
   flex: none;
   width: 9px;
   height: 9px;
-  border: 1px dashed var(--ccp-text-faint);
+  border: 1px dashed var(--pnt-text-faint);
   border-radius: 50%;
 }
 
-#ccp-edit-panel .ccp-edit-degraded.ccp-edit-on { display: block; }
+#pnt-edit-panel .pnt-edit-degraded.pnt-edit-on { display: block; }
 
-#ccp-edit-panel .ccp-edit-body {
+#pnt-edit-panel .pnt-edit-body {
   all: initial;
   box-sizing: border-box;
   display: block;
-  font-family: var(--ccp-font);
-  color: var(--ccp-text);
-  padding: var(--ccp-sm) var(--ccp-md);
+  font-family: var(--pnt-font);
+  color: var(--pnt-text);
+  padding: var(--pnt-sm) var(--pnt-md);
   overflow-y: auto;
   min-height: 0;
 }
@@ -948,36 +948,36 @@
    One row per property: dot, label, control. The label column is elastic and
    the control column is not, so every value chip in the panel lines up down a
    single edge no matter how long the labels get. */
-#ccp-edit-panel .ccp-edit-group + .ccp-edit-group {
-  margin-top: var(--ccp-md);
-  padding-top: var(--ccp-gap-section);
-  border-top: 1px solid var(--ccp-sep);
+#pnt-edit-panel .pnt-edit-group + .pnt-edit-group {
+  margin-top: var(--pnt-md);
+  padding-top: var(--pnt-gap-section);
+  border-top: 1px solid var(--pnt-sep);
 }
 
-#ccp-edit-panel .ccp-edit-legend {
+#pnt-edit-panel .pnt-edit-legend {
   all: initial;
   display: block;
-  font: var(--ccp-weight-medium) 9px/1 var(--ccp-font);
+  font: var(--pnt-weight-medium) 9px/1 var(--pnt-font);
   letter-spacing: 0.13em;
   text-transform: uppercase;
-  color: var(--ccp-text-muted);
-  margin-bottom: var(--ccp-gap-base);
+  color: var(--pnt-text-muted);
+  margin-bottom: var(--pnt-gap-base);
 }
 
-#ccp-edit-panel .ccp-edit-row {
+#pnt-edit-panel .pnt-edit-row {
   all: initial;
   box-sizing: border-box;
   display: flex;
   align-items: center;
-  gap: var(--ccp-gap-base);
+  gap: var(--pnt-gap-base);
   padding: 2px 0;
-  font-family: var(--ccp-font);
+  font-family: var(--pnt-font);
 }
 
-#ccp-edit-panel .ccp-edit-label {
+#pnt-edit-panel .pnt-edit-label {
   all: initial;
-  font: var(--ccp-text-sm)/1.4 var(--ccp-font);
-  color: var(--ccp-text-muted);
+  font: var(--pnt-text-sm)/1.4 var(--pnt-font);
+  color: var(--pnt-text-muted);
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -989,42 +989,42 @@
    take one property back. Hollow when the property is untouched so the column
    still reads as a column; filled and clickable once it has something to
    revert. */
-#ccp-edit-panel .ccp-edit-dot {
+#pnt-edit-panel .pnt-edit-dot {
   all: initial;
   box-sizing: border-box;
   flex: none;
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  border: 1px solid var(--ccp-sep);
+  border: 1px solid var(--pnt-sep);
   background: transparent;
   cursor: default;
-  transition: background var(--ccp-duration), border-color var(--ccp-duration);
+  transition: background var(--pnt-duration), border-color var(--pnt-duration);
 }
 
-#ccp-edit-panel .ccp-edit-dot.ccp-edit-on {
-  background: var(--ccp-accent);
-  border-color: var(--ccp-accent);
+#pnt-edit-panel .pnt-edit-dot.pnt-edit-on {
+  background: var(--pnt-accent);
+  border-color: var(--pnt-accent);
   cursor: pointer;
 }
 
-#ccp-edit-panel .ccp-edit-dot.ccp-edit-on:hover {
-  background: var(--ccp-text);
-  border-color: var(--ccp-text);
+#pnt-edit-panel .pnt-edit-dot.pnt-edit-on:hover {
+  background: var(--pnt-text);
+  border-color: var(--pnt-text);
 }
 
-#ccp-edit-panel .ccp-edit-numwrap {
+#pnt-edit-panel .pnt-edit-numwrap {
   all: initial;
   display: flex;
   align-items: center;
-  gap: var(--ccp-gap-pair);
+  gap: var(--pnt-gap-pair);
   flex: none;
 }
 
 /* The value chip is the drag surface as well as the field, which is why the
    whole thing carries the resize cursor and why the input inside it is
    transparent rather than looking like a text box. */
-#ccp-edit-panel .ccp-edit-num {
+#pnt-edit-panel .pnt-edit-num {
   all: initial;
   box-sizing: border-box;
   display: inline-flex;
@@ -1033,106 +1033,106 @@
   gap: 1px;
   flex: none;
   width: 58px;
-  padding: 2px var(--ccp-xs);
-  border: 1px solid var(--ccp-sep);
-  border-radius: var(--ccp-radius-xs);
-  background: rgb(from var(--ccp-text) r g b / 0.06);
-  font-family: var(--ccp-font);
-  transition: border-color var(--ccp-duration), background var(--ccp-duration);
+  padding: 2px var(--pnt-xs);
+  border: 1px solid var(--pnt-sep);
+  border-radius: var(--pnt-radius-xs);
+  background: rgb(from var(--pnt-text) r g b / 0.06);
+  font-family: var(--pnt-font);
+  transition: border-color var(--pnt-duration), background var(--pnt-duration);
 }
 
-#ccp-edit-panel .ccp-edit-num:hover,
-#ccp-edit-panel .ccp-edit-num.ccp-edit-scrubbing {
-  border-color: var(--ccp-accent);
+#pnt-edit-panel .pnt-edit-num:hover,
+#pnt-edit-panel .pnt-edit-num.pnt-edit-scrubbing {
+  border-color: var(--pnt-accent);
 }
 
-#ccp-edit-panel .ccp-edit-num:focus-within {
-  border-color: var(--ccp-accent);
-  background: rgb(from var(--ccp-accent) r g b / 0.12);
+#pnt-edit-panel .pnt-edit-num:focus-within {
+  border-color: var(--pnt-accent);
+  background: rgb(from var(--pnt-accent) r g b / 0.12);
 }
 
-#ccp-edit-panel .ccp-edit-input {
+#pnt-edit-panel .pnt-edit-input {
   all: initial;
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
   text-align: right;
-  font: var(--ccp-weight-medium) var(--ccp-text-sm)/1.4 var(--ccp-font);
+  font: var(--pnt-weight-medium) var(--pnt-text-sm)/1.4 var(--pnt-font);
   font-variant-numeric: tabular-nums;
-  color: var(--ccp-text);
+  color: var(--pnt-text);
   background: transparent;
   border: 0;
   padding: 0;
 }
 
-#ccp-edit-panel .ccp-edit-input::selection {
-  background: rgb(from var(--ccp-accent) r g b / 0.35);
+#pnt-edit-panel .pnt-edit-input::selection {
+  background: rgb(from var(--pnt-accent) r g b / 0.35);
 }
 
-#ccp-edit-panel .ccp-edit-unit {
+#pnt-edit-panel .pnt-edit-unit {
   all: initial;
-  font: 9px/1.4 var(--ccp-font);
-  color: var(--ccp-text-faint);
+  font: 9px/1.4 var(--pnt-font);
+  color: var(--pnt-text-faint);
   flex: none;
 }
 
 /* A value nothing has set yet — line-height reporting "normal", a width that
    is still auto. The number shown is real, it just isn't a decision anyone
    made, so it reads quieter than one that was. */
-#ccp-edit-panel .ccp-edit-num.ccp-edit-untouched .ccp-edit-input {
-  color: var(--ccp-text-faint);
+#pnt-edit-panel .pnt-edit-num.pnt-edit-untouched .pnt-edit-input {
+  color: var(--pnt-text-faint);
 }
 
 /* Token-only mode. The number stays in the layout rather than being removed,
    so the panel does not reflow as you move between elements that happen to sit
    on a scale and ones that do not. */
-#ccp-edit-panel .ccp-edit-num.ccp-edit-quiet {
+#pnt-edit-panel .pnt-edit-num.pnt-edit-quiet {
   width: 34px;
   border-color: transparent;
   background: transparent;
 }
 
-#ccp-edit-panel .ccp-edit-num.ccp-edit-quiet .ccp-edit-input { color: var(--ccp-text-faint); }
-#ccp-edit-panel .ccp-edit-num.ccp-edit-quiet .ccp-edit-unit { display: none; }
+#pnt-edit-panel .pnt-edit-num.pnt-edit-quiet .pnt-edit-input { color: var(--pnt-text-faint); }
+#pnt-edit-panel .pnt-edit-num.pnt-edit-quiet .pnt-edit-unit { display: none; }
 
-#ccp-edit-panel .ccp-edit-auto {
+#pnt-edit-panel .pnt-edit-auto {
   all: initial;
   box-sizing: border-box;
   flex: none;
-  padding: 2px var(--ccp-xs);
-  border: 1px solid var(--ccp-sep);
-  border-radius: var(--ccp-radius-xs);
+  padding: 2px var(--pnt-xs);
+  border: 1px solid var(--pnt-sep);
+  border-radius: var(--pnt-radius-xs);
   background: transparent;
-  color: var(--ccp-text-muted);
-  font: var(--ccp-weight-medium) 8px/1.4 var(--ccp-font);
-  letter-spacing: var(--ccp-tracking-wide);
+  color: var(--pnt-text-muted);
+  font: var(--pnt-weight-medium) 8px/1.4 var(--pnt-font);
+  letter-spacing: var(--pnt-tracking-wide);
   text-transform: uppercase;
   cursor: pointer;
-  transition: background var(--ccp-duration), color var(--ccp-duration),
-              border-color var(--ccp-duration);
+  transition: background var(--pnt-duration), color var(--pnt-duration),
+              border-color var(--pnt-duration);
 }
 
-#ccp-edit-panel .ccp-edit-auto[aria-checked="true"] {
-  background: var(--ccp-accent);
-  border-color: var(--ccp-accent);
-  color: var(--ccp-on-accent);
+#pnt-edit-panel .pnt-edit-auto[aria-checked="true"] {
+  background: var(--pnt-accent);
+  border-color: var(--pnt-accent);
+  color: var(--pnt-on-accent);
 }
 
 /* The token stepper sits beside the raw value rather than replacing it: the
    number is what you are judging, the token is what the source will say. Both
    are true at once, so the panel shows both. */
-#ccp-edit-panel .ccp-edit-tok {
+#pnt-edit-panel .pnt-edit-tok {
   all: initial;
   box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   flex: none;
-  border: 1px solid rgb(from var(--ccp-accent) r g b / 0.4);
-  border-radius: var(--ccp-radius-xs);
+  border: 1px solid rgb(from var(--pnt-accent) r g b / 0.4);
+  border-radius: var(--pnt-radius-xs);
   overflow: hidden;
 }
 
-#ccp-edit-panel .ccp-edit-tok button {
+#pnt-edit-panel .pnt-edit-tok button {
   all: initial;
   box-sizing: border-box;
   display: flex;
@@ -1141,46 +1141,46 @@
   width: 13px;
   height: 18px;
   background: transparent;
-  color: var(--ccp-text-muted);
-  font: var(--ccp-weight-bold) var(--ccp-text-sm)/1 var(--ccp-font);
+  color: var(--pnt-text-muted);
+  font: var(--pnt-weight-bold) var(--pnt-text-sm)/1 var(--pnt-font);
   cursor: pointer;
-  transition: background var(--ccp-duration), color var(--ccp-duration);
+  transition: background var(--pnt-duration), color var(--pnt-duration);
 }
 
-#ccp-edit-panel .ccp-edit-tok button:hover {
-  background: rgb(from var(--ccp-accent) r g b / 0.2);
-  color: var(--ccp-accent);
+#pnt-edit-panel .pnt-edit-tok button:hover {
+  background: rgb(from var(--pnt-accent) r g b / 0.2);
+  color: var(--pnt-accent);
 }
 
-#ccp-edit-panel .ccp-edit-tok b {
+#pnt-edit-panel .pnt-edit-tok b {
   all: initial;
   min-width: 26px;
   text-align: center;
-  font: var(--ccp-weight-medium) 9px/1 var(--ccp-font);
-  color: var(--ccp-accent);
+  font: var(--pnt-weight-medium) 9px/1 var(--pnt-font);
+  color: var(--pnt-accent);
   padding: 0 1px;
 }
 
 /* A raw scrub can land between rungs. The stepper stays — stepping from there
    is well defined — but it stops claiming a token it is not on. */
-#ccp-edit-panel .ccp-edit-tok.ccp-edit-offscale {
+#pnt-edit-panel .pnt-edit-tok.pnt-edit-offscale {
   border-style: dashed;
-  border-color: var(--ccp-sep);
+  border-color: var(--pnt-sep);
 }
 
-#ccp-edit-panel .ccp-edit-tok.ccp-edit-offscale b { color: var(--ccp-text-faint); }
+#pnt-edit-panel .pnt-edit-tok.pnt-edit-offscale b { color: var(--pnt-text-faint); }
 
-#ccp-edit-panel .ccp-edit-seg {
+#pnt-edit-panel .pnt-edit-seg {
   all: initial;
   box-sizing: border-box;
   display: inline-flex;
   flex: none;
-  border: 1px solid var(--ccp-sep);
-  border-radius: var(--ccp-radius-xs);
+  border: 1px solid var(--pnt-sep);
+  border-radius: var(--pnt-radius-xs);
   overflow: hidden;
 }
 
-#ccp-edit-panel .ccp-edit-seg button {
+#pnt-edit-panel .pnt-edit-seg button {
   all: initial;
   box-sizing: border-box;
   display: flex;
@@ -1189,30 +1189,30 @@
   width: 20px;
   height: 18px;
   background: transparent;
-  color: var(--ccp-text-muted);
+  color: var(--pnt-text-muted);
   cursor: pointer;
-  font: var(--ccp-text-sm)/1 var(--ccp-font);
-  transition: background var(--ccp-duration), color var(--ccp-duration);
+  font: var(--pnt-text-sm)/1 var(--pnt-font);
+  transition: background var(--pnt-duration), color var(--pnt-duration);
 }
 
-#ccp-edit-panel .ccp-edit-seg button + button {
-  border-left: 1px solid var(--ccp-sep);
+#pnt-edit-panel .pnt-edit-seg button + button {
+  border-left: 1px solid var(--pnt-sep);
 }
 
-#ccp-edit-panel .ccp-edit-seg button[aria-checked="true"] {
-  background: var(--ccp-accent);
-  color: var(--ccp-on-accent);
+#pnt-edit-panel .pnt-edit-seg button[aria-checked="true"] {
+  background: var(--pnt-accent);
+  color: var(--pnt-on-accent);
 }
 
 /* The three alignment glyphs are one character shifted three ways, so they
    read as the same mark moving rather than three different symbols. */
-#ccp-edit-panel .ccp-edit-align-left { justify-content: flex-start; padding-left: 3px; }
-#ccp-edit-panel .ccp-edit-align-right { justify-content: flex-end; padding-right: 3px; }
+#pnt-edit-panel .pnt-edit-align-left { justify-content: flex-start; padding-left: 3px; }
+#pnt-edit-panel .pnt-edit-align-right { justify-content: flex-end; padding-right: 3px; }
 
 /* The link toggle turns one value into four. Sides are indented under the row
    they came from, so the column still reads as a hierarchy rather than as
    twelve equal rows once everything is open. */
-#ccp-edit-panel .ccp-edit-link {
+#pnt-edit-panel .pnt-edit-link {
   all: initial;
   box-sizing: border-box;
   flex: none;
@@ -1221,94 +1221,94 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--ccp-sep);
-  border-radius: var(--ccp-radius-xs);
+  border: 1px solid var(--pnt-sep);
+  border-radius: var(--pnt-radius-xs);
   background: transparent;
-  color: var(--ccp-text-muted);
-  font: var(--ccp-text-sm)/1 var(--ccp-font);
+  color: var(--pnt-text-muted);
+  font: var(--pnt-text-sm)/1 var(--pnt-font);
   cursor: pointer;
-  transition: border-color var(--ccp-duration), color var(--ccp-duration);
+  transition: border-color var(--pnt-duration), color var(--pnt-duration);
 }
 
-#ccp-edit-panel .ccp-edit-link:hover,
-#ccp-edit-panel .ccp-edit-link[aria-pressed="true"] {
-  border-color: var(--ccp-accent);
-  color: var(--ccp-accent);
+#pnt-edit-panel .pnt-edit-link:hover,
+#pnt-edit-panel .pnt-edit-link[aria-pressed="true"] {
+  border-color: var(--pnt-accent);
+  color: var(--pnt-accent);
 }
 
-#ccp-edit-panel .ccp-edit-side .ccp-edit-label {
-  padding-left: var(--ccp-md);
-  color: var(--ccp-text-faint);
+#pnt-edit-panel .pnt-edit-side .pnt-edit-label {
+  padding-left: var(--pnt-md);
+  color: var(--pnt-text-faint);
 }
 
-#ccp-edit-panel .ccp-edit-parent .ccp-edit-label { color: var(--ccp-text-dim); }
+#pnt-edit-panel .pnt-edit-parent .pnt-edit-label { color: var(--pnt-text-dim); }
 
-#ccp-edit-panel .ccp-edit-add {
+#pnt-edit-panel .pnt-edit-add {
   all: initial;
   box-sizing: border-box;
   width: 100%;
-  padding: var(--ccp-xs) var(--ccp-sm);
-  border: 1px dashed var(--ccp-sep);
-  border-radius: var(--ccp-radius-xs);
+  padding: var(--pnt-xs) var(--pnt-sm);
+  border: 1px dashed var(--pnt-sep);
+  border-radius: var(--pnt-radius-xs);
   background: transparent;
-  color: var(--ccp-text-muted);
-  font: var(--ccp-text-sm)/1.4 var(--ccp-font);
+  color: var(--pnt-text-muted);
+  font: var(--pnt-text-sm)/1.4 var(--pnt-font);
   text-align: center;
   cursor: pointer;
-  transition: border-color var(--ccp-duration), color var(--ccp-duration);
+  transition: border-color var(--pnt-duration), color var(--pnt-duration);
 }
 
-#ccp-edit-panel .ccp-edit-add:hover {
-  border-color: var(--ccp-accent);
-  color: var(--ccp-accent);
+#pnt-edit-panel .pnt-edit-add:hover {
+  border-color: var(--pnt-accent);
+  color: var(--pnt-accent);
 }
 
 /* ===== Edit Panel — colour =====
    The swatch sits on a chequerboard so a translucent colour reads as
    translucent rather than as a lighter opaque one. Same reasoning as the info
    label's colour chips, and the same never-themed backdrop. */
-#ccp-edit-panel .ccp-edit-color {
+#pnt-edit-panel .pnt-edit-color {
   all: initial;
   display: inline-flex;
   align-items: center;
-  gap: var(--ccp-gap-base);
+  gap: var(--pnt-gap-base);
   flex: none;
   width: 82px;
 }
 
-#ccp-edit-panel .ccp-edit-swatch {
+#pnt-edit-panel .pnt-edit-swatch {
   all: initial;
   box-sizing: border-box;
   flex: none;
   width: 18px;
   height: 18px;
   padding: 2px;
-  border: 1px solid var(--ccp-sep);
-  border-radius: var(--ccp-radius-xs);
-  background-color: var(--ccp-checker);
+  border: 1px solid var(--pnt-sep);
+  border-radius: var(--pnt-radius-xs);
+  background-color: var(--pnt-checker);
   background-image:
-    linear-gradient(45deg, var(--ccp-mask) 25%, transparent 25% 75%, var(--ccp-mask) 75%),
-    linear-gradient(45deg, var(--ccp-mask) 25%, transparent 25% 75%, var(--ccp-mask) 75%);
+    linear-gradient(45deg, var(--pnt-mask) 25%, transparent 25% 75%, var(--pnt-mask) 75%),
+    linear-gradient(45deg, var(--pnt-mask) 25%, transparent 25% 75%, var(--pnt-mask) 75%);
   background-size: 6px 6px;
   background-position: 0 0, 3px 3px;
   cursor: pointer;
-  transition: border-color var(--ccp-duration);
+  transition: border-color var(--pnt-duration);
 }
 
-#ccp-edit-panel .ccp-edit-swatch:hover { border-color: var(--ccp-accent); }
+#pnt-edit-panel .pnt-edit-swatch:hover { border-color: var(--pnt-accent); }
 
-#ccp-edit-panel .ccp-edit-swatch i {
+#pnt-edit-panel .pnt-edit-swatch i {
   display: block;
   width: 100%;
   height: 100%;
   border-radius: 1px;
 }
 
-#ccp-edit-panel .ccp-edit-hex {
+#pnt-edit-panel .pnt-edit-hex {
   all: initial;
-  font: var(--ccp-text-sm)/1.4 var(--ccp-font);
+  font: var(--pnt-text-sm)/1.4 var(--pnt-font);
   font-variant-numeric: tabular-nums;
-  color: var(--ccp-text-dim);
+  color: var(--pnt-text-dim);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1317,51 +1317,51 @@
 
 /* A colour that landed on one of the page's own tokens says so instead of
    showing a hex — the token is what the source contains. */
-#ccp-edit-panel .ccp-edit-hex.ccp-edit-token { color: var(--ccp-accent); }
+#pnt-edit-panel .pnt-edit-hex.pnt-edit-token { color: var(--pnt-accent); }
 
 /* ===== Colour picker =====
    Its own root, not a child of the panel. Inside it, it was clipped by the
    panel's overflow, locked to the panel's width, and painted over the very rows
    it was tuning. Viewport-fixed and placed beside the panel by
    positionColorPicker(); it stacks above the panel by being appended after it,
-   since --ccp-z-chrome is already the highest z-index there is. */
-#ccp-color-picker {
+   since --pnt-z-chrome is already the highest z-index there is. */
+#pnt-color-picker {
   all: initial;
   box-sizing: border-box;
   position: fixed;
-  z-index: var(--ccp-z-chrome);
+  z-index: var(--pnt-z-chrome);
   width: 216px;
   display: flex;
   flex-direction: column;
-  gap: var(--ccp-gap-base);
-  padding: var(--ccp-sm);
-  background: var(--ccp-surface);
-  border: 1px solid rgb(from var(--ccp-accent) r g b / 0.5);
-  border-radius: var(--ccp-radius-md);
-  box-shadow: var(--ccp-shadow-card);
-  font-family: var(--ccp-font);
+  gap: var(--pnt-gap-base);
+  padding: var(--pnt-sm);
+  background: var(--pnt-surface);
+  border: 1px solid rgb(from var(--pnt-accent) r g b / 0.5);
+  border-radius: var(--pnt-radius-md);
+  box-shadow: var(--pnt-shadow-card);
+  font-family: var(--pnt-font);
 }
 
 /* The picker no longer sits under the row it edits, so it names its property
    and carries the close affordance the nested version never had. */
-#ccp-color-picker .ccp-edit-pophead {
+#pnt-color-picker .pnt-edit-pophead {
   all: initial;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--ccp-gap-base);
+  gap: var(--pnt-gap-base);
 }
 
-#ccp-color-picker .ccp-edit-poptitle {
+#pnt-color-picker .pnt-edit-poptitle {
   all: initial;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--ccp-text-dim);
-  font: var(--ccp-weight-medium) var(--ccp-text-sm)/1.4 var(--ccp-font);
+  color: var(--pnt-text-dim);
+  font: var(--pnt-weight-medium) var(--pnt-text-sm)/1.4 var(--pnt-font);
 }
 
-#ccp-color-picker .ccp-edit-popclose {
+#pnt-color-picker .pnt-edit-popclose {
   all: initial;
   box-sizing: border-box;
   flex: none;
@@ -1370,103 +1370,103 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--ccp-radius-xs);
+  border-radius: var(--pnt-radius-xs);
   background: transparent;
-  color: var(--ccp-text-dim);
-  font: var(--ccp-text-base)/1 var(--ccp-font);
+  color: var(--pnt-text-dim);
+  font: var(--pnt-text-base)/1 var(--pnt-font);
   cursor: pointer;
 }
 
-#ccp-color-picker .ccp-edit-popclose:hover {
-  background: rgb(from var(--ccp-text) r g b / 0.08);
-  color: var(--ccp-text);
+#pnt-color-picker .pnt-edit-popclose:hover {
+  background: rgb(from var(--pnt-text) r g b / 0.08);
+  color: var(--pnt-text);
 }
 
-#ccp-color-picker .ccp-edit-palette {
+#pnt-color-picker .pnt-edit-palette {
   all: initial;
   display: flex;
   flex-wrap: wrap;
-  gap: var(--ccp-gap-pair);
+  gap: var(--pnt-gap-pair);
 }
 
-#ccp-color-picker .ccp-edit-pal {
+#pnt-color-picker .pnt-edit-pal {
   all: initial;
   box-sizing: border-box;
   width: 14px;
   height: 14px;
-  border-radius: var(--ccp-radius-xs);
-  border: 1px solid var(--ccp-sep);
+  border-radius: var(--pnt-radius-xs);
+  border: 1px solid var(--pnt-sep);
   /* background-color comes from the token being offered, written by paint() */
   cursor: pointer;
 }
 
-#ccp-color-picker .ccp-edit-pal:hover { border-color: var(--ccp-accent); }
+#pnt-color-picker .pnt-edit-pal:hover { border-color: var(--pnt-accent); }
 
-#ccp-color-picker .ccp-edit-pal:focus-visible {
-  outline: 1px solid var(--ccp-accent);
+#pnt-color-picker .pnt-edit-pal:focus-visible {
+  outline: 1px solid var(--pnt-accent);
   outline-offset: 1px;
 }
 
 /* Says what the swatch row is, and what the swatch under the pointer is called.
    One line, always occupied — an empty-until-hovered caption would resize the
    picker on approach and move the target away from the pointer. */
-#ccp-color-picker .ccp-edit-palcap {
+#pnt-color-picker .pnt-edit-palcap {
   all: initial;
   display: flex;
   align-items: baseline;
-  gap: var(--ccp-gap-pair);
+  gap: var(--pnt-gap-pair);
   min-width: 0;
   /* The name is the part worth truncating; the value is short and fixed. */
   overflow: hidden;
   white-space: nowrap;
-  font: var(--ccp-text-sm)/1.4 var(--ccp-font);
+  font: var(--pnt-text-sm)/1.4 var(--pnt-font);
 }
 
-#ccp-color-picker .ccp-edit-palcap b {
+#pnt-color-picker .pnt-edit-palcap b {
   all: initial;
   flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--ccp-accent);
-  font: var(--ccp-weight-medium) var(--ccp-text-sm)/1.4 var(--ccp-font);
+  color: var(--pnt-accent);
+  font: var(--pnt-weight-medium) var(--pnt-text-sm)/1.4 var(--pnt-font);
 }
 
-#ccp-color-picker .ccp-edit-palcap span {
+#pnt-color-picker .pnt-edit-palcap span {
   all: initial;
   flex: none;
-  color: var(--ccp-text-dim);
-  font: var(--ccp-text-sm)/1.4 var(--ccp-font);
+  color: var(--pnt-text-dim);
+  font: var(--pnt-text-sm)/1.4 var(--pnt-font);
   font-variant-numeric: tabular-nums;
 }
 
 /* Saturation to the right, value downward, over the pure hue. The white and
    black stops are the colour space, not a theme choice — see tokens.css. */
-#ccp-color-picker .ccp-edit-sat {
+#pnt-color-picker .pnt-edit-sat {
   all: initial;
   box-sizing: border-box;
   position: relative;
   display: block;
   height: 96px;
-  border-radius: var(--ccp-radius-xs);
+  border-radius: var(--pnt-radius-xs);
   /* The two gradients are the colour space and live here; the pure hue beneath
      them is background-color, written by the picker as it moves. */
   background-image:
-    linear-gradient(to top, var(--ccp-picker-black), transparent),
-    linear-gradient(to right, var(--ccp-picker-white), transparent);
+    linear-gradient(to top, var(--pnt-picker-black), transparent),
+    linear-gradient(to right, var(--pnt-picker-white), transparent);
   touch-action: none;
 }
 
-#ccp-color-picker .ccp-edit-rails {
+#pnt-color-picker .pnt-edit-rails {
   all: initial;
   display: flex;
   flex-direction: column;
-  gap: var(--ccp-gap-base);
+  gap: var(--pnt-gap-base);
 }
 
-#ccp-color-picker .ccp-edit-hue,
-#ccp-color-picker .ccp-edit-alpha {
+#pnt-color-picker .pnt-edit-hue,
+#pnt-color-picker .pnt-edit-alpha {
   all: initial;
   box-sizing: border-box;
   position: relative;
@@ -1476,19 +1476,19 @@
   touch-action: none;
 }
 
-#ccp-color-picker .ccp-edit-hue { background: var(--ccp-hue-ramp); }
+#pnt-color-picker .pnt-edit-hue { background: var(--pnt-hue-ramp); }
 
-#ccp-color-picker .ccp-edit-alpha {
-  background-color: var(--ccp-checker);
+#pnt-color-picker .pnt-edit-alpha {
+  background-color: var(--pnt-checker);
   background-image:
-    linear-gradient(45deg, var(--ccp-mask) 25%, transparent 25% 75%, var(--ccp-mask) 75%),
-    linear-gradient(45deg, var(--ccp-mask) 25%, transparent 25% 75%, var(--ccp-mask) 75%);
+    linear-gradient(45deg, var(--pnt-mask) 25%, transparent 25% 75%, var(--pnt-mask) 75%),
+    linear-gradient(45deg, var(--pnt-mask) 25%, transparent 25% 75%, var(--pnt-mask) 75%);
   background-size: 6px 6px;
   background-position: 0 0, 3px 3px;
   overflow: hidden;
 }
 
-#ccp-color-picker .ccp-edit-alpha span {
+#pnt-color-picker .pnt-edit-alpha span {
   all: initial;
   display: block;
   position: absolute;
@@ -1497,46 +1497,46 @@
   /* background-image is the ramp to the picked colour, written by paint() */
 }
 
-#ccp-color-picker .ccp-edit-sat-dot,
-#ccp-color-picker .ccp-edit-rail-dot {
+#pnt-color-picker .pnt-edit-sat-dot,
+#pnt-color-picker .pnt-edit-rail-dot {
   position: absolute;
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  border: 2px solid var(--ccp-picker-white);
-  box-shadow: 0 0 0 1px rgb(from var(--ccp-mask) r g b / 0.4);
+  border: 2px solid var(--pnt-picker-white);
+  box-shadow: 0 0 0 1px rgb(from var(--pnt-mask) r g b / 0.4);
   pointer-events: none;
   translate: -50% -50%;
 }
 
 /* The square's dot is filled with the colour under it; the rail dots are rings
    over a ramp that already shows the value, so they stay hollow. */
-#ccp-color-picker .ccp-edit-rail-dot { top: 50%; background: transparent; }
+#pnt-color-picker .pnt-edit-rail-dot { top: 50%; background: transparent; }
 
-#ccp-color-picker .ccp-edit-popfoot {
+#pnt-color-picker .pnt-edit-popfoot {
   all: initial;
   display: flex;
   align-items: center;
-  gap: var(--ccp-gap-base);
+  gap: var(--pnt-gap-base);
 }
 
-#ccp-color-picker .ccp-edit-hexin {
+#pnt-color-picker .pnt-edit-hexin {
   all: initial;
   box-sizing: border-box;
   flex: 1;
   min-width: 0;
-  padding: 2px var(--ccp-xs);
-  border: 1px solid var(--ccp-sep);
-  border-radius: var(--ccp-radius-xs);
-  background: rgb(from var(--ccp-text) r g b / 0.06);
-  color: var(--ccp-text);
-  font: var(--ccp-weight-medium) var(--ccp-text-sm)/1.4 var(--ccp-font);
+  padding: 2px var(--pnt-xs);
+  border: 1px solid var(--pnt-sep);
+  border-radius: var(--pnt-radius-xs);
+  background: rgb(from var(--pnt-text) r g b / 0.06);
+  color: var(--pnt-text);
+  font: var(--pnt-weight-medium) var(--pnt-text-sm)/1.4 var(--pnt-font);
   font-variant-numeric: tabular-nums;
 }
 
-#ccp-color-picker .ccp-edit-hexin:focus { border-color: var(--ccp-accent); }
+#pnt-color-picker .pnt-edit-hexin:focus { border-color: var(--pnt-accent); }
 
-#ccp-color-picker .ccp-edit-drop {
+#pnt-color-picker .pnt-edit-drop {
   all: initial;
   box-sizing: border-box;
   flex: none;
@@ -1545,192 +1545,192 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--ccp-sep);
-  border-radius: var(--ccp-radius-xs);
+  border: 1px solid var(--pnt-sep);
+  border-radius: var(--pnt-radius-xs);
   background: transparent;
-  color: var(--ccp-text-dim);
-  font: var(--ccp-text-base)/1 var(--ccp-font);
+  color: var(--pnt-text-dim);
+  font: var(--pnt-text-base)/1 var(--pnt-font);
   cursor: pointer;
 }
 
-#ccp-color-picker .ccp-edit-drop:hover { border-color: var(--ccp-accent); color: var(--ccp-accent); }
+#pnt-color-picker .pnt-edit-drop:hover { border-color: var(--pnt-accent); color: var(--pnt-accent); }
 
 /* ===== Settings Button =====
    Viewport chrome, not selection chrome: mounted by activate() and pinned to the
-   top-right corner for as long as probe mode is on, whether or not anything is
-   selected. Same opaque treatment as .ccp-parent-btn and for the same reason —
+   top-right corner for as long as point mode is on, whether or not anything is
+   selected. Same opaque treatment as .pnt-parent-btn and for the same reason —
    it sits directly on the page, so a translucent fill would let the page through.
 
    Square and icon-only, which keeps its footprint small against the label. It
    still collides: three of the placement strategies dock the label to the
    visible top edge. layoutChrome() fades the button out when they overlap —
    the interactive selection chrome wins, this yields. */
-#ccp-settings-btn {
+#pnt-settings-btn {
   all: initial;
   position: fixed;
-  top: var(--ccp-btn-x);
-  right: var(--ccp-btn-x);
-  z-index: var(--ccp-z-chrome);
+  top: var(--pnt-btn-x);
+  right: var(--pnt-btn-x);
+  z-index: var(--pnt-z-chrome);
   display: flex;
   align-items: center;
   justify-content: center;
   width: 30px;
   height: 30px;
-  background: var(--ccp-surface);
-  color: var(--ccp-accent);
-  border: 1px solid var(--ccp-accent);
-  border-radius: var(--ccp-radius-lg);
-  box-shadow: var(--ccp-shadow-bar);
+  background: var(--pnt-surface);
+  color: var(--pnt-accent);
+  border: 1px solid var(--pnt-accent);
+  border-radius: var(--pnt-radius-lg);
+  box-shadow: var(--pnt-shadow-bar);
   cursor: pointer;
   box-sizing: border-box;
-  transition: background var(--ccp-duration), color var(--ccp-duration),
-              opacity var(--ccp-duration);
+  transition: background var(--pnt-duration), color var(--pnt-duration),
+              opacity var(--pnt-duration);
 }
 
-#ccp-settings-btn:hover {
-  background: var(--ccp-accent);
-  color: var(--ccp-on-accent);
+#pnt-settings-btn:hover {
+  background: var(--pnt-accent);
+  color: var(--pnt-on-accent);
 }
 
-#ccp-settings-btn:active {
-  background: var(--ccp-accent-dark);
-  color: var(--ccp-on-accent);
+#pnt-settings-btn:active {
+  background: var(--pnt-accent-dark);
+  color: var(--pnt-on-accent);
 }
 
 /* Yielded to the selection chrome. Not display:none — the layout pass has to
    keep measuring its rect to know when the collision ends. */
-#ccp-settings-btn.ccp-yielded {
+#pnt-settings-btn.pnt-yielded {
   opacity: 0;
   pointer-events: none;
 }
 
 /* ===== Toast Notification ===== */
-#ccp-toast {
+#pnt-toast {
   all: initial;
-  background: var(--ccp-accent);
-  color: var(--ccp-on-accent);
-  padding: var(--ccp-xs) var(--ccp-btn-x);
-  border-radius: var(--ccp-radius-lg);
-  font: var(--ccp-weight-medium) var(--ccp-text-base)/var(--ccp-leading-tight) var(--ccp-font);
+  background: var(--pnt-accent);
+  color: var(--pnt-on-accent);
+  padding: var(--pnt-xs) var(--pnt-btn-x);
+  border-radius: var(--pnt-radius-lg);
+  font: var(--pnt-weight-medium) var(--pnt-text-base)/var(--pnt-leading-tight) var(--pnt-font);
   text-transform: uppercase;
-  letter-spacing: var(--ccp-tracking-wide);
+  letter-spacing: var(--pnt-tracking-wide);
   opacity: 0;
-  transition: opacity var(--ccp-duration-slow);
+  transition: opacity var(--pnt-duration-slow);
   pointer-events: none;
   white-space: nowrap;
   box-sizing: border-box;
   display: flex;
   align-items: center;
-  gap: var(--ccp-sm);
+  gap: var(--pnt-sm);
 }
 
 /* Toast is always positioned via JS */
 
-#ccp-toast.ccp-toast-visible {
+#pnt-toast.pnt-toast-visible {
   opacity: 1;
 }
 
-#ccp-toast.ccp-toast-error {
-  background: var(--ccp-error);
-  color: var(--ccp-on-error);
+#pnt-toast.pnt-toast-error {
+  background: var(--pnt-error);
+  color: var(--pnt-on-error);
 }
 
-/* ===== Probe Mode Cursor ===== */
+/* ===== Point Mode Cursor ===== */
 /* Flatten every page cursor to the plain arrow while probing — an I-beam or
    link pointer would suggest the page's own interactions are live when clicks
    are being intercepted. The probe's controls stay `pointer` via the
    re-assertions below: everything here is !important, so the ID-prefixed
    selectors win on specificity. Descendants (button SVGs) need their own
    match — the universal rule hits them directly, not by inheritance. */
-.ccp-probe-active,
-.ccp-probe-active * {
+.pnt-point-active,
+.pnt-point-active * {
   cursor: default !important;
 }
 
-#ccp-toolbar .ccp-bar button,
-#ccp-toolbar .ccp-bar button *,
-#ccp-toolbar .ccp-parent-btn,
-#ccp-toolbar .ccp-parent-btn *,
-#ccp-settings-btn,
-#ccp-settings-btn * {
+#pnt-toolbar .pnt-bar button,
+#pnt-toolbar .pnt-bar button *,
+#pnt-toolbar .pnt-parent-btn,
+#pnt-toolbar .pnt-parent-btn *,
+#pnt-settings-btn,
+#pnt-settings-btn * {
   cursor: pointer !important;
 }
 
-#ccp-toolbar .ccp-parent-btn.ccp-button-disabled,
-#ccp-toolbar .ccp-parent-btn.ccp-button-disabled * {
+#pnt-toolbar .pnt-parent-btn.pnt-button-disabled,
+#pnt-toolbar .pnt-parent-btn.pnt-button-disabled * {
   cursor: not-allowed !important;
 }
 
 /* The edit panel is the one surface where the page's flattened arrow is wrong
    throughout: everything in it is grabbable, clickable or scrubbable, and the
    cursor is how each of those announces itself. */
-#ccp-edit-panel .ccp-edit-back,
-#ccp-edit-panel .ccp-edit-back * {
+#pnt-edit-panel .pnt-edit-back,
+#pnt-edit-panel .pnt-edit-back * {
   cursor: pointer !important;
 }
 
-#ccp-edit-panel .ccp-edit-head,
-#ccp-edit-panel .ccp-edit-head * {
+#pnt-edit-panel .pnt-edit-head,
+#pnt-edit-panel .pnt-edit-head * {
   cursor: grab !important;
 }
 
-#ccp-edit-panel .ccp-edit-head.ccp-edit-dragging,
-#ccp-edit-panel .ccp-edit-head.ccp-edit-dragging * {
+#pnt-edit-panel .pnt-edit-head.pnt-edit-dragging,
+#pnt-edit-panel .pnt-edit-head.pnt-edit-dragging * {
   cursor: grabbing !important;
 }
 
 /* The picker is chrome, so its inert parts — the title, the padding — read as
    chrome rather than inheriting the page's crosshair. Everything below that is
    actually operable overrides this on specificity. */
-#ccp-color-picker,
-#ccp-color-picker * {
+#pnt-color-picker,
+#pnt-color-picker * {
   cursor: default !important;
 }
 
-#ccp-edit-panel .ccp-edit-act,
-#ccp-edit-panel .ccp-edit-act *,
-#ccp-edit-panel .ccp-edit-auto,
-#ccp-edit-panel .ccp-edit-seg button,
-#ccp-edit-panel .ccp-edit-dot.ccp-edit-on,
-#ccp-edit-panel .ccp-edit-link,
-#ccp-edit-panel .ccp-edit-tok button,
-#ccp-edit-panel .ccp-edit-add,
-#ccp-edit-panel .ccp-edit-swatch,
-#ccp-edit-panel .ccp-edit-swatch *,
-#ccp-color-picker .ccp-edit-pal,
-#ccp-color-picker .ccp-edit-drop,
-#ccp-color-picker .ccp-edit-popclose {
+#pnt-edit-panel .pnt-edit-act,
+#pnt-edit-panel .pnt-edit-act *,
+#pnt-edit-panel .pnt-edit-auto,
+#pnt-edit-panel .pnt-edit-seg button,
+#pnt-edit-panel .pnt-edit-dot.pnt-edit-on,
+#pnt-edit-panel .pnt-edit-link,
+#pnt-edit-panel .pnt-edit-tok button,
+#pnt-edit-panel .pnt-edit-add,
+#pnt-edit-panel .pnt-edit-swatch,
+#pnt-edit-panel .pnt-edit-swatch *,
+#pnt-color-picker .pnt-edit-pal,
+#pnt-color-picker .pnt-edit-drop,
+#pnt-color-picker .pnt-edit-popclose {
   cursor: pointer !important;
 }
 
 /* The picker's surfaces are crosshair-and-drag, not click targets. */
-#ccp-color-picker .ccp-edit-sat,
-#ccp-color-picker .ccp-edit-sat * {
+#pnt-color-picker .pnt-edit-sat,
+#pnt-color-picker .pnt-edit-sat * {
   cursor: crosshair !important;
 }
 
-#ccp-color-picker .ccp-edit-hue,
-#ccp-color-picker .ccp-edit-hue *,
-#ccp-color-picker .ccp-edit-alpha,
-#ccp-color-picker .ccp-edit-alpha * {
+#pnt-color-picker .pnt-edit-hue,
+#pnt-color-picker .pnt-edit-hue *,
+#pnt-color-picker .pnt-edit-alpha,
+#pnt-color-picker .pnt-edit-alpha * {
   cursor: ew-resize !important;
 }
 
-#ccp-color-picker .ccp-edit-hexin { cursor: text !important; }
+#pnt-color-picker .pnt-edit-hexin { cursor: text !important; }
 
 /* The value chip announces that it can be dragged; the field inside it stays
    a text cursor, because clicking it is how you type instead. */
-#ccp-edit-panel .ccp-edit-num,
-#ccp-edit-panel .ccp-edit-unit {
+#pnt-edit-panel .pnt-edit-num,
+#pnt-edit-panel .pnt-edit-unit {
   cursor: ew-resize !important;
 }
 
-#ccp-edit-panel .ccp-edit-input {
+#pnt-edit-panel .pnt-edit-input {
   cursor: text !important;
 }
 
-#ccp-edit-panel .ccp-edit-num.ccp-edit-scrubbing,
-#ccp-edit-panel .ccp-edit-num.ccp-edit-scrubbing * {
+#pnt-edit-panel .pnt-edit-num.pnt-edit-scrubbing,
+#pnt-edit-panel .pnt-edit-num.pnt-edit-scrubbing * {
   cursor: ew-resize !important;
 }
 
@@ -1745,68 +1745,68 @@
 /* The height glide needs interpolate-size, which inherits — so it is granted
    to the panel's own subtree and never to the page's root, which is not ours
    to change. */
-#ccp-edit-panel { interpolate-size: allow-keywords; }
+#pnt-edit-panel { interpolate-size: allow-keywords; }
 
-#ccp-edit-panel .ccp-adv {
+#pnt-edit-panel .pnt-adv {
   all: initial;
   box-sizing: border-box;
   display: block;
-  font-family: var(--ccp-font);
+  font-family: var(--pnt-font);
 }
 
-#ccp-edit-panel .ccp-adv-summary {
+#pnt-edit-panel .pnt-adv-summary {
   all: initial;
   box-sizing: border-box;
   display: flex;
   align-items: center;
-  gap: var(--ccp-gap-base);
-  font-family: var(--ccp-font);
+  gap: var(--pnt-gap-base);
+  font-family: var(--pnt-font);
   cursor: pointer;
   list-style: none;
   user-select: none;
 }
 
-#ccp-edit-panel .ccp-adv-summary::-webkit-details-marker { display: none; }
+#pnt-edit-panel .pnt-adv-summary::-webkit-details-marker { display: none; }
 
-#ccp-edit-panel .ccp-adv-summary:focus-visible {
-  outline: 2px solid var(--ccp-accent);
+#pnt-edit-panel .pnt-adv-summary:focus-visible {
+  outline: 2px solid var(--pnt-accent);
   outline-offset: 2px;
-  border-radius: var(--ccp-radius-xs);
+  border-radius: var(--pnt-radius-xs);
 }
 
-#ccp-edit-panel .ccp-adv-summary:hover .ccp-adv-legend { color: var(--ccp-text-dim); }
+#pnt-edit-panel .pnt-adv-summary:hover .pnt-adv-legend { color: var(--pnt-text-dim); }
 
 /* Drawn caret, not a glyph — the settings page's, at panel scale. Points
    right closed, down open. */
-#ccp-edit-panel .ccp-adv-caret {
+#pnt-edit-panel .pnt-adv-caret {
   all: initial;
   box-sizing: border-box;
   flex: none;
   width: 5px;
   height: 5px;
   margin-top: -3px;
-  border-right: 1.5px solid var(--ccp-text-muted);
-  border-bottom: 1.5px solid var(--ccp-text-muted);
+  border-right: 1.5px solid var(--pnt-text-muted);
+  border-bottom: 1.5px solid var(--pnt-text-muted);
   transform: rotate(45deg);
-  transition: transform var(--ccp-duration);
+  transition: transform var(--pnt-duration);
 }
 
-#ccp-edit-panel .ccp-adv:not([open]) .ccp-adv-caret {
+#pnt-edit-panel .pnt-adv:not([open]) .pnt-adv-caret {
   transform: rotate(-45deg);
   margin-top: 0;
 }
 
 /* The legend class carries the register; inside a flex summary its block
    margin has no work to do. */
-#ccp-edit-panel .ccp-adv-legend { margin-bottom: 0; }
+#pnt-edit-panel .pnt-adv-legend { margin-bottom: 0; }
 
 /* What the section holds, said before it is opened — the same courtesy as
    the copy button's count. */
-#ccp-edit-panel .ccp-adv-count {
+#pnt-edit-panel .pnt-adv-count {
   all: initial;
-  font: var(--ccp-text-sm)/1.4 var(--ccp-font);
+  font: var(--pnt-text-sm)/1.4 var(--pnt-font);
   font-variant-numeric: tabular-nums;
-  color: var(--ccp-text-faint);
+  color: var(--pnt-text-faint);
   margin-left: auto;
   white-space: nowrap;
   overflow: hidden;
@@ -1816,107 +1816,107 @@
 /* The collapse glides where the browser can interpolate to auto; older
    Chrome ignores ::details-content and snaps, which is the settings page's
    accepted fallback too. */
-#ccp-edit-panel .ccp-adv::details-content {
+#pnt-edit-panel .pnt-adv::details-content {
   height: 0;
   overflow: clip;
-  transition: height var(--ccp-duration-slow) var(--ccp-ease),
-              content-visibility var(--ccp-duration-slow) allow-discrete;
+  transition: height var(--pnt-duration-slow) var(--pnt-ease),
+              content-visibility var(--pnt-duration-slow) allow-discrete;
 }
 
-#ccp-edit-panel .ccp-adv[open]::details-content { height: auto; }
+#pnt-edit-panel .pnt-adv[open]::details-content { height: auto; }
 
-#ccp-edit-panel .ccp-adv-body {
+#pnt-edit-panel .pnt-adv-body {
   all: initial;
   box-sizing: border-box;
   display: block;
-  font-family: var(--ccp-font);
-  padding-top: var(--ccp-gap-base);
+  font-family: var(--pnt-font);
+  padding-top: var(--pnt-gap-base);
 }
 
 /* Which canvas got probed, or why the rows are inert — quiet, because none
    of it is a fault. */
-#ccp-edit-panel .ccp-adv-note {
+#pnt-edit-panel .pnt-adv-note {
   all: initial;
   display: block;
-  font: var(--ccp-text-sm)/1.5 var(--ccp-font);
-  color: var(--ccp-text-faint);
-  margin: 2px 0 var(--ccp-gap-base);
+  font: var(--pnt-text-sm)/1.5 var(--pnt-font);
+  color: var(--pnt-text-faint);
+  margin: 2px 0 var(--pnt-gap-base);
 }
 
-#ccp-edit-panel .ccp-adv-note .ccp-edit-id-tag { color: var(--ccp-accent); }
-#ccp-edit-panel .ccp-adv-note .ccp-edit-id-id { color: var(--ccp-syntax-id); }
-#ccp-edit-panel .ccp-adv-note .ccp-edit-id-class { color: var(--ccp-syntax-class); }
+#pnt-edit-panel .pnt-adv-note .pnt-edit-id-tag { color: var(--pnt-accent); }
+#pnt-edit-panel .pnt-adv-note .pnt-edit-id-id { color: var(--pnt-syntax-id); }
+#pnt-edit-panel .pnt-adv-note .pnt-edit-id-class { color: var(--pnt-syntax-class); }
 
 /* Values the page rewrites every frame. A shade apart from the parameters
    above them: these read out the page's own loop until a row is touched, and
    the dimming lifts with the dirty state — an overridden value is yours. */
-#ccp-edit-panel .ccp-adv-driven {
+#pnt-edit-panel .pnt-adv-driven {
   all: initial;
   box-sizing: border-box;
   display: block;
-  font-family: var(--ccp-font);
-  margin-top: var(--ccp-gap-base);
+  font-family: var(--pnt-font);
+  margin-top: var(--pnt-gap-base);
 }
 
-#ccp-edit-panel .ccp-adv-driven-legend {
+#pnt-edit-panel .pnt-adv-driven-legend {
   all: initial;
   display: block;
-  font: var(--ccp-weight-medium) 9px/1 var(--ccp-font);
+  font: var(--pnt-weight-medium) 9px/1 var(--pnt-font);
   letter-spacing: 0.13em;
   text-transform: uppercase;
-  color: var(--ccp-text-faint);
-  margin: var(--ccp-gap-base) 0;
+  color: var(--pnt-text-faint);
+  margin: var(--pnt-gap-base) 0;
 }
 
-#ccp-edit-panel .ccp-adv-driven .ccp-edit-row:not(.ccp-edit-dirty) .ccp-edit-input {
-  color: var(--ccp-text-dim);
+#pnt-edit-panel .pnt-adv-driven .pnt-edit-row:not(.pnt-edit-dirty) .pnt-edit-input {
+  color: var(--pnt-text-dim);
 }
 
 /* A shader that drew once and stopped, or one the page rebuilt out from
    under us: the rows stay to say what the values are, and nothing pretends
    they can be moved. The inputs are disabled from script; this is the face. */
-#ccp-edit-panel .ccp-adv-readonly { opacity: 0.65; }
-#ccp-edit-panel .ccp-adv-readonly .ccp-edit-num,
-#ccp-edit-panel .ccp-adv-readonly .ccp-edit-num *,
-#ccp-edit-panel .ccp-adv-readonly .ccp-edit-dot,
-#ccp-edit-panel .ccp-adv-readonly .ccp-edit-swatch {
+#pnt-edit-panel .pnt-adv-readonly { opacity: 0.65; }
+#pnt-edit-panel .pnt-adv-readonly .pnt-edit-num,
+#pnt-edit-panel .pnt-adv-readonly .pnt-edit-num *,
+#pnt-edit-panel .pnt-adv-readonly .pnt-edit-dot,
+#pnt-edit-panel .pnt-adv-readonly .pnt-edit-swatch {
   cursor: default !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  #ccp-edit-panel .ccp-adv-caret { transition: none; }
-  #ccp-edit-panel .ccp-adv::details-content { transition: none; }
+  #pnt-edit-panel .pnt-adv-caret { transition: none; }
+  #pnt-edit-panel .pnt-adv::details-content { transition: none; }
 }
 
 /* ===== Edit Panel — text field =====
    The words themselves, in the register of the value chips: a quiet field
    that looks like the numbers beside it, wide because words are wider. */
-#ccp-edit-panel .ccp-edit-textwrap {
+#pnt-edit-panel .pnt-edit-textwrap {
   all: initial;
   box-sizing: border-box;
   display: inline-flex;
   flex: none;
   width: 132px;
-  padding: 2px var(--ccp-xs);
-  border: 1px solid var(--ccp-sep);
-  border-radius: var(--ccp-radius-xs);
-  background: rgb(from var(--ccp-text) r g b / 0.06);
-  font-family: var(--ccp-font);
-  transition: border-color var(--ccp-duration), background var(--ccp-duration);
+  padding: 2px var(--pnt-xs);
+  border: 1px solid var(--pnt-sep);
+  border-radius: var(--pnt-radius-xs);
+  background: rgb(from var(--pnt-text) r g b / 0.06);
+  font-family: var(--pnt-font);
+  transition: border-color var(--pnt-duration), background var(--pnt-duration);
 }
 
-#ccp-edit-panel .ccp-edit-textwrap:focus-within {
-  border-color: var(--ccp-accent);
-  background: rgb(from var(--ccp-accent) r g b / 0.12);
+#pnt-edit-panel .pnt-edit-textwrap:focus-within {
+  border-color: var(--pnt-accent);
+  background: rgb(from var(--pnt-accent) r g b / 0.12);
 }
 
-#ccp-edit-panel .ccp-edit-textin {
+#pnt-edit-panel .pnt-edit-textin {
   all: initial;
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
-  font: var(--ccp-weight-medium) var(--ccp-text-sm)/1.4 var(--ccp-font);
-  color: var(--ccp-text);
+  font: var(--pnt-weight-medium) var(--pnt-text-sm)/1.4 var(--pnt-font);
+  color: var(--pnt-text);
   background: transparent;
   border: 0;
   padding: 0;
@@ -1926,43 +1926,43 @@
   cursor: text !important;
 }
 
-#ccp-edit-panel .ccp-edit-textin::selection {
-  background: rgb(from var(--ccp-accent) r g b / 0.35);
+#pnt-edit-panel .pnt-edit-textin::selection {
+  background: rgb(from var(--pnt-accent) r g b / 0.35);
 }
 
 /* ===== Edit Panel — typography grid =====
    The round-three design: micro-labelled cells three-up, the style row for
    the composite, ticks saying who owns each value, a caption that narrates.
    Only the typography group wears this; the other groups keep their rows. */
-#ccp-edit-panel .ccp-type-grid {
+#pnt-edit-panel .pnt-type-grid {
   all: initial;
   box-sizing: border-box;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 5px 6px;
   margin-top: 4px;
-  font-family: var(--ccp-font);
+  font-family: var(--pnt-font);
 }
 
-#ccp-edit-panel .ccp-type-cell {
+#pnt-edit-panel .pnt-type-cell {
   all: initial;
   box-sizing: border-box;
   position: relative;
   display: block;
-  font-family: var(--ccp-font);
+  font-family: var(--pnt-font);
   min-width: 0;
 }
 
 /* The micro-label doubles as the reset: quiet caps at rest, accent and
    clickable once its property carries an edit. */
-#ccp-edit-panel .ccp-type-k {
+#pnt-edit-panel .pnt-type-k {
   all: initial;
   box-sizing: border-box;
   display: block;
-  font: var(--ccp-weight-medium) 7.5px/1 var(--ccp-font);
+  font: var(--pnt-weight-medium) 7.5px/1 var(--pnt-font);
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--ccp-text-faint);
+  color: var(--pnt-text-faint);
   margin-bottom: 2px;
   cursor: default;
   background: transparent;
@@ -1970,26 +1970,26 @@
   padding: 0;
 }
 
-#ccp-edit-panel .ccp-type-cell.ccp-edit-dirty .ccp-type-k {
-  color: var(--ccp-accent);
+#pnt-edit-panel .pnt-type-cell.pnt-edit-dirty .pnt-type-k {
+  color: var(--pnt-accent);
   cursor: pointer;
 }
 
-#ccp-edit-panel .ccp-type-cell .ccp-edit-num { width: 100%; }
-#ccp-edit-panel .ccp-type-cell .ccp-edit-seg { width: 100%; display: flex; }
-#ccp-edit-panel .ccp-type-cell .ccp-edit-seg button { flex: 1; }
-#ccp-edit-panel .ccp-type-cell .ccp-edit-color {
+#pnt-edit-panel .pnt-type-cell .pnt-edit-num { width: 100%; }
+#pnt-edit-panel .pnt-type-cell .pnt-edit-seg { width: 100%; display: flex; }
+#pnt-edit-panel .pnt-type-cell .pnt-edit-seg button { flex: 1; }
+#pnt-edit-panel .pnt-type-cell .pnt-edit-color {
   display: flex;
   align-items: center;
   gap: 4px;
-  border: 1px solid var(--ccp-sep);
-  border-radius: var(--ccp-radius-xs);
-  background: rgb(from var(--ccp-text) r g b / 0.06);
+  border: 1px solid var(--pnt-sep);
+  border-radius: var(--pnt-radius-xs);
+  background: rgb(from var(--pnt-text) r g b / 0.06);
   padding: 2px 4px;
   min-width: 0;
 }
-#ccp-edit-panel .ccp-type-cell .ccp-edit-swatch { width: 11px; height: 11px; }
-#ccp-edit-panel .ccp-type-cell .ccp-edit-hex {
+#pnt-edit-panel .pnt-type-cell .pnt-edit-swatch { width: 11px; height: 11px; }
+#pnt-edit-panel .pnt-type-cell .pnt-edit-hex {
   font-size: 9px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1999,8 +1999,8 @@
 
 /* The tick vocabulary. Filled: the style owns this value. Hollow: the cell
    sits on its own single-prop token. Dashed border: covered but drifted. */
-#ccp-edit-panel .ccp-type-fromstyle .ccp-edit-num::after,
-#ccp-edit-panel .ccp-type-fromstyle .ccp-edit-color::after {
+#pnt-edit-panel .pnt-type-fromstyle .pnt-edit-num::after,
+#pnt-edit-panel .pnt-type-fromstyle .pnt-edit-color::after {
   content: "";
   position: absolute;
   top: 8px;
@@ -2008,10 +2008,10 @@
   width: 5px;
   height: 5px;
   border-radius: 0 3px 0 3px;
-  background: var(--ccp-accent);
+  background: var(--pnt-accent);
 }
 
-#ccp-edit-panel .ccp-type-owntok .ccp-edit-num::after {
+#pnt-edit-panel .pnt-type-owntok .pnt-edit-num::after {
   content: "";
   position: absolute;
   top: 8px;
@@ -2019,27 +2019,27 @@
   width: 5px;
   height: 5px;
   border-radius: 0 3px 0 3px;
-  border: 1px solid var(--ccp-accent);
-  background: var(--ccp-surface);
+  border: 1px solid var(--pnt-accent);
+  background: var(--pnt-surface);
 }
 
-#ccp-edit-panel .ccp-type-drift .ccp-edit-num {
+#pnt-edit-panel .pnt-type-drift .pnt-edit-num {
   border-style: dashed;
-  border-color: rgb(from var(--ccp-accent) r g b / 0.6);
+  border-color: rgb(from var(--pnt-accent) r g b / 0.6);
 }
 
 /* The style row: the composite's seat, above the grid. */
-#ccp-edit-panel .ccp-type-stylerow {
+#pnt-edit-panel .pnt-type-stylerow {
   all: initial;
   box-sizing: border-box;
   display: flex;
   align-items: center;
-  gap: var(--ccp-gap-base);
+  gap: var(--pnt-gap-base);
   padding: 3px 0 4px;
-  font-family: var(--ccp-font);
+  font-family: var(--pnt-font);
 }
 
-#ccp-edit-panel .ccp-type-chip {
+#pnt-edit-panel .pnt-type-chip {
   all: initial;
   box-sizing: border-box;
   flex: 1;
@@ -2048,58 +2048,58 @@
   align-items: center;
   justify-content: center;
   gap: 5px;
-  border: 1px solid rgb(from var(--ccp-accent) r g b / 0.55);
-  border-radius: var(--ccp-radius-xs);
+  border: 1px solid rgb(from var(--pnt-accent) r g b / 0.55);
+  border-radius: var(--pnt-radius-xs);
   padding: 2px 6px;
-  background: rgb(from var(--ccp-accent) r g b / 0.10);
-  font-family: var(--ccp-font);
+  background: rgb(from var(--pnt-accent) r g b / 0.10);
+  font-family: var(--pnt-font);
 }
 
-#ccp-edit-panel .ccp-type-name {
+#pnt-edit-panel .pnt-type-name {
   all: initial;
-  font: var(--ccp-weight-medium) var(--ccp-text-sm)/1.4 var(--ccp-font);
-  color: var(--ccp-accent);
+  font: var(--pnt-weight-medium) var(--pnt-text-sm)/1.4 var(--pnt-font);
+  color: var(--pnt-accent);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   min-width: 0;
 }
 
-#ccp-edit-panel .ccp-type-mod {
+#pnt-edit-panel .pnt-type-mod {
   all: initial;
-  font: 8px/1.4 var(--ccp-font);
+  font: 8px/1.4 var(--pnt-font);
   font-style: normal;
-  color: var(--ccp-text-dim);
+  color: var(--pnt-text-dim);
   white-space: nowrap;
 }
 
-#ccp-edit-panel .ccp-type-st {
+#pnt-edit-panel .pnt-type-st {
   all: initial;
   box-sizing: border-box;
-  font: var(--ccp-text-sm)/1 var(--ccp-font);
-  color: var(--ccp-text-faint);
+  font: var(--pnt-text-sm)/1 var(--pnt-font);
+  color: var(--pnt-text-faint);
   cursor: pointer;
   padding: 2px 3px;
 }
 
-#ccp-edit-panel .ccp-type-st:hover { color: var(--ccp-accent); }
+#pnt-edit-panel .pnt-type-st:hover { color: var(--pnt-accent); }
 
 /* Drift makes the chip itself the way home. */
-#ccp-edit-panel .ccp-type-chip.ccp-type-drifted {
+#pnt-edit-panel .pnt-type-chip.pnt-type-drifted {
   border-style: dashed;
   cursor: pointer;
 }
 
-#ccp-edit-panel .ccp-type-chip.ccp-type-drifted:hover {
-  background: rgb(from var(--ccp-accent) r g b / 0.2);
+#pnt-edit-panel .pnt-type-chip.pnt-type-drifted:hover {
+  background: rgb(from var(--pnt-accent) r g b / 0.2);
 }
 
 /* The caption: one quiet line that names whatever the pointer touches. */
-#ccp-edit-panel .ccp-type-cap {
+#pnt-edit-panel .pnt-type-cap {
   all: initial;
   display: block;
-  font: 8px/1.5 var(--ccp-font);
-  color: var(--ccp-text-faint);
+  font: 8px/1.5 var(--pnt-font);
+  color: var(--pnt-text-faint);
   padding: 3px 0 0 1px;
   min-height: 13px;
   overflow: hidden;
@@ -2107,15 +2107,15 @@
   white-space: nowrap;
 }
 
-#ccp-edit-panel .ccp-type-cap b {
+#pnt-edit-panel .pnt-type-cap b {
   all: initial;
   font: inherit;
-  font-weight: var(--ccp-weight-medium);
-  color: var(--ccp-accent);
+  font-weight: var(--pnt-weight-medium);
+  color: var(--pnt-accent);
 }
 
 /* The ⤢ beside the text field. */
-#ccp-edit-panel .ccp-edit-expand {
+#pnt-edit-panel .pnt-edit-expand {
   all: initial;
   box-sizing: border-box;
   width: 18px;
@@ -2123,86 +2123,86 @@
   flex: none;
   display: grid;
   place-items: center;
-  border: 1px solid var(--ccp-sep);
-  border-radius: var(--ccp-radius-xs);
-  color: var(--ccp-text-dim);
-  font: 9px/1 var(--ccp-font);
+  border: 1px solid var(--pnt-sep);
+  border-radius: var(--pnt-radius-xs);
+  color: var(--pnt-text-dim);
+  font: 9px/1 var(--pnt-font);
   cursor: pointer;
   background: transparent;
 }
 
-#ccp-edit-panel .ccp-edit-expand:hover {
-  border-color: var(--ccp-accent);
-  color: var(--ccp-accent);
+#pnt-edit-panel .pnt-edit-expand:hover {
+  border-color: var(--pnt-accent);
+  color: var(--pnt-accent);
 }
 
 /* ===== The long-text editor =====
    A sibling root beside the panel — the picker's arrangement, for words. */
-#ccp-text-editor {
+#pnt-text-editor {
   all: initial;
   position: fixed;
-  z-index: var(--ccp-z-chrome);
+  z-index: var(--pnt-z-chrome);
   box-sizing: border-box;
   width: 220px;
-  font-family: var(--ccp-font);
-  color: var(--ccp-text);
-  background: var(--ccp-surface);
-  border: 1px solid rgb(from var(--ccp-accent) r g b / 0.5);
-  border-radius: var(--ccp-radius-lg);
-  box-shadow: var(--ccp-shadow-card);
-  padding: var(--ccp-gap-base) var(--ccp-sm) var(--ccp-sm);
+  font-family: var(--pnt-font);
+  color: var(--pnt-text);
+  background: var(--pnt-surface);
+  border: 1px solid rgb(from var(--pnt-accent) r g b / 0.5);
+  border-radius: var(--pnt-radius-lg);
+  box-shadow: var(--pnt-shadow-card);
+  padding: var(--pnt-gap-base) var(--pnt-sm) var(--pnt-sm);
 }
 
-#ccp-text-editor .ccp-txted-head {
+#pnt-text-editor .pnt-txted-head {
   all: initial;
   box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font: var(--ccp-weight-medium) 9px/1 var(--ccp-font);
+  font: var(--pnt-weight-medium) 9px/1 var(--pnt-font);
   letter-spacing: 0.13em;
   text-transform: uppercase;
-  color: var(--ccp-text-muted);
-  margin-bottom: var(--ccp-gap-base);
+  color: var(--pnt-text-muted);
+  margin-bottom: var(--pnt-gap-base);
 }
 
-#ccp-text-editor .ccp-txted-head button {
+#pnt-text-editor .pnt-txted-head button {
   all: initial;
-  font: 11px/1 var(--ccp-font);
-  color: var(--ccp-text-dim);
+  font: 11px/1 var(--pnt-font);
+  color: var(--pnt-text-dim);
   cursor: pointer;
   padding: 2px 4px;
 }
 
-#ccp-text-editor .ccp-txted-head button:hover { color: var(--ccp-accent); }
+#pnt-text-editor .pnt-txted-head button:hover { color: var(--pnt-accent); }
 
-#ccp-text-editor textarea {
+#pnt-text-editor textarea {
   all: initial;
   box-sizing: border-box;
   display: block;
   width: 100%;
   height: 72px;
   resize: none;
-  border: 1px solid var(--ccp-sep);
-  border-radius: var(--ccp-radius-xs);
-  background: rgb(from var(--ccp-text) r g b / 0.06);
-  color: var(--ccp-text);
-  font: var(--ccp-text-sm)/1.5 var(--ccp-font);
+  border: 1px solid var(--pnt-sep);
+  border-radius: var(--pnt-radius-xs);
+  background: rgb(from var(--pnt-text) r g b / 0.06);
+  color: var(--pnt-text);
+  font: var(--pnt-text-sm)/1.5 var(--pnt-font);
   padding: 4px 5px;
   cursor: text !important;
 }
 
-#ccp-text-editor textarea:focus { border-color: var(--ccp-accent); }
+#pnt-text-editor textarea:focus { border-color: var(--pnt-accent); }
 
-#ccp-text-editor textarea::selection {
-  background: rgb(from var(--ccp-accent) r g b / 0.35);
+#pnt-text-editor textarea::selection {
+  background: rgb(from var(--pnt-accent) r g b / 0.35);
 }
 
-#ccp-text-editor .ccp-txted-count {
+#pnt-text-editor .pnt-txted-count {
   all: initial;
   display: block;
-  font: 8px/1.4 var(--ccp-font);
-  color: var(--ccp-text-faint);
+  font: 8px/1.4 var(--pnt-font);
+  color: var(--pnt-text-faint);
   text-align: right;
   margin-top: 3px;
 }

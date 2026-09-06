@@ -37,7 +37,7 @@ Then load it: `chrome://extensions` → Developer mode → Load unpacked → sel
 
 ## How it works
 
-1. Click the extension icon to enter Probe Mode
+1. Click the extension icon to enter Point Mode
 2. Hover over elements — a wireframe outline highlights what you're pointing at
 3. Click to select — a toolbar appears
 4. Pick what to copy:
@@ -106,7 +106,7 @@ declaration to change.
 While the panel is open the page is inert — clicks and menus over it are
 swallowed, so scrubbing a value across a page full of links can't navigate away
 mid-drag. **Esc** steps back out one layer at a time: picker, then panel, then
-selection, then Probe Mode. Measuring still works throughout — hold **Option**
+selection, then Point Mode. Measuring still works throughout — hold **Option**
 and the panel steps aside exactly as the toolbar does.
 
 The colour picker opens beside the panel rather than over it, so the rows it is
@@ -149,7 +149,7 @@ measuring continues from it — walk a row of siblings without ever releasing th
 
 ### Settings
 
-A gear sits in the top-right corner for as long as Probe Mode is on — whether or not
+A gear sits in the top-right corner for as long as Point Mode is on — whether or not
 anything is selected. It opens the settings page in a tab.
 
 The page is a spec sheet — dotted-leader rows in collapsible sections, with a preview
@@ -301,13 +301,13 @@ python3 -m http.server 8765              # then open /test/harness.html
 ```
 
 The harness is keyboard-driven — `s` simulates, `r` sweeps the live extension, `n`/`p`
-walk the cases — because Probe Mode captures every click on the page, including on the
+walk the cases — because Point Mode captures every click on the page, including on the
 harness's own buttons. Serve it over HTTP: `file://` works only if the extension has
 "Allow access to file URLs".
 
 `content.js` can't import the spec — MV3 content scripts are classic scripts — so the
 algorithm lives in two places. The live sweep is what keeps them honest: it measures the
-real `#ccp-label` and `#ccp-toolbar` and reports any case where they disagree with the
+real `#pnt-label` and `#pnt-toolbar` and reports any case where they disagree with the
 simulation. Run it after touching placement.
 
 ### Design tokens
@@ -322,7 +322,7 @@ node test/tokens.mjs    # 71 checks
 ```
 
 It fails the run on a colour literal left in `content.css`, a theme missing one of the
-19, a `var(--ccp-…)` nothing declares, a badge colour that has drifted from its theme,
+19, a `var(--pnt-…)` nothing declares, a badge colour that has drifted from its theme,
 or text that can't be read against its own surface. Warnings are real too: the
 de-emphasised 10px grey is below WCAG AA in most themes, which DESIGN.md explains
 rather than hides.

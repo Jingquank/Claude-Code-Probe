@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en" data-ccp-theme="terracotta-dark">
+<html lang="en" data-pnt-theme="terracotta-dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Claude Code Probe — Settings</title>
+<title>Pointee — Settings</title>
 <!--
   tokens.css and content.css are the real stylesheets the content script uses.
   Loading them here rather than restyling a lookalike is what stops the preview
@@ -19,7 +19,7 @@
 
 <main class="sp">
   <header class="sp-header">
-    <h1>Claude Code Probe</h1>
+    <h1>Pointee</h1>
     <p class="sp-version">Settings</p>
   </header>
 
@@ -405,7 +405,7 @@
           settings.css's own, the selection carrying the same conic sweep
           content.css spins around a live selection.
         -->
-        <div class="ccp-mock">
+        <div class="pnt-mock">
 
           <div class="an-item">
             <p class="an-cap" aria-hidden="true">Hover</p>
@@ -427,56 +427,56 @@
 
           <div class="an-item">
             <p class="an-cap" aria-hidden="true">Gear</p>
-            <button type="button" id="ccp-settings-btn" tabindex="-1" aria-hidden="true">
+            <button type="button" id="pnt-settings-btn" tabindex="-1" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           </button>
           </div>
 
           <!--
             The info panel, with the same markup updateLabel() builds. Kept short
-            on purpose: #ccp-label is white-space: nowrap, so a longer readout
+            on purpose: #pnt-label is white-space: nowrap, so a longer readout
             would overflow the rail rather than wrap.
           -->
           <div class="an-item an-span an-label">
           <p class="an-cap" aria-hidden="true">Info panel</p>
-          <div id="ccp-label">
+          <div id="pnt-label">
             <!--
-              Clawd, so --ccp-clawd-body and --ccp-clawd-leg get previewed too.
+              Clawd, so --pnt-clawd-body and --pnt-clawd-leg get previewed too.
               This is the compact silhouette rather than the full mascot from
               content.js — a static preview does not need the walk cycle, and
               settings.css holds it still.
             -->
-            <div class="ccp-clawd" aria-hidden="true">
+            <div class="pnt-clawd" aria-hidden="true">
               <svg viewBox="-4 -4 120 80" fill="none">
-                <rect class="ccp-clawd-body" x="8" y="0" width="96" height="56" rx="4"/>
-                <rect class="ccp-clawd-body" x="-4" y="25.6" width="12" height="14.4" rx="3"/>
-                <rect class="ccp-clawd-body" x="104" y="25.6" width="12" height="14.4" rx="3"/>
-                <rect class="ccp-clawd-eye" x="28" y="14" width="8" height="16" rx="2"/>
-                <rect class="ccp-clawd-eye" x="76" y="14" width="8" height="16" rx="2"/>
-                <rect class="ccp-clawd-leg" x="16" y="56" width="9.6" height="20" rx="2"/>
-                <rect class="ccp-clawd-leg" x="30.4" y="56" width="9.6" height="20" rx="2"/>
-                <rect class="ccp-clawd-leg" x="72" y="56" width="9.6" height="20" rx="2"/>
-                <rect class="ccp-clawd-leg" x="86.4" y="56" width="9.6" height="20" rx="2"/>
+                <rect class="pnt-clawd-body" x="8" y="0" width="96" height="56" rx="4"/>
+                <rect class="pnt-clawd-body" x="-4" y="25.6" width="12" height="14.4" rx="3"/>
+                <rect class="pnt-clawd-body" x="104" y="25.6" width="12" height="14.4" rx="3"/>
+                <rect class="pnt-clawd-eye" x="28" y="14" width="8" height="16" rx="2"/>
+                <rect class="pnt-clawd-eye" x="76" y="14" width="8" height="16" rx="2"/>
+                <rect class="pnt-clawd-leg" x="16" y="56" width="9.6" height="20" rx="2"/>
+                <rect class="pnt-clawd-leg" x="30.4" y="56" width="9.6" height="20" rx="2"/>
+                <rect class="pnt-clawd-leg" x="72" y="56" width="9.6" height="20" rx="2"/>
+                <rect class="pnt-clawd-leg" x="86.4" y="56" width="9.6" height="20" rx="2"/>
               </svg>
             </div>
-            <div class="ccp-label-content">
-              <div class="ccp-label-line ccp-line-identity">
-                <span class="ccp-label-tag">div</span
-                ><span class="ccp-label-class">.card</span>
-                <span class="ccp-label-size">320 × 208</span>
+            <div class="pnt-label-content">
+              <div class="pnt-label-line pnt-line-identity">
+                <span class="pnt-label-tag">div</span
+                ><span class="pnt-label-class">.card</span>
+                <span class="pnt-label-size">320 × 208</span>
               </div>
-              <div class="ccp-label-line ccp-line-meta">
-                <span class="ccp-label-prop">flex</span>
-                <span class="ccp-label-sep">·</span>
-                <span class="ccp-label-prop">column</span>
+              <div class="pnt-label-line pnt-line-meta">
+                <span class="pnt-label-prop">flex</span>
+                <span class="pnt-label-sep">·</span>
+                <span class="pnt-label-prop">column</span>
               </div>
-              <div class="ccp-label-line ccp-line-visual">
-                <span class="ccp-label-prop"><span class="ccp-color-swatch" style="background-color:#ffffff"></span>#ffffff</span>
-                <span class="ccp-label-sep">·</span>
-                <span class="ccp-label-prop">radius 12px</span>
+              <div class="pnt-label-line pnt-line-visual">
+                <span class="pnt-label-prop"><span class="pnt-color-swatch" style="background-color:#ffffff"></span>#ffffff</span>
+                <span class="pnt-label-sep">·</span>
+                <span class="pnt-label-prop">radius 12px</span>
               </div>
-              <div class="ccp-label-line ccp-line-breadcrumb ccp-label-breadcrumb">
-                div.grid <span class="ccp-label-sep">›</span> <span class="ccp-label-tag">div</span>
+              <div class="pnt-label-line pnt-line-breadcrumb pnt-label-breadcrumb">
+                div.grid <span class="pnt-label-sep">›</span> <span class="pnt-label-tag">div</span>
               </div>
             </div>
           </div>
@@ -485,8 +485,8 @@
           <!-- The toolbar, full width — the rail is wide enough now -->
           <div class="an-item an-span">
           <p class="an-cap" aria-hidden="true">Toolbar</p>
-          <div id="ccp-toolbar">
-            <div class="ccp-bar">
+          <div id="pnt-toolbar">
+            <div class="pnt-bar">
               <button type="button" tabindex="-1" title="Copy Code">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg><span>Copy Code</span>
               </button>
@@ -494,7 +494,7 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span>Screenshot</span>
               </button>
             </div>
-            <button type="button" class="ccp-parent-btn" tabindex="-1" title="Select Parent">
+            <button type="button" class="pnt-parent-btn" tabindex="-1" title="Select Parent">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3"/><path d="M12 20v-8"/><polyline points="9 15 12 12 15 15"/></svg><span>Select Parent</span>
             </button>
           </div>
@@ -543,52 +543,52 @@
         -->
         <div class="ep-mock" id="edit-mock" aria-hidden="true"
              data-groups="standard" data-tokens="both">
-          <div id="ccp-edit-panel">
-            <div class="ccp-edit-head">
-              <button type="button" class="ccp-edit-back" tabindex="-1">
+          <div id="pnt-edit-panel">
+            <div class="pnt-edit-head">
+              <button type="button" class="pnt-edit-back" tabindex="-1">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                      stroke-linecap="round" stroke-linejoin="round">
                   <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
                 </svg>
               </button>
-              <span class="ccp-edit-id"><b class="ccp-edit-id-tag">h2</b><b class="ccp-edit-id-class">.card-title</b></span>
-              <button type="button" class="ccp-edit-act" tabindex="-1">
+              <span class="pnt-edit-id"><b class="pnt-edit-id-tag">h2</b><b class="pnt-edit-id-class">.card-title</b></span>
+              <button type="button" class="pnt-edit-act" tabindex="-1">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                      stroke-linecap="round" stroke-linejoin="round">
                   <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
-                </svg><i class="ccp-edit-count">2</i>
+                </svg><i class="pnt-edit-count">2</i>
               </button>
-              <button type="button" class="ccp-edit-act ccp-edit-on" tabindex="-1">↺</button>
+              <button type="button" class="pnt-edit-act pnt-edit-on" tabindex="-1">↺</button>
             </div>
-            <div class="ccp-edit-body">
-              <div class="ccp-edit-group" data-ep="typography">
-                <p class="ccp-edit-legend">Typography</p>
-                <div class="ccp-edit-row ccp-edit-dirty" data-ep-row="token">
-                  <button type="button" class="ccp-edit-dot ccp-edit-on" tabindex="-1"></button>
-                  <span class="ccp-edit-label">size</span>
-                  <span class="ccp-edit-numwrap">
-                    <span class="ccp-edit-num"><input class="ccp-edit-input" value="28" readonly tabindex="-1"><i class="ccp-edit-unit">px</i></span>
-                    <span class="ccp-edit-tok"><button type="button" tabindex="-1">‹</button><b>lg</b><button type="button" tabindex="-1">›</button></span>
+            <div class="pnt-edit-body">
+              <div class="pnt-edit-group" data-ep="typography">
+                <p class="pnt-edit-legend">Typography</p>
+                <div class="pnt-edit-row pnt-edit-dirty" data-ep-row="token">
+                  <button type="button" class="pnt-edit-dot pnt-edit-on" tabindex="-1"></button>
+                  <span class="pnt-edit-label">size</span>
+                  <span class="pnt-edit-numwrap">
+                    <span class="pnt-edit-num"><input class="pnt-edit-input" value="28" readonly tabindex="-1"><i class="pnt-edit-unit">px</i></span>
+                    <span class="pnt-edit-tok"><button type="button" tabindex="-1">‹</button><b>lg</b><button type="button" tabindex="-1">›</button></span>
                   </span>
                 </div>
-                <div class="ccp-edit-row">
-                  <button type="button" class="ccp-edit-dot" tabindex="-1"></button>
-                  <span class="ccp-edit-label">weight</span>
-                  <span class="ccp-edit-num"><input class="ccp-edit-input" value="600" readonly tabindex="-1"></span>
+                <div class="pnt-edit-row">
+                  <button type="button" class="pnt-edit-dot" tabindex="-1"></button>
+                  <span class="pnt-edit-label">weight</span>
+                  <span class="pnt-edit-num"><input class="pnt-edit-input" value="600" readonly tabindex="-1"></span>
                 </div>
-                <div class="ccp-edit-row">
-                  <button type="button" class="ccp-edit-dot" tabindex="-1"></button>
-                  <span class="ccp-edit-label">colour</span>
-                  <span class="ccp-edit-color">
-                    <button type="button" class="ccp-edit-swatch" tabindex="-1"><i></i></button>
-                    <span class="ccp-edit-hex ccp-edit-token">--ink</span>
+                <div class="pnt-edit-row">
+                  <button type="button" class="pnt-edit-dot" tabindex="-1"></button>
+                  <span class="pnt-edit-label">colour</span>
+                  <span class="pnt-edit-color">
+                    <button type="button" class="pnt-edit-swatch" tabindex="-1"><i></i></button>
+                    <span class="pnt-edit-hex pnt-edit-token">--ink</span>
                   </span>
                 </div>
               </div>
-              <div class="ccp-edit-group" data-ep="border">
-                <p class="ccp-edit-legend">Border</p>
-                <div class="ccp-edit-row">
-                  <button type="button" class="ccp-edit-add" tabindex="-1">+ add border</button>
+              <div class="pnt-edit-group" data-ep="border">
+                <p class="pnt-edit-legend">Border</p>
+                <div class="pnt-edit-row">
+                  <button type="button" class="pnt-edit-add" tabindex="-1">+ add border</button>
                 </div>
               </div>
             </div>
