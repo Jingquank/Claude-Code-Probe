@@ -1,22 +1,32 @@
-```
-██████╗  ██████╗ ██╗███╗   ██╗████████╗███████╗███████╗
-██╔══██╗██╔═══██╗██║████╗  ██║╚══██╔══╝██╔════╝██╔════╝
-██████╔╝██║   ██║██║██╔██╗ ██║   ██║   █████╗  █████╗
-██╔═══╝ ██║   ██║██║██║╚██╗██║   ██║   ██╔══╝  ██╔══╝
-██║     ╚██████╔╝██║██║ ╚████║   ██║   ███████╗███████╗
-╚═╝      ╚═════╝ ╚═╝╚═╝  ╚═══╝   ╚═╝   ╚══════╝╚══════╝
-```
+<img src="icons/light-128.png" width="72" height="72" alt="">
+
+# Pointee
 
 Point at any element. Copy it. Paste it into your coding agent.
 
-Pointee names no agent. Claude Code, Cursor, Codex — anything that reads a prompt reads
-the pointer it copies.
+**[Install from the Chrome Web Store](https://chromewebstore.google.com/detail/igboajiogegaabhkjehjmdgmfkcopogj)**
+
+Pointee is a Chrome extension for the moment you can see the thing you want changed but
+have to describe it. Switch it on, point at the element, and copy a pointer your agent can
+act on: where it came from in your source, how to find it in the page, and — if you tuned
+it live first — exactly what you changed. It names no agent. Claude Code, Cursor, Codex,
+Gemini CLI, Copilot: anything that reads a prompt reads what Pointee copies.
+
+Pointee is the new name of Claude Code Probe. Same extension, same listing, from 2.0.
+
+## What you get
+
+| Action | On the clipboard |
+|---|---|
+| **Copy Code** | A pointer: source location when your tooling exposes one, page, a unique anchor, selector, position among siblings, whether it is one of a repeated template, its text, and its HTML at the depth you choose |
+| **Screenshot** | A PNG of the element alone |
+| **Edit** | Opens a panel that tunes the element live — type, spacing, size, fill, border, shadow — and copies the pointer plus a before → after list of what changed |
+| **Select Parent** | Moves the selection up one level; click again to keep climbing |
+| **Measure** | Hold **Option** (Alt) and point at another element: redlines with the distance across every gap |
 
 ## Install
 
-**[Install from Chrome Web Store](https://chromewebstore.google.com/detail/igboajiogegaabhkjehjmdgmfkcopogj?utm_source=item-share-cb)**
-
-### From source
+From the store link above, or from source:
 
 ```sh
 git clone https://github.com/Jingquank/pointee.git
@@ -24,211 +34,36 @@ cd pointee
 npm install
 ```
 
-Then load it: `chrome://extensions` → Developer mode → Load unpacked → select the folder.
+Then `chrome://extensions` → Developer mode → Load unpacked → pick the folder.
 
-## How it works
+## Using it
 
-1. Click the extension icon to enter Point Mode
-2. Hover over elements — a dashed outline and the box-model bands show what you're pointing at
-3. Click to select — the outline starts to crawl and the four actions appear, in
-   whichever layout you picked in settings (a pill on the element's edge, by default)
-4. Pick what to copy:
+### Point
 
-| | What you get |
-|---|---|
-| **Copy Code** | Where the element came from in your source, and how to find it again |
-| **Screenshot** | PNG of the element |
-| **Edit** | Opens a panel that tunes the element live, and copies what changed |
-| **Select Parent** | Moves the selection up one level in the DOM — click again to keep climbing |
+Click the toolbar icon to enter Point Mode. Hover, and a dashed outline draws the element's
+box model — margin, border and padding bands, with its real corner radii — while the info
+label beside it reads out:
 
-Paste it into your agent and it knows exactly which element you mean.
-
-### Editing an element
-
-The pencil opens a panel attached to the element's edge — an inspector column of
-the properties worth reaching for: type, spacing, size, fill, border, shadow.
-Every number can be typed, arrow-keyed, or dragged sideways to scrub, and the
-page updates under your hands. The panel follows the element until you drag it
-by its header, after which it floats where you put it and a dashed run ties it
-back; `‹` goes back to the selection. The footer shows the keys that work here:
-**⌘Z** undo, **⇧⌘Z** redo, **Esc** back.
-
-**It steps your design tokens, not just pixels.** If a heading is set to
-`var(--title-sm)`, the panel says so and offers the rungs either side — press
-`›` and it writes `var(--title-lg)`, keeping the indirection your source has
-rather than flattening it to a pixel count. It reads utility classes the same
-way, and when a class would lose the cascade (a page rule outranking
-`.text-lg`, which is ordinary) it changes the value instead and says so, rather
-than claiming a swap that would do nothing in your source either.
-
-It finds them by asking the element what it can actually see, so where they were
-declared does not matter: a theme scope, a shadow root, an `@import`, or a
-stylesheet on a CDN your page is not allowed to read. Values are read the way
-the browser reads them, so a Tailwind v4 scale in `calc()` and a palette in
-`oklch()` are tokens like any other. A scale is anything with two rungs at two
-different values — `--gap-xxs`, `--space-small` and `--radius-DEFAULT` count,
-because the names were never the point.
-
-Colours are named too, on both sides of the arrow: an element whose colour comes
-from `var(--ink)` reports `--ink`, not the hex it happened to resolve to. A
-colour that merely *equals* a token still reports the hex — your source does not
-say `--ink` there, and the block should not either.
-
-Nothing is applied blind:
-
-- Each edited property gets a dot — click it to take that one property back.
-- **⌘Z** walks one timeline across every element you've touched this session,
-  giving back one change at a time. **⇧⌘Z** redoes.
-- The reset button in the header puts every element back exactly as it was
-  found — attribute strings and all.
-
-Then **copy**, and you get the usual source pointer plus what changed:
-
-```
-# source: src/components/SkillCard.tsx
-# selector: main > .cards > article.card:first-child
-# edits: apply these style changes to this element in the source
-#   font-size: --title-sm (18px) → --title-lg (28px)
-#   padding-top: 16px → 24px
-#   background-color: #ffffff → --terra (#a94f30)
-<article class="card">…</article>
-```
-
-The before-value is there on purpose: it's how the agent finds the
-declaration to change.
-
-While the panel is open the page is inert — clicks and menus over it are
-swallowed, so scrubbing a value across a page full of links can't navigate away
-mid-drag. **Esc** steps back out one layer at a time: picker, then panel, then
-selection, then Point Mode. Measuring still works throughout — hold **Option**
-and the panel steps aside exactly as the toolbar does.
-
-The colour picker opens beside the panel rather than over it, so the rows it is
-tuning stay readable. Close it with its **×**, by clicking the same swatch again,
-or with **Esc**.
-
-Edits live in the page until you undo them, reset them, switch the extension off,
-or reload — switching off puts every element back the way it was found. Nothing
-is written to your files; the copied block is the instruction to make them real.
-
-### What the outline tells you
-
-Hovering is useful on its own. The outline draws the element's box model — margin,
-border and padding bands, with its real corner radii — and the panel beside it reads out:
-
-- **Identity** — tag, `#id`, classes, and pixel dimensions
+- **Identity** — tag, `#id`, classes, and pixel size
 - **Text** — the first of the element's own text, when it has any
-- **Layout** — display, position, font size and weight, `role`, `aria-label`, child count.
-  Only the parts that aren't the default, so the line stays short.
-- **Paint** — background, color, border, radius, shadow, opacity, cursor, transform,
-  z-index, with a swatch next to each color
-- **Breadcrumb** — the ancestor path, scrolling if it's longer than the panel
+- **Layout** — display, position, font size and weight, `role`, `aria-label`, child count; only what isn't the default
+- **Paint** — background, colour, border, radius, shadow, opacity, cursor, transform, z-index, with a swatch beside each colour
+- **Breadcrumb** — the ancestor path, scrolling when it is longer than the label
 
-The panel and the toolbar are placed together in one pass, so they stay on screen and
-off each other whatever the element's geometry — including elements taller than the
-window, and `<body>` itself.
+### Select
 
-### Measuring spacing
+Click, and the outline starts to crawl. The four actions appear in the layout you chose in
+settings — by default a pill of icons riding the element's bottom edge. The label and the
+actions are placed together in one pass, so they stay on screen and off each other for any
+element, including ones taller than the window and `<body>` itself.
 
-With an element selected, hold **Option** (Alt on Windows/Linux) and point at any other
-element — Figma-style redlines appear in the theme's accent: a line across each gap with
-the distance in pixels, dashed guides extending an edge when the two boxes don't line
-up, four inset measurements when one contains the other. The hovered element's outline
-carries its real corner radii, and everything glides between targets as you sweep. The
-panel and toolbar step aside while the key is down and return where they were when you
-release it.
+**Esc** steps back one layer at a time: picker, then panel, then selection, then Point
+Mode.
 
-Clicking while holding re-selects: the clicked element becomes the new anchor, and
-measuring continues from it — walk a row of siblings without ever releasing the key.
+### Copy Code
 
-### Settings
-
-A gear sits in the top-right corner for as long as Point Mode is on — whether or not
-anything is selected. It opens the settings page in a tab.
-
-The page has a sidebar that maps its five sections, cards of dotted-leader rows, and a
-preview rail that answers whichever section you're in: Pointee's own chrome while you
-pick a theme, a selection redrawn in each layout while you pick one, a measuring
-vignette while you tune redlines, the edit panel while you tune editing, the clipboard
-payload itself while you tune copying. Hovering a row spotlights the part of the
-preview that row controls; pointing at a sidebar link previews its section.
-
-**Appearance** — the theme. Eight of them.
-
-| | |
-|---|---|
-| System | the default — follows your OS, and switches when it does |
-| Light · Dark | Pointee's own pair: warm neutrals under a vermilion accent |
-| Dracula · Monokai · Nord · Solarized Dark · Tokyo Night | |
-
-The info panel already colours tag, `#id` and `.class` separately, which is the same
-thing an editor theme defines — so these map onto real palette roles rather than being
-approximations of them.
-
-**Selection** — where the four actions sit once you select an element. The readout is
-the same in every layout; only the actions move.
-
-| | |
-|---|---|
-| On the edge | the default — a pill of four icons riding the element's bottom edge, its left lined up with the readout |
-| Beside the lines | a spine of icons down the readout's left, each level with the line it acts on |
-| Under the name | a strip of icons directly under the identity line, the keyboard hints at its end |
-| Along the bottom | a labelled bar along the card's bottom; the card is never wider than the bar |
-
-Icon-only actions name themselves in a tooltip. Changing the layout redraws a
-selection already open in another tab.
-
-**Measuring** — six controls over the held-Option redlines, defaults matching what
-ships: readout unit (`px` / `rem`, against the page's root font-size), precision
-(whole / tenths), where the value pill sits (beside its line / on the line), the
-dashed extension guides (on / off), a quiet overlay that hides the box-model
-tints while measuring (off by default), and whether flush edges are marked with
-a `0`.
-
-**Editing** — two controls over the panel the pencil opens: whether it shows
-every group it can edit or only the ones this element already has, and whether a
-value sitting on a design token offers its scale, its raw number, or both. The
-preview here is the panel itself, at its real scale, so both settings act on it
-exactly as they act on the live one.
-
-**Copying** — what both copy buttons put on the clipboard, along two axes.
-
-*Which fields ride along.* Nine switches over the pointer header — source, component,
-page, anchor, handlers, selector, position, repetition, text — all on, which is what
-shipped before there was a switch. Three more are off: **layout diagnosis** (the box,
-display, spacing, and the parent's flex or grid context), **matched CSS** (the authored
-rules that apply and the stylesheet each came from), and **props snapshot**. Three
-presets write a set at once; the field order in the payload never changes, whichever
-are on.
-
-Props is the one field that reports *values*. Everything else in this tool names
-things — files, components, function names — and it goes out of its way to report a
-handler's name and never what it does. Props is the exception, so it is off by default,
-it is in no preset, and the row says so.
-
-*How much of the element rides along.* Four HTML blocks — the root tag alone, one
-condensed line per child, the full subtree (at depth 3, 2, or 1), or nothing — plus the
-rule that puts the full subtree back when nothing in the payload points at the source.
-That rule is itself a switch, so slimming the header can't quietly fatten the markup.
-Last, the fence: `#` starts a markdown heading, so anywhere a prompt is rendered rather
-than shown raw, an unfenced header turns every line of the pointer into an H1.
-
-The preview is the payload — a real one, for a real element, reassembled on every
-change, with its character and token count. The **pointer resolves** chips flip the one
-thing the payload can't demonstrate about itself.
-
-Everything is stored on this device with `chrome.storage.local` and never leaves it.
-Changes repaint tabs that are already open — including a measurement you're holding
-at that moment, or an edit panel already open; no reload.
-
-The gear hides itself when the info panel or the toolbar lands on top of it — three of
-the six placement strategies dock the panel to the top edge, which is where the gear
-lives. It comes back as soon as the panel moves.
-
-### What "Copy Code" outputs
-
-A pointer, not a description — it tells the agent which construct you mean, then gets out
-of the way so your own instruction is the loudest thing in the prompt.
+A pointer, not a description. It says which construct you mean and gets out of the way, so
+your own instruction is the loudest thing in the prompt.
 
 ````
 ```
@@ -246,102 +81,122 @@ of the way so your own instruction is the loudest thing in the prompt.
 ```
 ````
 
-Notes on the fields:
-
 - **source** is best-effort. It reads the attributes dev tooling already emits —
   `data-inspector-*` (react-dev-inspector), `data-v-inspector` (vite-plugin-vue-inspector),
   `data-source-loc` / `data-source-file`. No plugin, no line.
-- **repeated** only appears when the element has identical siblings. It's the difference
+- **repeated** appears only when the element has identical siblings — the difference
   between editing one card and editing the component that renders all of them.
 - The **HTML** is the element's own tag with its children summarised, because with a source
-  pointer the agent should read the real JSX rather than a rendered copy of it. When neither
-  a source location nor a component name resolves, the full skeleton comes back instead —
-  it's the only concrete description left.
+  pointer the agent should read the real JSX rather than a rendered copy. When neither a
+  source location nor a component name resolves, the full subtree comes back instead.
 
-That is the default. Every field above can be switched off, three more can be switched on,
-and the HTML block has four sizes — see **Copying** in the settings. The block the edit
-panel copies is the same payload with the edits spliced in, so both speak one dialect and
-one section configures them.
+Every field can be switched off and three more switched on; the HTML block has four
+sizes. See **Copying** under Settings.
+
+### Edit
+
+The pencil opens a panel attached to the element's edge: an inspector column of the
+properties worth reaching for. Type a value, arrow it, or drag sideways to scrub, and the
+page updates under your hands. The panel follows the element until you drag it away, after
+which it floats where you put it with a dashed run tying it back.
+
+**It steps your design tokens, not just pixels.** A heading set to `var(--title-sm)` is
+reported as `--title-sm`, and `›` writes `var(--title-lg)` — the indirection your source
+has, rather than a pixel count. Utility classes work the same way. Tokens are found by
+asking the element what it can see, so a theme scope, a shadow root, an `@import` or a
+stylesheet on a CDN all count, and a Tailwind scale in `calc()` or a palette in `oklch()`
+is a scale like any other. Colours are named on both sides of the arrow when the source
+names them, and left as hex when it doesn't.
+
+Nothing is applied blind. Each edited property gets a dot that takes it back; **⌘Z** walks
+one timeline across every element you touched; the reset button puts every element back as
+it was found. Edits live in the page until you undo them, reset them, switch off, or
+reload. Nothing is written to your files — the copied block is the instruction to make
+them real:
+
+```
+# source: src/components/SkillCard.tsx
+# selector: main > .cards > article.card:first-child
+# edits: apply these style changes to this element in the source
+#   font-size: --title-sm (18px) → --title-lg (28px)
+#   padding-top: 16px → 24px
+#   background-color: #ffffff → --terra (#a94f30)
+<article class="card">…</article>
+```
+
+The before-value is how the agent finds the declaration to change.
+
+Select a canvas while editing and the panel's **Advanced** section lists the shader's
+uniforms as live controls.
+
+### Measure
+
+With an element selected, hold **Option** (Alt on Windows and Linux) and point at another.
+Redlines appear in the accent: a line across each gap with the distance, dashed guides
+where the two boxes don't align, four inset measurements when one contains the other.
+Clicking while holding re-anchors, so you can walk a row of siblings without releasing the
+key. The label and the actions step aside while the key is down.
+
+## Settings
+
+The gear in the top-right corner opens the settings page. Every section previews itself in
+a rail beside it — the real chrome, drawn through the same stylesheet the extension uses.
+Changes reach open tabs immediately, without a reload.
+
+| Section | What it controls |
+|---|---|
+| **Appearance** | Eight themes for Pointee's own chrome. System, the default, follows your OS; Light and Dark are Pointee's own pair; Dracula, Monokai, Nord, Solarized Dark and Tokyo Night map onto the palette roles editor themes define |
+| **Selection** | Where the four actions sit: on the element's edge as a pill, beside the readout's lines, under its name, or along its bottom as a labelled bar |
+| **Measuring** | How redlines read and draw: px or rem, whole or tenths, where the value pill sits, guides, a quiet overlay, and whether flush edges are marked |
+| **Editing** | Whether the panel shows every group it can edit or only the ones the element has, how token values are offered, and deep shader capture for single-frame canvases |
+| **Copying** | Which fields ride along in the pointer, how much HTML comes with them, and whether the block is fenced — with a live preview of the payload itself |
+
+Everything is stored on this device with `chrome.storage.local` and never leaves it.
+
+## Privacy
+
+No accounts, no servers, no analytics, no tracking. Nothing about you or the pages you
+visit is stored or sent anywhere. The one network request the extension ever makes is for
+a stylesheet the page already loaded, while the edit panel is open, so it can name the
+tokens that stylesheet defines. [PRIVACY.md](PRIVACY.md) has the whole of it.
 
 ## Development
 
 ```sh
-npm install     # fetches html2canvas into lib/
-npm run build   # writes dist/chrome, and a zip of it ready for the Web Store
+npm install          # fetches html2canvas into lib/
+npm test             # every suite, browser included
+npm test -- --fast   # everything except the browser
+npm run build        # dist/pointee-chrome.zip, ready for the store
 ```
 
-Load unpacked from the repo root while you work — `dist/` is build output and every
-build starts by deleting it. Changes to `content.js` or `content.css` need an extension
-reload in `chrome://extensions` before the page will pick them up; reloading the page
-alone isn't enough.
+Load unpacked from the repo root while you work. Changes to `content.js` or `content.css`
+need an extension reload in `chrome://extensions`; reloading the page alone isn't enough.
 
-### The placement harness
+`content.js` is a classic script — MV3 content scripts cannot be modules — so its pure
+functions are transcribed into `test/` and swept there: the placement solver over a
+23-case matrix in every selection layout, the redline geometry over ten thousand element
+pairs, the tether and the panel's attachment, the token resolver, the colour maths, the
+copied block's shape. `test/mirror-drift.mjs` fails the run when a transcription and its
+original disagree, and `test/cdp.mjs` drives the real `content.js` in a real browser.
+`test/tokens.mjs` keeps the stylesheets honest: no colour literal outside `tokens.css`,
+every theme complete, every text tone above WCAG AA on its own surface.
 
-The info panel and the toolbar have to stay inside the viewport and off each other for
-any element geometry — near an edge, taller than the window, scrolled halfway out of
-view. `test/` holds the rig that proves it:
-
-| | |
-|---|---|
-| `test/placement.mjs` | the executable spec — placement algorithms, the straddle rule, and a 23-case geometry matrix |
-| `test/sim.mjs` | headless runner — the matrix across viewports, once per selection layout |
-| `test/redline.mjs` | the redline solver's spec — named cases plus a 10,000-config sweep |
-| `test/edit-tokens.mjs` | Edit Mode's token resolver — specificity, scale families, stepping |
-| `test/edit-color.mjs` | Edit Mode's colour conversions — round trips bounded by 8-bit quantisation |
-| `test/edit-deltas.mjs` | the delta block's shape — token-first sides, fixed order, stable output |
-| `test/edit-audit.mjs` | proves every host-page write still lives in one section of `content.js` |
-| `test/tether.mjs` | the tether solver and the panel's attachment — nothing may enter the element's box |
-| `test/tokens.mjs` | the token contract — no literals, every theme complete, every text token above AA |
-| `test/harness.html` | browser harness: simulate, or sweep the real extension and reconcile |
-| `test/edit-harness.html` | runs the real `content.js` against a fake page — Edit Mode without a rebuild |
-| `test/PLACEMENT-PLAN.md` | why the placement works the way it does |
+Two pages let you watch the chrome without a rebuild — serve the repo over HTTP and open
+`test/harness.html` for placement or `test/edit-harness.html` for Edit Mode.
 
 ```sh
-node test/sim.mjs                        # the matrix, across six viewports
-node test/sim.mjs 1440x900 --detail      # one viewport, with per-case geometry
-node test/redline.mjs                    # spacing-measurement geometry
-node test/edit-tokens.mjs                # design-token reverse lookup
-node test/edit-color.mjs                 # picker colour maths
-node test/edit-deltas.mjs                # what the Edit panel copies
-node test/edit-audit.mjs                 # host-page writes stay in one place
-node test/tether.mjs                     # tether geometry and panel attachment
-node icons/generate-icons.mjs            # icons/ light and dark sets from assets/icon.png, via headless Chromium
-
-python3 -m http.server 8765              # then open /test/harness.html
-                                         # or /test/edit-harness.html — press "p"
+node icons/generate-icons.mjs   # icons/ light and dark sets from assets/icon.png
 ```
 
-The harness is keyboard-driven — `s` simulates, `r` sweeps the live extension, `n`/`p`
-walk the cases, `l` cycles the simulated layout — because Point Mode captures every
-click on the page, including on the harness's own buttons. The live sweep reads which
-layout the extension is in and reconciles against that one. Serve it over HTTP: `file://` works only if the extension has
-"Allow access to file URLs".
+The words the code and the docs share are in [CONTEXT.md](CONTEXT.md). The design system —
+brand, type, tokens, motion, every surface, and the rules that don't move — is
+[DESIGN.md](DESIGN.md); the decisions behind it are in [docs/adr](docs/adr).
 
-`content.js` can't import the spec — MV3 content scripts are classic scripts — so the
-algorithm lives in two places. The live sweep is what keeps them honest: it measures the
-real `#pnt-label` and `#pnt-toolbar` and reports any case where they disagree with the
-simulation. Run it after touching placement.
+## History
 
-### Design tokens
-
-Every colour, typeface, radius, shadow and duration lives in `tokens.css` as a CSS
-custom property. A theme is one block of 21 declarations; nothing else changes. The
-typefaces — Geist Sans for words, Geist Mono for values — ship in `fonts/` and are
-never fetched. [DESIGN.md](DESIGN.md) is the design system: the brand, the type scale,
-the palettes, the tokens, the motion, each surface, and the rules that don't move.
-
-```sh
-node test/tokens.mjs    # 88 checks
-```
-
-It fails the run on a colour literal left in `content.css`, a theme missing one of the
-21, a `var(--pnt-…)` nothing declares, a badge colour that has drifted from its theme,
-or a text token that can't be read against its own surface — every text tone clears
-WCAG AA, as a floor rather than a target.
-
-## Privacy
-
-No data collected. Everything runs locally. [Details](PRIVACY.md).
+Versions 1.0 to 1.5 shipped as Claude Code Probe. The `legacy/claude-code-probe` branch
+holds 1.5.0 as it was. 2.0 is the rename: agent-agnostic and unbranded, redrawn from the
+tokens up, with every 1.5 feature carried across.
 
 ## License
 
