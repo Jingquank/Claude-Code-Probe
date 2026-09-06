@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Selection Chrome Directions</title>
+<!--
+  The first design round for the selection chrome — the info label and the
+  toolbar — after 2.0 shipped them as two boxes of unrelated widths bracketing
+  the element. docs/SELECTION-CHROME-ROUND.md is the brief; CONTEXT.md names
+  the parts. Fourteen directions, each shown three ways at real scale: hover
+  and selected side by side, the hard case from the author's screenshot (a
+  wide heading, a long breadcrumb, a long text preview), and an element at the
+  top of the viewport with no room above it.
+
+  Fixed everywhere: the four actions with their names; the keyboard hints
+  visible somewhere; all five readout lines at rest. Everything else varies.
+  Every mock is drawn in the shipped light tokens with the shipped type scale;
+  what differs between directions is structure, not palette.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap">
+<style>
+/* ============================================================
+   GALLERY SHELL — the quiet frame the brand rounds used.
+   ============================================================ */
+:root {
+  --g-ground: #f5f5f6; --g-raised: #ffffff; --g-ink: #18191c; --g-dim: #4f5259; --g-muted: #7c808a;
+  --g-rule: #e2e3e7; --g-rule-hi: #c9ccd3; --g-link: #18191c;
+  --sans: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --g-ground: #0f1012; --g-raised: #16171a; --g-ink: #e9eaed; --g-dim: #a6a9b1; --g-muted: #737780; --g-rule: #23252a; --g-rule-hi: #33363d; --g-link: #e9eaed; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --g-ground: #0f1012; --g-raised: #16171a; --g-ink: #e9eaed; --g-dim: #a6a9b1; --g-muted: #737780; --g-rule: #23252a; --g-rule-hi: #33363d; --g-link: #e9eaed; color-scheme: dark; }
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--g-ground); color: var(--g-ink); font-family: var(--sans); font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+.wrap { max-width: 1200px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 40px); }
+kbd { font-family: var(--mono); font-size: .8em; }
+.topbar { position: sticky; top: 0; z-index: 50; background: color-mix(in srgb, var(--g-ground) 86%, transparent); backdrop-filter: blur(12px); border-bottom: 1px solid var(--g-rule); }
+.topbar-in { display: flex; align-items: center; gap: 20px; padding: 10px 0; flex-wrap: wrap; }
+.topbar-title { font-weight: 600; font-size: 14px; margin: 0; letter-spacing: -.01em; }
+.topbar-title small { font-weight: 400; color: var(--g-muted); margin-left: 8px; }
+.jump { display: flex; gap: 4px; margin-left: auto; flex-wrap: wrap; }
+.jump a { font-family: var(--mono); font-size: 12px; text-decoration: none; color: var(--g-dim); border: 1px solid var(--g-rule); border-radius: 6px; width: 30px; height: 30px; display: grid; place-items: center; transition: background .15s, color .15s, border-color .15s; }
+.jump a:hover, .jump a:focus-visible { background: var(--g-ink); border-color: var(--g-ink); color: var(--g-ground); outline: none; }
+.masthead { padding: clamp(36px, 6vw, 64px) 0 28px; border-bottom: 1px solid var(--g-rule); }
+h1 { font-weight: 600; font-size: clamp(30px, 4.5vw, 44px); line-height: 1.05; letter-spacing: -.025em; margin: 0 0 16px; text-wrap: balance; }
+.lede { font-size: 18px; line-height: 1.5; color: var(--g-dim); max-width: 64ch; margin: 0 0 28px; }
+.brief { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px 40px; }
+.brief h3 { font-size: 13px; font-weight: 600; margin: 0 0 8px; }
+.brief ul { margin: 0; padding: 0; list-style: none; color: var(--g-dim); font-size: 14px; }
+.brief li { padding: 5px 0; border-top: 1px solid var(--g-rule); }
+.brief li:first-child { border-top: 0; }
+.brief li b { color: var(--g-ink); font-weight: 500; }
+.d { padding: clamp(40px, 6vw, 72px) 0; border-bottom: 1px solid var(--g-rule); scroll-margin-top: 60px; }
+.d-head { display: grid; grid-template-columns: auto 1fr; gap: 6px 20px; align-items: baseline; margin-bottom: 8px; }
+.d-num { font-family: var(--mono); font-size: 28px; font-weight: 500; color: var(--g-rule-hi); line-height: 1; font-variant-numeric: tabular-nums; }
+.d-head h2 { font-weight: 600; font-size: 26px; margin: 0; letter-spacing: -.02em; line-height: 1.2; }
+.thesis { grid-column: 2; margin: 0; color: var(--g-dim); max-width: 70ch; }
+.spec { grid-column: 2; display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 0; padding: 0; list-style: none; }
+.spec li { font-family: var(--mono); font-size: 11px; color: var(--g-dim); border: 1px solid var(--g-rule); border-radius: 999px; padding: 3px 9px; white-space: nowrap; }
+.spec li b { font-weight: 500; color: var(--g-ink); }
+.grid2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 24px; }
+@media (max-width: 860px) { .grid2 { grid-template-columns: 1fr; } }
+.cell-cap { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 12px; color: var(--g-muted); margin: 0 0 8px; }
+.cell-cap b { color: var(--g-ink); font-weight: 500; }
+.frame { position: relative; width: 100%; aspect-ratio: 560 / 380; overflow: hidden; border-radius: 10px; border: 1px solid var(--g-rule-hi); background: #fff; }
+.stage { position: absolute; left: 0; top: 0; width: 560px; height: 380px; transform-origin: 0 0; transform: scale(var(--k, 1)); }
+.tradeoff { display: grid; grid-template-columns: 90px 1fr; gap: 6px 16px; margin: 22px 0 0; font-size: 14px; max-width: 78ch; }
+.tradeoff dt { color: var(--g-muted); }
+.tradeoff dd { margin: 0; color: var(--g-dim); }
+footer.end { padding: 40px 0 80px; color: var(--g-dim); max-width: 64ch; }
+footer.end code { font-family: var(--mono); font-size: 13px; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { animation-duration: 0s !important; transition-duration: 0s !important; } }
+
+/* ============================================================
+   THE SHIPPED TOKENS — Vermilion, light. Copied from tokens.css so
+   this page stands alone; the winner is ported back, not the reverse.
+   ============================================================ */
+.t {
+  --s0: #ffffff; --s1: #f8f6f4; --s2: #f0ecea; --b1: #eeeae7; --b2: #ddd6d2; --b3: #c3b9b3;
+  --t1: #1d1917; --t2: #5c534f; --t3: #6d645f; --t4: #968c87;
+  --acc: #d13a1d; --acc-h: #b93018; --on-acc: #ffffff; --acc-soft: color-mix(in srgb, #d13a1d 14%, transparent);
+  --id: #2a5f9e; --cls: #4a7a2a; --ok: #1a7f4b;
+  --glass: rgb(255 255 255 / 0.82); --blur: 16px;
+  --sh1: 0 1px 2px rgb(20 20 30 / .08), 0 10px 28px -14px rgb(20 20 30 / .28);
+  --r-xs: 4px; --r-sm: 8px; --r-md: 10px; --r-lg: 14px;
+  color: var(--t1); font-family: var(--sans); font-size: 12px; line-height: 1.45;
+}
+.t button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+.t svg { display: block; }
+
+/* ---- host pages ---- */
+.host { position: absolute; inset: 0; background: #ffffff; color: #16181d; font-family: var(--sans); overflow: hidden; }
+.host .pg-head { display: flex; align-items: center; justify-content: space-between; height: 38px; padding: 0 24px; border-bottom: 1px solid #e6e8ec; }
+.host .pg-logo { font-weight: 600; font-size: 13px; letter-spacing: -.01em; }
+.host .pg-nav { display: flex; gap: 14px; font-size: 11px; color: #6b7078; }
+.host .logos { position: absolute; left: 24px; right: 24px; top: 24px; display: flex; gap: 22px; align-items: center; }
+.host .logos i { height: 14px; border-radius: 3px; background: #dfe1e5; flex: 1; }
+.host .card { position: absolute; padding: 14px 16px; background: #fff; border: 1px solid #e6e8ec; border-radius: 12px; }
+.host .card h4 { margin: 0 0 6px; font-size: 12px; font-weight: 600; }
+.host .card .price { font-size: 18px; font-weight: 600; letter-spacing: -.02em; }
+.host .card .price small { font-size: 10px; font-weight: 400; color: #6b7078; }
+.host .card p { margin: 4px 0 0; font-size: 10px; line-height: 1.4; color: #6b7078; }
+.host .hero { position: absolute; left: 24px; top: 130px; width: 512px; font-size: 40px; font-weight: 500; letter-spacing: -.03em; line-height: 1.15; color: #16181d; }
+.host .hero em { font-style: normal; display: inline-block; }
+.host .h2top { position: absolute; left: 24px; top: 8px; width: 320px; height: 48px; font-size: 22px; font-weight: 600; letter-spacing: -.02em; line-height: 48px; color: #16181d; }
+.host .faded { opacity: .55; }
+
+/* ---- outline vocabularies ---- */
+.ol { position: absolute; pointer-events: none; border-radius: 12px; }
+.t[data-ol="ants2"] .ol { outline: 2px dashed var(--acc); outline-offset: 2px; }
+.t[data-ol="ants15"] .ol { outline: 1.5px dashed var(--acc); outline-offset: 2px; }
+.t[data-ol="ring"] .ol { outline: 1px solid var(--acc); outline-offset: 3px; }
+.ol.hov { outline: 1px dashed color-mix(in srgb, var(--acc) 70%, transparent) !important; outline-offset: 0 !important; }
+.ol.hov::before { content: ""; position: absolute; inset: -12px; border-radius: 16px; background: color-mix(in srgb, var(--t3) 14%, transparent); z-index: -1; }
+.ol.hov::after { content: ""; position: absolute; inset: 0; border-radius: 11px; box-shadow: inset 0 0 0 14px color-mix(in srgb, var(--acc) 12%, transparent); }
+
+/* ---- material ---- */
+.card-m { position: absolute; border: 1px solid var(--b2); border-radius: var(--r-lg); box-shadow: var(--sh1); background: var(--glass); -webkit-backdrop-filter: blur(var(--blur)) saturate(1.15); backdrop-filter: blur(var(--blur)) saturate(1.15); }
+.t[data-mat="opaque"] .card-m { background: var(--s0); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.t[data-mat="flat"] .card-m { background: var(--s0); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; border-radius: var(--r-sm); }
+
+/* ---- readout pieces ---- */
+.ro { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; min-width: 0; white-space: nowrap; }
+.ro-id { display: flex; align-items: baseline; gap: 0; font-size: 13px; font-weight: 600; line-height: 1.3; letter-spacing: -.01em; }
+.ro-id .tag { color: var(--acc); }
+.ro-id .cls { color: var(--cls); font-weight: 500; }
+.ro-id .sz { margin-left: auto; padding-left: 12px; font: 400 11px/1.3 var(--mono); color: var(--t3); letter-spacing: .01em; }
+.ro-ln { font-size: 11px; color: var(--t2); display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; }
+.ro-ln .sep { color: var(--t4); }
+.ro-ln.txt { font-style: italic; }
+.ro-ln .sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; border: 1px solid var(--b3); vertical-align: -1px; margin-right: 3px; }
+.ro-crumb { margin-top: 4px; font-size: 11px; color: var(--t3); min-width: 0; }
+.ro-crumb .tag { color: var(--acc); font-weight: 500; }
+.ro-crumb .sep { color: var(--t4); margin: 0 3px; }
+/* breadcrumb treatments */
+.ro-crumb[data-crumb="marquee"] { overflow: hidden; white-space: nowrap; mask-image: linear-gradient(to right, transparent, #000 8px, #000 calc(100% - 24px), transparent); }
+.ro-crumb[data-crumb="clamp"] { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; direction: rtl; text-align: left; }
+.ro-crumb[data-crumb="clamp"] > span { direction: ltr; unicode-bidi: isolate; }
+.ro-crumb[data-crumb="wrap"] { white-space: normal; line-height: 1.5; }
+.ro-crumb[data-crumb="trim"] { white-space: nowrap; }
+.ro-crumb .more { display: inline-flex; align-items: center; height: 15px; padding: 0 5px; border-radius: 999px; background: var(--s2); color: var(--t3); font: 500 10px/1 var(--mono); margin-right: 4px; }
+/* ledger */
+.ro.ledger { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; align-items: baseline; }
+.ro.ledger .ro-id { grid-column: 1 / -1; }
+.ro.ledger .k { font: 500 10px/1.5 var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--t3); }
+.ro.ledger .v { font-size: 11px; color: var(--t2); display: flex; gap: 6px; align-items: center; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* chips */
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chips span { display: inline-flex; align-items: center; gap: 4px; height: 18px; padding: 0 6px; border-radius: 5px; background: var(--s2); border: 1px solid var(--b1); font: 400 10.5px/1 var(--mono); color: var(--t2); }
+
+/* ---- keyboard hints ---- */
+.kbd { display: inline-flex; align-items: center; height: 16px; padding: 0 4px; border-radius: var(--r-xs); font: 500 10px/1 var(--mono); color: var(--t3); background: var(--s2); border: 1px solid var(--b1); }
+.hint { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; color: var(--t3); white-space: nowrap; }
+.hint .sep { color: var(--t4); margin: 0 4px; }
+.hint.u .kbd { background: none; border: 0; padding: 0; text-decoration: underline; text-underline-offset: 2px; color: var(--t2); }
+
+/* ---- action registers ---- */
+.acts { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; }
+.acts.text, .acts.icons, .acts.vlist, .acts.segments, .acts.primary { flex-wrap: nowrap; }
+.acts button { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 8px; border-radius: var(--r-md); color: var(--t1); font-weight: 500; font-size: 12px; white-space: nowrap; }
+.acts button svg { width: 14px; height: 14px; stroke-width: 1.75; }
+.acts button:hover { background: var(--s2); }
+.acts .edit { color: var(--acc); }
+.acts .parent { color: var(--acc); }
+.acts.icons button { width: 28px; height: 28px; padding: 0; justify-content: center; }
+.acts.icons button span { display: none; }
+.acts.text button svg { display: none; }
+.acts.text button { padding: 0 7px; }
+.acts.text button + button { border-left: 1px solid var(--b2); border-radius: 0; }
+.acts.text button:first-child { border-radius: var(--r-md) 0 0 var(--r-md); }
+.acts.text button:last-child { border-radius: 0 var(--r-md) var(--r-md) 0; }
+.acts.segments { width: 100%; gap: 0; }
+.acts.segments button { flex: 1; justify-content: center; height: 30px; border-radius: 0; }
+.acts.segments button + button { border-left: 1px solid var(--b1); }
+.acts.vlist { flex-direction: column; align-items: stretch; gap: 1px; }
+.acts.vlist button { justify-content: flex-start; height: 28px; padding: 0 10px; border-radius: var(--r-sm); }
+.acts.primary .copy { background: var(--acc); color: var(--on-acc); }
+.acts.primary .copy:hover { background: var(--acc-h); }
+.acts.primary button:not(.copy) { width: 28px; height: 28px; padding: 0; justify-content: center; color: var(--t2); }
+.acts.primary button:not(.copy) span { display: none; }
+.tip { position: absolute; padding: 3px 7px; border-radius: 6px; background: var(--t1); color: var(--s0); font-size: 10.5px; white-space: nowrap; pointer-events: none; }
+.tip::after { content: ""; position: absolute; left: 50%; top: 100%; margin-left: -4px; border: 4px solid transparent; border-top-color: var(--t1); }
+
+/* ---- structure furniture ---- */
+.foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 5px 6px; border-top: 1px solid var(--b1); }
+.foot .hint { margin-left: auto; padding-right: 4px; }
+.cap { display: flex; align-items: center; gap: 4px; padding: 0 10px 7px; font-size: 10.5px; color: var(--t3); }
+.cap .hint { margin-left: auto; }
+.hdr { display: flex; align-items: center; gap: 6px; padding: 6px 6px 6px 10px; border-bottom: 1px solid var(--b1); }
+.hdr .ro-id { flex: 1; min-width: 0; }
+.cols { display: flex; align-items: stretch; }
+.cols .ro { flex: 1; }
+.rail { display: flex; flex-direction: column; gap: 4px; padding: 6px; border-left: 1px solid var(--b1); }
+.rail .hint { justify-content: center; padding-top: 4px; border-top: 1px solid var(--b1); }
+.bar { position: absolute; display: flex; align-items: center; gap: 8px; min-height: 32px; padding: 2px 6px 2px 10px; white-space: nowrap; }
+.bar .ro-id { font-size: 12px; flex: none; }
+.bar .ro-id .sz { white-space: nowrap; }
+.bar .hint { margin-left: auto; }
+.bar .acts { flex: none; }
+.tabid { position: absolute; display: inline-flex; align-items: baseline; gap: 0; height: 20px; padding: 0 8px; border-radius: 6px 6px 0 0; background: var(--acc); color: var(--on-acc); font: 600 11px/20px var(--sans); white-space: nowrap; }
+.tabid .cls { font-weight: 500; opacity: .85; }
+.tabid .sz { font: 400 10px/20px var(--mono); margin-left: 8px; opacity: .8; }
+.dock { position: absolute; top: 8px; right: 8px; bottom: 8px; width: 236px; display: flex; flex-direction: column; border-radius: var(--r-lg); }
+.dock .ro { padding: 10px 12px; }
+.dock .acts { padding: 6px; border-top: 1px solid var(--b1); }
+.dock .hint { margin-top: auto; padding: 8px 12px; border-top: 1px solid var(--b1); }
+.cluster { position: absolute; display: flex; gap: 2px; padding: 3px; border-radius: 999px; }
+.ribbon-row { display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 10px; }
+.ribbon-row .ro-id { flex: none; }
+.ribbon-row .ro-ln.txt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; display: block; white-space: nowrap; }
+.ribbon-row .hint { flex: none; }
+.ribbon-row .acts { flex: none; }
+.ribbon-row .ro-id { white-space: nowrap; }
+.ribbon-sub { display: flex; align-items: center; gap: 12px; padding: 5px 10px 7px; border-top: 1px solid var(--b1); font-size: 11px; color: var(--t2); }
+.ribbon-sub .ro-crumb { margin: 0; flex: 1; min-width: 0; }
+.ribbon-sub { white-space: nowrap; overflow: hidden; }
+.ribbon-sub .ro-ln { flex: none; }
+.ribbon-sub .hint { flex: none; margin-left: auto; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap topbar-in">
+    <p class="topbar-title">Pointee <small>selection chrome · round one</small></p>
+    <nav class="jump" id="jump" aria-label="Jump to a direction"></nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="masthead">
+    <h1>Fourteen shapes for the selection chrome</h1>
+    <p class="lede">The info label and the toolbar, redesigned. Today they are two boxes of unrelated
+      widths bracketing the element, and the toolbar mixes four registers in one strip. Each direction
+      below is a structure — how the readout and the actions relate to each other and to the element —
+      drawn three ways at real scale in the shipped Vermilion tokens: hover beside selected, the hard
+      case from the screenshot, and an element with no room above it.</p>
+    <div class="brief">
+      <div>
+        <h3>Fixed in every direction</h3>
+        <ul>
+          <li><b>The four actions</b>, with their names: Copy Code, Screenshot, Edit, Select Parent.</li>
+          <li><b>Keyboard hints visible somewhere</b>: Option to measure, Escape to step back.</li>
+          <li><b>All five readout lines at rest</b>: identity, text, layout, paint, breadcrumb.</li>
+          <li><b>The shipped tokens and type</b>: Vermilion, Geist, 13 / 12 / 11 / 10.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Varied across the fourteen</h3>
+        <ul>
+          <li><b>Structure</b> — one card, two pieces, beside, corner, tab, rail, command line, dock, overlay, ribbon.</li>
+          <li><b>Actions</b> — icon + label, icons with tooltips, text with dividers, one primary, a vertical list.</li>
+          <li><b>Hints</b> — in the action row, a caption, the identity row, the breadcrumb row, under a rail.</li>
+          <li><b>Breadcrumb</b> — marquee, clamped, wrapped, trimmed.</li>
+          <li><b>Outline and material</b> — 2px ants on glass, 1.5px ants, a 1px ring, opaque, flat.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>How to answer</h3>
+        <ul>
+          <li>Name a number. <b>08</b> is an answer.</li>
+          <li>Or a hybrid: <b>01's card with 08's action bar</b> is an answer too.</li>
+          <li>The winner's structure decides how much of the placement solver is revised; its action register decides the toolbar markup.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+  <div id="directions"></div>
+</main>
+
+<footer class="wrap end">
+  <p>Round one for the selection chrome. The brief is <code>docs/SELECTION-CHROME-ROUND.md</code>;
+    when a shape wins, its handle is retired and the label and toolbar are rebuilt to it, with
+    <code>test/placement.mjs</code> re-swept for whatever piece count it has.</p>
+</footer>
+
+<script>
+/* ===== icons ===== */
+const ICON = {
+  code: '<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>',
+  camera: '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>',
+  pencil: '<path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/>',
+  parent: '<path d="M4 9V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3"/><path d="M12 20v-8"/><polyline points="9 15 12 12 15 15"/>',
+};
+const svg = (inner) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+const ACTS = [
+  { cls: "copy", label: "Copy Code", icon: ICON.code },
+  { cls: "shot", label: "Screenshot", icon: ICON.camera },
+  { cls: "edit", label: "Edit", icon: ICON.pencil },
+  { cls: "parent", label: "Select Parent", icon: ICON.parent },
+];
+const acts = (register, tipOn) => `<div class="acts ${register}">${ACTS.map((a) => `<button type="button" class="${a.cls}" title="${a.label}">${svg(a.icon)}<span>${a.label}</span></button>`).join("")}</div>`;
+const tip = (x, y, text) => `<span class="tip" style="left:${x}px;top:${y}px">${text}</span>`;
+const kbd = (k) => `<kbd class="kbd">${k}</kbd>`;
+const hints = (variant = "chips") => variant === "text"
+  ? `<span class="hint">⌥ measure<span class="sep">·</span>esc back</span>`
+  : `<span class="hint${variant === "u" ? " u" : ""}">${kbd("⌥")}measure<span class="sep">·</span>${kbd("esc")}back</span>`;
+
+/* ===== the three stages ===== */
+const LINES = {
+  card: { tag: "div", cls: ".card", size: "180 × 64", text: "Pro Plan", layout: ["flex", "column", "3 children"], paint: [`<i class="sw" style="background:#fff"></i>#ffffff`, "radius 12px", `border 1px <i class="sw" style="background:#e6e8ec"></i>#e6e8ec`], crumb: ["main", "div.grid"] },
+  em: { tag: "em", cls: ".gky9r3", size: "666 × 65", text: "a physics-native world model.", layout: ["inline", "52px", "w:500"], paint: [`color:<i class="sw" style="background:#29231e"></i>#29231e`], crumb: ["div.gky9r0", "div.gky9r1", "h2.om3by2i", "div._8sgev99", "div.gky9r0"] },
+  h2: { tag: "h2", cls: ".title", size: "280 × 48", text: "Pricing", layout: ["block", "22px", "w:600"], paint: [`color:<i class="sw" style="background:#16181d"></i>#16181d`], crumb: ["body", "main", "header"] },
+};
+const hostA = (r) => `
+  <div class="host">
+    <div class="pg-head"><span class="pg-logo">Acme</span><span class="pg-nav"><span>Product</span><span>Pricing</span><span>Docs</span><span>Sign in</span></span></div>
+    <div class="card" style="left:${r.left}px;top:${r.top}px;width:${r.w}px;height:${r.h}px"><h4>Pro Plan</h4><div class="price">$24<small>/mo</small></div></div>
+    <div class="card faded" style="left:${r.left + r.w + 20}px;top:${r.top}px;width:${r.w}px;height:${r.h}px"><h4>Team</h4><div class="price">$96<small>/mo</small></div></div>
+  </div>`;
+const hostB = `
+  <div class="host">
+    <div class="logos"><i style="flex:.6"></i><i style="flex:.5"></i><i style="flex:.8"></i><i style="flex:.5"></i><i style="flex:.7"></i></div>
+    <div class="hero" style="top:150px">A spatial design platform for<br><em style="font-size:32px;line-height:44px">a physics-native world model.</em></div>
+  </div>`;
+const hostC = `
+  <div class="host">
+    <div class="h2top">Pricing</div>
+    <div class="card faded" style="left:24px;top:72px;width:160px;height:110px"><h4>Starter</h4><div class="price">$0<small>/mo</small></div><p>For trying it out.</p></div>
+    <div class="card faded" style="left:200px;top:72px;width:160px;height:110px"><h4>Pro</h4><div class="price">$24<small>/mo</small></div><p>For teams that need more.</p></div>
+    <div class="card faded" style="left:376px;top:72px;width:160px;height:110px"><h4>Team</h4><div class="price">$96<small>/mo</small></div><p>For the whole company.</p></div>
+  </div>`;
+
+const EL_A = { left: 40, top: 204, w: 180, h: 64 };
+const STAGES = {
+  h: { title: "Hover", note: "the readout alone", lines: LINES.card, sel: EL_A, state: "hover", hostFn: (r) => hostA(r) },
+  s: { title: "Selected", note: "the full chrome on the same card", lines: LINES.card, sel: EL_A, state: "selected", hostFn: (r) => hostA(r) },
+  b: { title: "The hard case", note: "a wide heading, a long breadcrumb, a long text preview", lines: LINES.em, sel: { left: 24, top: 196, w: 480, h: 44 }, state: "selected", host: hostB },
+  c: { title: "At the top", note: "no room above — the chrome has to work below or beside", lines: LINES.h2, sel: { left: 24, top: 8, w: 280, h: 48 }, state: "selected", host: hostC },
+};
+
+/* ===== readout ===== */
+const H = 380, VW = 560, M = 8, GAP = 8;
+const clampL = (left, w) => Math.max(M, Math.min(left, VW - w - M));
+const crumbHtml = (lines, treatment) => {
+  const segs = lines.crumb;
+  const last = `<span class="tag">${lines.tag}</span>${lines.cls}`;
+  const sep = `<span class="sep">›</span>`;
+  if (treatment === "trim") {
+    const keep = segs.slice(-1);
+    const more = segs.length - keep.length;
+    return `<div class="ro-crumb" data-crumb="trim">${more ? `<span class="more">+${more}</span>` : ""}${keep.join(sep)}${sep}${last}</div>`;
+  }
+  if (treatment === "clamp") {
+    // truncate from the front to a budget: the end of a path is what locates
+    let parts = [...segs, null]; let out = [];
+    let budget = 44;
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const s = parts[i] === null ? `${lines.tag}${lines.cls}` : parts[i];
+      if (out.join(" › ").length + s.length + 3 > budget && out.length) { out.unshift("…"); break; }
+      out.unshift(parts[i] === null ? last : s);
+    }
+    return `<div class="ro-crumb" data-crumb="clamp"><span>${out.join(sep)}</span></div>`;
+  }
+  return `<div class="ro-crumb" data-crumb="${treatment}">${segs.join(sep)}${sep}${last}</div>`;
+};
+const idRow = (lines, extra = "") => `<div class="ro-id"><span class="tag">${lines.tag}</span><span class="cls">${lines.cls}</span><span class="sz">${lines.size}</span>${extra}</div>`;
+const ln = (parts, cls = "") => `<div class="ro-ln ${cls}">${parts.join('<span class="sep">·</span>')}</div>`;
+const txtLn = (lines) => `<div class="ro-ln txt">“${lines.text}”</div>`;
+// The five lines, in a column. opts: crumb treatment; noId; hintsInCrumb; chips; ledger
+function readout(lines, o = {}) {
+  if (o.ledger) {
+    return `<div class="ro ledger">${idRow(lines)}<span class="k">text</span><span class="v">“${lines.text}”</span><span class="k">layout</span><span class="v">${lines.layout.join('<span class="sep">·</span>')}</span><span class="k">paint</span><span class="v">${lines.paint.join('<span class="sep">·</span>')}</span><span class="k">path</span><span class="v">${[...lines.crumb.slice(-2), `<span class="tag" style="color:var(--acc);font-weight:500">${lines.tag}</span>${lines.cls}`].join('<span class="sep">›</span>')}</span></div>`;
+  }
+  const crumb = o.hintsInCrumb
+    ? `<div style="display:flex;align-items:center;gap:8px;min-width:0">${crumbHtml(lines, o.crumb || "clamp").replace('class="ro-crumb"', 'class="ro-crumb" style="flex:1;min-width:0"')}${hints("chips")}</div>`
+    : crumbHtml(lines, o.crumb || "clamp");
+  const body = o.chips
+    ? `<div class="chips">${[...lines.layout, ...lines.paint].map((p) => `<span>${p}</span>`).join("")}</div>`
+    : ln(lines.layout) + ln(lines.paint);
+  return `<div class="ro">${o.noId ? "" : idRow(lines, o.idExtra || "")}${txtLn(lines)}${body}${crumb}</div>`;
+}
+const card = (x, y, w, inner, extra = "") => `<div class="card-m" style="left:${x}px;${y}width:${w}px;${extra}">${inner}</div>`;
+const above = (rect) => `bottom:${H - (rect.top - GAP)}px;`;
+const below = (rect, gap = GAP) => `top:${rect.top + rect.h + gap}px;`;
+const olHtml = (rect, state) => `<div class="ol${state === "hover" ? " hov" : ""}" style="left:${rect.left}px;top:${rect.top}px;width:${rect.w}px;height:${rect.h}px"></div>`;
+
+/* ===== the directions =====
+   chrome(ctx) draws the chrome for one element in one state.
+   ctx: { rect, lines, state: "hover"|"selected", stage: "a"|"b"|"c", W } */
+const DIRECTIONS = [
+  { id: "01", w: { hov: 240, sel: 510 }, handle: "Stack", ol: "ants2", mat: "glass",
+    spec: { structure: "one card, actions as its footer", actions: "icon + label", hints: "footer, right end", breadcrumb: "clamped" },
+    thesis: "One object. The readout on top, the four actions as the card's footer with the hints at its end, one width, one edge, placed by a one-box solver. Hover is the same card without the footer; selecting grows it in. The actions sit beyond the readout rather than against the element.",
+    wins: "The simplest possible placement, and the label and toolbar can never disagree about anything again.",
+    costs: "Tallest of the one-card shapes, and the actions are a readout's height away from the element they act on.",
+    chrome: ({ rect, lines, state, stage, W }) => {
+      const sel = state === "selected";
+      const y = stage === "c" ? below(rect) : above(rect);
+      return card(clampL(rect.left, W), y, W, readout(lines, { crumb: "clamp" }) + (sel ? `<div class="foot">${acts("iconlabel")}${hints("chips")}</div>` : ""));
+    } },
+
+  { id: "02", w: { hov: 240, sel: 300 }, handle: "Header", ol: "ants2", mat: "glass",
+    spec: { structure: "one card, identity row carries the actions", actions: "icons, tooltips", hints: "last line, quiet", breadcrumb: "clamped" },
+    thesis: "The identity line is a title bar: tag, class, size on the left, the four actions as icons on the right, the readout beneath and the hints as a quiet last line. Compact, and the actions sit nearest the element when the card is below it. Names live in tooltips.",
+    wins: "The smallest selected footprint of any one-card shape; four icons cost 116px.",
+    costs: "Four unlabelled icons are four things to learn; the tooltip is the only place the words appear.",
+    chrome: ({ rect, lines, state, stage, W }) => {
+      const sel = state === "selected";
+      const y = stage === "c" ? below(rect) : above(rect);
+      const hdr = `<div class="hdr">${idRow(lines)}${sel ? acts("icons") : ""}</div>`;
+      const body = `<div class="ro" style="padding-top:6px">${txtLn(lines)}${ln(lines.layout)}${ln(lines.paint)}${crumbHtml(lines, "clamp")}</div>`;
+      const cap = sel ? `<div class="cap">${hints("text")}</div>` : "";
+      return card(clampL(rect.left, W), y, W, hdr + body + cap);
+    } },
+
+  { id: "03", w: { hov: 240, sel: 380 }, handle: "Column", ol: "ants2", mat: "glass",
+    spec: { structure: "two pieces, one width", actions: "four equal segments", hints: "in the breadcrumb row", breadcrumb: "marquee" },
+    thesis: "Keep the bracket, fix the raggedness. Label above, toolbar below, both exactly the element's width — or the label's, whichever is wider — with the toolbar as four equal segments. The hints move up into the breadcrumb row so the toolbar is only ever actions. The solver stays.",
+    wins: "The least change to the placement spec: two pieces, the same six strategies, only the widths tied.",
+    costs: "Still bracketed; and equal segments give Select Parent, a navigation, the same weight as Copy Code.",
+    chrome: ({ rect, lines, state, stage, W }) => {
+      const sel = state === "selected";
+      const w = Math.max(W, Math.min(rect.w, 512));
+      const x = clampL(rect.left, w);
+      const label = readout(lines, { crumb: "marquee", hintsInCrumb: sel });
+      const bar = sel ? `<div class="card-m" style="width:${w}px;padding:2px">${acts("segments")}</div>` : "";
+      if (stage === "c") return `<div style="position:absolute;left:${x}px;${below(rect)}width:${w}px;display:flex;flex-direction:column;gap:6px"><div class="card-m" style="position:relative;width:${w}px">${label}</div>${bar.replace('class="card-m" style="', 'class="card-m" style="position:relative;')}</div>`;
+      return card(x, above(rect), w, label) + (sel ? `<div class="card-m" style="left:${x}px;${below(rect)}width:${w}px;padding:2px">${acts("segments")}</div>` : "");
+    } },
+
+  { id: "04", w: { hov: 200, sel: 510 }, handle: "Beside", ol: "ants2", mat: "glass",
+    spec: { structure: "a card attached to the element's edge", actions: "vertical list", hints: "under the list", breadcrumb: "wrapped" },
+    thesis: "The edit panel's move, for the selection: one card flush against the element's facing edge, readout on top, the actions as a vertical list beneath, the hints under them. Where no side has room it falls back to a stack above. The chrome and the panel then share one arrangement, and Edit is a swap in place.",
+    wins: "Continuity with Edit Mode: the panel opens where the chrome already was, at the same edge.",
+    costs: "Tall. On a wide element it falls back to a stack anyway, so the two shapes both have to be designed.",
+    rects: { h: { left: 40, top: 40, w: 180, h: 64 }, s: { left: 40, top: 40, w: 180, h: 64 } },
+    chrome: ({ rect, lines, state, stage, W }) => {
+      const sel = state === "selected";
+      const w = 200;
+      const list = sel ? `<div style="border-top:1px solid var(--b1);padding:4px">${acts("vlist")}</div><div class="cap" style="padding:2px 10px 8px">${hints("text")}</div>` : "";
+      const need = sel ? 250 : 130;
+      const fitsRight = rect.left + rect.w + 12 + w <= VW - M && rect.top + need <= H - M;
+      if (fitsRight) return card(rect.left + rect.w + 12, `top:${rect.top}px;`, w, readout(lines, { crumb: "wrap" }) + list);
+      // fallback: a stack, above or below
+      const y = stage === "c" ? below(rect) : above(rect);
+      return card(clampL(rect.left, W), y, W, readout(lines, { crumb: "wrap" }) + (sel ? `<div class="foot">${acts("iconlabel")}${hints("chips")}</div>` : ""));
+    } },
+
+  { id: "05", w: { hov: 240, sel: 260 }, handle: "Corner", ol: "ants15", mat: "glass",
+    spec: { structure: "label above; icon toolbar at the outline's corner", actions: "icons, tooltips", hints: "footnote in the label", breadcrumb: "clamped" },
+    thesis: "Figma's arrangement. The readout stays a quiet card, with the hints as its footnote; the actions become a small icon pill that hugs the selection's bottom-right corner, sitting on the outline itself. The actions are on the element, the words are off it.",
+    wins: "The actions are as close to the element as they can be, and the readout never has to make room for them.",
+    costs: "A corner pill on a small element covers part of it; on an element at the fold it has nowhere to go.",
+    chrome: ({ rect, lines, state, stage, W }) => {
+      const sel = state === "selected";
+      const y = stage === "c" ? below(rect) : above(rect);
+      const w = stage === "c" ? 240 : W;
+      const label = card(clampL(rect.left, w), y, w, readout(lines, { crumb: "clamp" }) + (sel ? `<div class="cap">${hints("text")}</div>` : ""));
+      if (!sel) return label;
+      const px = rect.left + rect.w - 6 - 130;
+      const py = stage === "c" ? rect.top + 8 : rect.top + rect.h + 6;
+      return label + `<div class="cluster card-m" style="left:${px}px;top:${py}px">${acts("icons")}</div>` + tip(px + 62, Math.max(2, py - 26), "Edit");
+    } },
+
+  { id: "06", w: { hov: 240, sel: 510 }, rects: { h: { left: 40, top: 120, w: 180, h: 64 }, s: { left: 40, top: 120, w: 180, h: 64 } }, handle: "Tab", ol: "ring", mat: "glass",
+    spec: { structure: "identity tab on the outline; detail card below", actions: "icon + label", hints: "beside the actions", breadcrumb: "trimmed" },
+    thesis: "The identity rides the outline as a tab on its top-left corner, the way a frame is named on a canvas, and the outline becomes a 1px ring to carry it. The other four lines and the actions live in a detail card below the element, the breadcrumb trimmed to its last step with a count for the rest.",
+    wins: "You always know what is selected without reading a card: the name is on the box.",
+    costs: "A tab on the outline is chrome on the element; the ring and the tab both fight a page that already has borders.",
+    chrome: ({ rect, lines, state, stage, W }) => {
+      const sel = state === "selected";
+      const flip = rect.top < 30;
+      const tab = `<div class="tabid" style="left:${rect.left - 1}px;${flip ? `top:${rect.top + rect.h + 4}px;border-radius:0 0 6px 6px;` : `top:${rect.top - 24}px;`}"><span>${lines.tag}</span><span class="cls">${lines.cls}</span><span class="sz">${lines.size}</span></div>`;
+      const y = `top:${rect.top + rect.h + (flip ? 30 : 8)}px;`;
+      const detail = `<div class="ro">${txtLn(lines)}${ln(lines.layout)}${ln(lines.paint)}${crumbHtml(lines, "trim")}</div>` + (sel ? `<div class="foot">${acts("iconlabel")}${hints("chips")}</div>` : "");
+      return tab + card(clampL(rect.left, W), y, W, detail);
+    } },
+
+  { id: "07", w: { hov: 240, sel: 360 }, handle: "Rail", ol: "ants2", mat: "glass",
+    spec: { structure: "one card, two columns", actions: "vertical rail, icon + label", hints: "under the rail", breadcrumb: "wrapped" },
+    thesis: "One card, two columns: the readout on the left, a vertical rail of the four actions on the right behind a hairline, the hints under the rail. Wider than a stack and no taller than the readout, so it takes the room a wide element has to give.",
+    wins: "No taller than the hover card — selecting adds width, not height — and every action keeps its name.",
+    costs: "Wide. On a narrow element the card overhangs; on a narrow viewport the rail has to fold.",
+    chrome: ({ rect, lines, state, stage, W }) => {
+      const sel = state === "selected";
+      const w = sel ? Math.max(W + 60, 300) : W;
+      const y = stage === "c" ? below(rect) : above(rect);
+      const inner = sel ? `<div class="cols">${readout(lines, { crumb: "wrap" })}<div class="rail">${acts("vlist")}${hints("text")}</div></div>` : readout(lines, { crumb: "wrap" });
+      return card(clampL(rect.left, w), y, w, inner);
+    } },
+
+  { id: "08", w: { hov: 300, sel: 528 }, handle: "Command line", ol: "ants2", mat: "glass",
+    spec: { structure: "bar against the element; readout beyond it", actions: "text only, dividers", hints: "middle of the bar", breadcrumb: "clamped" },
+    thesis: "The bar is the thing nearest the element: identity on the left, the four actions as words with dividers on the right, the hints between. The other four lines sit in a quieter card beyond the bar. Hover shows the bar with the identity alone; selecting fills in the actions.",
+    wins: "The actions are one line high and touch the element; the readout can be as long as it likes without pushing them away.",
+    costs: "Two pieces again, and a bar of four words is wider than a bar of four icons — 380px before the hints.",
+    chrome: ({ rect, lines, state, stage, W }) => {
+      const sel = state === "selected";
+      const w = W;
+      const x = clampL(rect.left, w);
+      const bar = `<div class="card-m bar" style="position:relative;width:${w}px"><div class="ro-id"><span class="tag">${lines.tag}</span><span class="cls">${lines.cls}</span></div>${sel ? hints("text") + acts("text") : ""}</div>`;
+      const rest = `<div class="card-m" style="position:relative;width:${w}px;background:var(--s0)"><div class="ro">${txtLn(lines)}${ln([`<span class="sz" style="font-family:var(--mono);color:var(--t3)">${lines.size}</span>`, ...lines.layout])}${ln(lines.paint)}${crumbHtml(lines, "clamp")}</div></div>`;
+      if (stage === "c") return `<div style="position:absolute;left:${x}px;${below(rect)}display:flex;flex-direction:column;gap:6px">${bar}${rest}</div>`;
+      return `<div style="position:absolute;left:${x}px;${above(rect)}display:flex;flex-direction:column;gap:6px">${rest}${bar}</div>`;
+    } },
+
+  { id: "09", w: { hov: 236, sel: 236 }, handle: "Dock", ol: "ants2", mat: "opaque",
+    spec: { structure: "fixed to the viewport's right edge", actions: "vertical list", hints: "bottom of the dock", breadcrumb: "wrapped" },
+    thesis: "Nothing near the element but the outline. The readout and the actions live in a dock pinned to the viewport's right edge — whatever is hovered or selected is described there — so the page is never covered where you are looking, only where you are not. Opaque, because it is a panel, not a caption.",
+    wins: "The chrome never collides with anything and never moves; a stable place to look.",
+    costs: "The eye travels from the element to the edge and back for every readout, and the dock covers whatever sits under it.",
+    chrome: ({ rect, lines, state }) => {
+      const sel = state === "selected";
+      return `<div class="dock card-m">${readout(lines, { crumb: "wrap" })}${sel ? acts("vlist") : ""}<div class="hint" style="display:flex">${kbd("⌥")}measure<span class="sep">·</span>${kbd("esc")}back</div></div>`;
+    } },
+
+  { id: "10", w: { hov: 240, sel: 320 }, handle: "Primary", ol: "ants2", mat: "glass",
+    spec: { structure: "one card, actions as its footer", actions: "Copy Code filled, three ghosts", hints: "caption", breadcrumb: "clamped" },
+    thesis: "The stack again, with a hierarchy in the footer: Copy Code — the thing you came for — as a filled button, the other three as ghost icons with their names in tooltips, the hints as a caption under the footer. One action reads as the action.",
+    wins: "The most common thing to do is the most visible thing to press.",
+    costs: "Three unlabelled ghosts, and a filled button in the accent inside a card that also has an accent tag and an accent outline.",
+    chrome: ({ rect, lines, state, stage, W }) => {
+      const sel = state === "selected";
+      const y = stage === "c" ? below(rect) : above(rect);
+      const x = clampL(rect.left, W);
+      const foot = sel ? `<div class="foot">${acts("primary")}</div><div class="cap" style="padding-top:2px">${hints("text")}</div>` : "";
+      const ty = stage === "c" ? rect.top + rect.h + GAP + 95 : rect.top - GAP - 96;
+      return card(x, y, W, readout(lines, { crumb: "clamp" }) + foot) + (sel ? tip(x + 143, ty, "Select Parent") : "");
+    } },
+
+  { id: "11", w: { hov: 300, sel: 440 }, handle: "Ledger", ol: "ring", mat: "flat",
+    spec: { structure: "two pieces, one width", actions: "text only, dividers", hints: "underlined keys in the row", breadcrumb: "two-column key / value" },
+    thesis: "Flatter and drier: an opaque sheet with no shadow, a 1px ring instead of ants, and the readout laid out as a ledger — key on the left, value on the right — over a toolbar of four words with dividers, the hints as underlined keys at the row's end. Two pieces at one width, in the register of a spec sheet.",
+    wins: "The most legible readout of the fourteen: every value has a key and a column.",
+    costs: "The flattest and the least like the rest of 2.0's chrome; a ring on a page full of borders can vanish.",
+    chrome: ({ rect, lines, state, stage, W }) => {
+      const sel = state === "selected";
+      const w = Math.max(W, 300);
+      const x = clampL(rect.left, w);
+      const label = readout(lines, { ledger: true });
+      const bar = sel ? `<div class="card-m" style="position:relative;width:${w}px;display:flex;align-items:center;padding:2px 8px 2px 2px">${acts("text")}<span style="margin-left:auto">${hints("u")}</span></div>` : "";
+      if (stage === "c") return `<div style="position:absolute;left:${x}px;${below(rect)}display:flex;flex-direction:column;gap:6px"><div class="card-m" style="position:relative;width:${w}px">${label}</div>${bar}</div>`;
+      return card(x, above(rect), w, label) + (sel ? `<div class="card-m" style="left:${x}px;${below(rect)}width:${w}px;display:flex;align-items:center;padding:2px 8px 2px 2px">${acts("text")}<span style="margin-left:auto">${hints("u")}</span></div>` : "");
+    } },
+
+  { id: "12", w: { hov: 260, sel: 510 }, handle: "Strip", ol: "ants2", mat: "glass",
+    spec: { structure: "one card, readouts as chips", actions: "icon + label strip", hints: "inside the breadcrumb row", breadcrumb: "clamped" },
+    thesis: "The stack with the middle lines re-cut: layout and paint become a row of chips rather than two dotted sentences, the breadcrumb row carries the hints at its end, and the actions are a strip across the bottom behind a hairline. Same information, less prose.",
+    wins: "Chips scan faster than dotted sentences and wrap when the element has many properties.",
+    costs: "Chips are wider than words; a paint line with three colours becomes two rows of them.",
+    chrome: ({ rect, lines, state, stage, W }) => {
+      const sel = state === "selected";
+      const y = stage === "c" ? below(rect) : above(rect);
+      return card(clampL(rect.left, W), y, W, readout(lines, { crumb: "clamp", chips: true, hintsInCrumb: sel }) + (sel ? `<div class="foot">${acts("iconlabel")}</div>` : ""));
+    } },
+
+  { id: "13", w: { hov: 260, sel: 300 }, handle: "Overlay", ol: "ants15", mat: "glass",
+    spec: { structure: "icon cluster over the element's edge; label beyond it", actions: "icons, tooltips", hints: "caption under the label", breadcrumb: "marquee" },
+    thesis: "The actions straddle the selection's own edge as a small pill — half over the element, half off it — and the readout sits beyond them. The pill is where the pointer already is; the words are a glance away. Ants at 1.5px so the pill has an edge to sit on.",
+    wins: "The actions are exactly where the pointer stops after a click.",
+    costs: "The pill covers a strip of the element, and on a short element the label and the pill compete for the same side.",
+    chrome: ({ rect, lines, state, stage, W }) => {
+      const sel = state === "selected";
+      const top = stage !== "c";
+      const cy = top ? rect.top - 17 : rect.top + rect.h - 17;
+      const cx = clampL(rect.left + rect.w / 2 - 66, 132);
+      const cluster = sel ? `<div class="cluster card-m" style="left:${cx}px;top:${cy}px">${acts("icons")}</div>` + tip(cx + 62, cy - 26, "Edit") : "";
+      const y = top ? `bottom:${H - (rect.top - 26)}px;` : `top:${rect.top + rect.h + 24}px;`;
+      return cluster + card(clampL(rect.left, W), y, W, readout(lines, { crumb: "marquee" }) + (sel ? `<div class="cap">${hints("text")}</div>` : ""));
+    } },
+
+  { id: "14", w: { hov: 380, sel: 528 }, handle: "Ribbon", ol: "ants2", mat: "glass",
+    spec: { structure: "one wide ribbon above the element", actions: "icon + label", hints: "right end of the second row", breadcrumb: "clamped" },
+    thesis: "For a tool that mostly selects wide things: one ribbon as wide as the element, identity and text and the four actions on its first row with the hints at the end, layout and paint and breadcrumb on a quieter second row. Two rows high, never taller. Below the element when there is no room above.",
+    wins: "Shortest selected chrome of the fourteen — 60px — so it almost never has to yield.",
+    costs: "Needs width: under about 440px the first row has to drop the text or the labels.",
+    chrome: ({ rect, lines, state, stage, W }) => {
+      const sel = state === "selected";
+      const w = Math.max(rect.w, sel ? 440 : W);
+      const x = clampL(rect.left, Math.min(w, VW - 2 * M));
+      const ww = Math.min(w, VW - 2 * M);
+      const y = stage === "c" ? below(rect) : above(rect);
+      const id = sel ? `<div class="ro-id"><span class="tag">${lines.tag}</span><span class="cls">${lines.cls}</span></div>` : idRow(lines).replace('<span class="sz">', '<span class="sz" style="margin-left:8px">');
+      const row1 = `<div class="ribbon-row">${id}<div class="ro-ln txt">“${lines.text}”</div>${sel ? acts("iconlabel") : ""}</div>`;
+      const row2 = `<div class="ribbon-sub">${sel ? `<span class="sz" style="font-family:var(--mono);color:var(--t3);flex:none">${lines.size}</span>` : ""}${ln(lines.layout)}${ln(lines.paint)}${crumbHtml(lines, "clamp")}${sel ? hints("chips") : ""}</div>`;
+      return card(x, y, ww, row1 + row2);
+    } },
+];
+
+/* ===== stages ===== */
+function stageHtml(d, key) {
+  const st = STAGES[key];
+  const rect = (d.rects && d.rects[key]) || st.sel;
+  const W = st.state === "hover" ? (d.w && d.w.hov) || 240 : Math.min((d.w && d.w.sel) || 480, VW - 2 * M - Math.min(rect.left, VW - 2 * M - 200));
+  const host = st.host || st.hostFn(rect);
+  const chrome = d.chrome({ rect, lines: st.lines, state: st.state, stage: key, W });
+  return `<div class="stage t" data-ol="${d.ol}" data-mat="${d.mat}">${host}${olHtml(rect, st.state)}${chrome}</div>`;
+}
+const cap = (title, note) => `<p class="cell-cap"><span><b>${title}</b> ${note}</span></p>`;
+function section(d) {
+  const specs = Object.entries(d.spec).map(([k, v]) => `<li>${k} <b>${v}</b></li>`).join("") + `<li>outline <b>${d.ol === "ants2" ? "2px ants" : d.ol === "ants15" ? "1.5px ants" : "1px ring"}</b></li><li>material <b>${d.mat}</b></li>`;
+  return `<section class="d" id="d${d.id}">
+    <div class="d-head"><span class="d-num">${d.id}</span><h2>${d.handle}</h2><p class="thesis">${d.thesis}</p><ul class="spec">${specs}</ul></div>
+    <div class="grid2">
+      ${["h", "s", "b", "c"].map((k) => `<div>${cap(STAGES[k].title, STAGES[k].note)}<div class="frame">${stageHtml(d, k)}</div></div>`).join("")}
+    </div>
+    <dl class="tradeoff"><dt>Wins</dt><dd>${d.wins}</dd><dt>Costs</dt><dd>${d.costs}</dd></dl>
+  </section>`;
+}
+document.getElementById("directions").innerHTML = DIRECTIONS.map(section).join("");
+document.getElementById("jump").innerHTML = DIRECTIONS.map((d) => `<a href="#d${d.id}" title="${d.handle}">${d.id}</a>`).join("");
+const ro = new ResizeObserver((entries) => { for (const e of entries) e.target.style.setProperty("--k", (e.contentRect.width / 560).toFixed(4)); });
+document.querySelectorAll(".frame").forEach((f) => ro.observe(f));
+</script>
+</body>
+</html>
