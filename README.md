@@ -1,6 +1,4 @@
-<img src="icons/light-128.png" width="72" height="72" alt="">
-
-# Pointee
+![Pointee](assets/banner.png)
 
 Point at any element. Copy it. Paste it into your coding agent.
 
