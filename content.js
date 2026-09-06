@@ -373,13 +373,6 @@
     );
   }
 
-  // Clawd's colours arrive from tokens.css via the .pnt-clawd-* classes rather
-  // than fill="" attributes: var() is not resolved inside an SVG presentation
-  // attribute, only in a real style rule. See content.css.
-
-  // ===== Clawd Mini (for toast loading state) =====
-  const CLAWD_MINI = `<svg viewBox="-4 -4 120 80" width="28" height="20" fill="none" style="flex-shrink:0;overflow:visible"><rect class="pnt-clawd-body" x="8" y="0" width="96" height="56" rx="4"/><rect class="pnt-clawd-body" x="-4" y="25.6" width="12" height="14.4" rx="3"/><rect class="pnt-clawd-body" x="104" y="25.6" width="12" height="14.4" rx="3"/><rect class="pnt-clawd-eye" x="28" y="14" width="8" height="16" rx="2"/><rect class="pnt-clawd-eye" x="76" y="14" width="8" height="16" rx="2"/><rect class="pnt-clawd-leg" x="16" y="56" width="9.6" height="20" rx="2"><animate attributeName="height" values="20;16;20" dur="0.4s" begin="0s" repeatCount="indefinite"/></rect><rect class="pnt-clawd-leg" x="30.4" y="56" width="9.6" height="20" rx="2"><animate attributeName="height" values="20;16;20" dur="0.4s" begin="0.1s" repeatCount="indefinite"/></rect><rect class="pnt-clawd-leg" x="72" y="56" width="9.6" height="20" rx="2"><animate attributeName="height" values="20;16;20" dur="0.4s" begin="0.2s" repeatCount="indefinite"/></rect><rect class="pnt-clawd-leg" x="86.4" y="56" width="9.6" height="20" rx="2"><animate attributeName="height" values="20;16;20" dur="0.4s" begin="0.3s" repeatCount="indefinite"/></rect></svg>`;
-
   // ===== SVG Icons =====
   const ICONS = {
     code: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
@@ -388,47 +381,9 @@
     settings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
     edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg>',
     back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>',
+    check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+    alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12.5"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
   };
-
-  // ===== Clawd Mascot SVG (mood="happy", from clawd-react) =====
-  const CLAWD_SVG = `<svg viewBox="-16 -4 144 104" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <!-- Shadow -->
-    <ellipse class="pnt-clawd-shadow" cx="56" cy="91.5" rx="32" ry="4"/>
-    <!-- Body -->
-    <rect class="pnt-clawd-body" x="8" y="0" width="96" height="56" rx="4"/>
-    <!-- Arm nubs -->
-    <rect class="pnt-clawd-body" x="-4" y="25.6" width="12" height="14.4" rx="3"/>
-    <rect class="pnt-clawd-body" x="104" y="25.6" width="12" height="14.4" rx="3"/>
-    <!-- Eyes -->
-    <rect class="pnt-clawd-eye" x="28" y="14" width="8" height="16" rx="2"/>
-    <rect class="pnt-clawd-eye" x="76" y="14" width="8" height="16" rx="2"/>
-    <!-- Legs -->
-    <rect class="pnt-clawd-leg" x="16" y="56" width="9.6" height="20" rx="2">
-      <animate attributeName="height" values="20;16;20" dur="0.4s" begin="0s" repeatCount="indefinite"/>
-    </rect>
-    <rect class="pnt-clawd-leg" x="30.4" y="56" width="9.6" height="20" rx="2">
-      <animate attributeName="height" values="20;16;20" dur="0.4s" begin="0.1s" repeatCount="indefinite"/>
-    </rect>
-    <rect class="pnt-clawd-leg" x="72" y="56" width="9.6" height="20" rx="2">
-      <animate attributeName="height" values="20;16;20" dur="0.4s" begin="0.2s" repeatCount="indefinite"/>
-    </rect>
-    <rect class="pnt-clawd-leg" x="86.4" y="56" width="9.6" height="20" rx="2">
-      <animate attributeName="height" values="20;16;20" dur="0.4s" begin="0.3s" repeatCount="indefinite"/>
-    </rect>
-    <!-- Sparkles -->
-    <circle class="pnt-clawd-spark" cx="108" cy="8" r="3.5" opacity="0">
-      <animate attributeName="opacity" values="0;1;0" dur="1.5s" repeatCount="indefinite"/>
-      <animate attributeName="r" values="1;3.5;1" dur="1.5s" repeatCount="indefinite"/>
-    </circle>
-    <circle class="pnt-clawd-spark" cx="116" cy="-2" r="2.5" opacity="0">
-      <animate attributeName="opacity" values="0;1;0" dur="1.5s" begin="0.4s" repeatCount="indefinite"/>
-      <animate attributeName="r" values="0.5;2.5;0.5" dur="1.5s" begin="0.4s" repeatCount="indefinite"/>
-    </circle>
-    <circle class="pnt-clawd-spark" cx="120" cy="18" r="2" opacity="0">
-      <animate attributeName="opacity" values="0;1;0" dur="1.5s" begin="0.8s" repeatCount="indefinite"/>
-      <animate attributeName="r" values="0.5;2;0.5" dur="1.5s" begin="0.8s" repeatCount="indefinite"/>
-    </circle>
-  </svg>`;
 
   // ===== Style formatting helpers =====
   function colorSwatch(rawColor) {
@@ -799,12 +754,6 @@
     labelEl.id = "pnt-label";
     labelEl.style.display = "none";
 
-    // Inject Clawd mascot
-    const clawdContainer = document.createElement("div");
-    clawdContainer.className = "pnt-clawd";
-    clawdContainer.innerHTML = CLAWD_SVG;
-    labelEl.appendChild(clawdContainer);
-
     document.documentElement.appendChild(overlayContainer);
     document.documentElement.appendChild(labelEl);
   }
@@ -1109,8 +1058,8 @@
     if (!layout.label.hidden) {
       labelEl.style.top = layout.label.top + "px";
       labelEl.style.left = layout.label.left + "px";
-      // Only clip when the label actually had to give up height — Clawd walks
-      // outside the box, so overflow stays visible in every ordinary case.
+      // Only cap when the label actually had to give up height; the stylesheet
+      // clips it in every case, so the glass edge and shadow stay uncut.
       if (layout.label.h < label.h) {
         labelEl.style.maxHeight = layout.label.h + "px";
         labelEl.style.overflow = "hidden";
@@ -1300,7 +1249,7 @@
       line3 = `<div class="pnt-label-line pnt-label-marquee pnt-line-breadcrumb"><span class="pnt-label-breadcrumb pnt-marquee-inner">${path}<span class="pnt-label-sep">&nbsp;&nbsp;&nbsp;·&nbsp;&nbsp;&nbsp;</span>${path}</span></div>`;
     }
 
-    // Preserve Clawd mascot, update only the content wrapper
+    // Update only the content wrapper, so the node the layout pass measures is stable
     let contentWrap = labelEl.querySelector(".pnt-label-content");
     if (!contentWrap) {
       contentWrap = document.createElement("div");
@@ -7264,6 +7213,16 @@
       bar.appendChild(button);
     }
 
+    // The keyboard ladder, made visible. Only what is actually bound: Option
+    // measures from the selection, Escape steps back out. Copy, Screenshot and
+    // Edit have no shortcut, so they carry no chip — a hint that lies is worse
+    // than none. Hidden at compact density with the labels.
+    const hints = document.createElement("span");
+    hints.className = "pnt-hints";
+    hints.setAttribute("aria-hidden", "true");
+    hints.innerHTML = `<kbd class="pnt-kbd">⌥</kbd><span>measure</span><kbd class="pnt-kbd">esc</kbd>`;
+    bar.appendChild(hints);
+
     parentButtonEl = document.createElement("button");
     parentButtonEl.className = "pnt-parent-btn";
     parentButtonEl.innerHTML = ICONS.parent + `<span>Select Parent</span>`;
@@ -8060,7 +8019,7 @@
   // ===== Button State Helpers =====
   function setButtonLoading(btnEl) {
     if (!btnEl) return;
-    btnEl.innerHTML = CLAWD_MINI + `<span>Copying...</span>`;
+    btnEl.innerHTML = `<span class="pnt-spinner" aria-hidden="true"></span><span>Copying…</span>`;
     btnEl.disabled = true;
     btnEl.style.opacity = token("--pnt-opacity-loading", "0.7");
   }
@@ -8120,9 +8079,9 @@
   }
 
   // ===== Toast =====
-  // The `isLoading` variant (CLAWD_MINI plus text) was never reachable — no
-  // caller ever passed a third argument, and the loading affordance in practice
-  // is setButtonLoading() on the button itself. Removed with the signature.
+  // A toast is a sentence and a mark: a check for success, an alert for an
+  // error. The loading affordance lives on the button itself (setButtonLoading),
+  // so there is no loading toast.
   function showToast(message, isError = false) {
     if (toastTimer) clearTimeout(toastTimer);
 
@@ -8131,7 +8090,14 @@
       toastEl.id = "pnt-toast";
     }
 
-    toastEl.textContent = message;
+    toastEl.replaceChildren();
+    const mark = document.createElement("span");
+    mark.className = "pnt-toast-icon";
+    mark.setAttribute("aria-hidden", "true");
+    mark.innerHTML = isError ? ICONS.alert : ICONS.check;
+    const text = document.createElement("span");
+    text.textContent = message;
+    toastEl.append(mark, text);
     toastEl.className = isError ? "pnt-toast-error" : "";
 
     const z = token("--pnt-z-chrome", "2147483647");

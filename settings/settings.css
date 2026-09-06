@@ -672,9 +672,6 @@ details:not([open]) > .sp-summary .sp-caret {
 
 .an-span { grid-column: 1 / -1; }
 
-/* Headroom for Clawd, who stands above the label's top edge. */
-.an-label #pnt-label { margin-top: 26px; }
-
 .an-cap {
   margin: 0;
   font-size: var(--pnt-text-sm);
@@ -755,13 +752,6 @@ details:not([open]) > .sp-summary .sp-caret {
 .pnt-mock #pnt-settings-btn {
   position: static;
   cursor: default;
-}
-
-/* A still preview. Clawd's walk would carry him out of the clipped frame, and a
-   pacing mascot beside a colour picker is a distraction from the colours. */
-.pnt-mock .pnt-clawd,
-.pnt-mock .pnt-clawd svg {
-  animation: none;
 }
 
 /* ===== Context swap =====

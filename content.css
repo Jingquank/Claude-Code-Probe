@@ -114,14 +114,14 @@
 #pnt-overlay-container.pnt-plain #pnt-border-box { background: var(--pnt-accent); }
 #pnt-overlay-container.pnt-plain #pnt-bloom { display: none; }
 
-/* Everything that moves on its own has to stop here. Clawd's walk and bob were
-   missing from this list — the mascot kept pacing for anyone who had asked the
-   OS for stillness. The marquee is included for the same reason. */
+/* Everything that moves on its own has to stop here — the marquee, the ants,
+   the sweep, the flash, the loading spinner. Anything animated must be listed;
+   DESIGN.md calls this the weakest link in the contract because nothing checks
+   it. */
 @media (prefers-reduced-motion: reduce) {
   #pnt-ants path,
   .pnt-spin,
-  #pnt-label .pnt-clawd,
-  #pnt-label .pnt-clawd svg,
+  .pnt-spinner,
   #pnt-label .pnt-marquee-inner,
   #pnt-edit-flash.pnt-edit-flashing {
     animation: none;
@@ -407,79 +407,34 @@
   pointer-events: none !important;
 }
 
-/* ===== Element Label ===== */
+/* ===== Element Label =====
+   Glass over the page: surface-0 at the material alpha behind the blur, a
+   hairline border, a short soft shadow. Sans for the words, mono for the
+   numbers. The three text steps are 13 / 12 / 11 by weight and tone; nothing
+   here is below AA against its own surface. */
 #pnt-label {
   position: fixed;
-  background: var(--pnt-surface);
-  color: var(--pnt-text);
-  font: var(--pnt-text-base)/var(--pnt-leading-base) var(--pnt-font);
-  padding: var(--pnt-sm) var(--pnt-md);
-  border-radius: var(--pnt-radius-md);
+  background: var(--pnt-glass);
+  -webkit-backdrop-filter: blur(var(--pnt-blur)) saturate(1.15);
+  backdrop-filter: blur(var(--pnt-blur)) saturate(1.15);
+  color: var(--pnt-text-1);
+  font: var(--pnt-weight-regular) var(--pnt-text-base)/var(--pnt-leading-base) var(--pnt-font-sans);
+  padding: var(--pnt-gap-section) var(--pnt-md);
+  border-radius: var(--pnt-radius-lg);
   white-space: nowrap;
   pointer-events: none;
   z-index: var(--pnt-z-chrome);
-  border: 1px solid rgb(from var(--pnt-accent) r g b / 0.25);
-  box-shadow: var(--pnt-shadow-card);
+  border: 1px solid var(--pnt-border-2);
+  box-shadow: var(--pnt-shadow-1);
   /* box-sizing so the max-height the layout pass sets means the whole box */
   box-sizing: border-box;
   max-width: min(460px, calc(100vw - 8px));
-  /* visible so Clawd can walk along the top edge; layoutChrome switches this to
-     hidden only when the label has to be capped to fit a very short viewport */
-  overflow: visible;
+  overflow: hidden;
   display: block;
   transition: top var(--pnt-duration) var(--pnt-ease),
               left var(--pnt-duration) var(--pnt-ease),
-              opacity var(--pnt-duration-fast) ease;
+              opacity var(--pnt-duration-fast) var(--pnt-ease);
 }
-
-/* Clawd mascot — escapes the popup and walks along the top edge */
-#pnt-label .pnt-clawd {
-  position: absolute;
-  top: -17px;
-  left: var(--pnt-xs);
-  width: 26px;
-  height: 20px;
-  pointer-events: none;
-  animation: pnt-clawd-walk 24s linear infinite;
-  transform-origin: 50% 100%;
-}
-
-@keyframes pnt-clawd-walk {
-  0%   { left: 4px;                    transform: scaleX(1); }
-  47%  { left: calc(100% - 30px);      transform: scaleX(1); }
-  50%  { left: calc(100% - 30px);      transform: scaleX(-1); }
-  97%  { left: 4px;                    transform: scaleX(-1); }
-  100% { left: 4px;                    transform: scaleX(1); }
-}
-
-#pnt-label .pnt-clawd svg {
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-  animation: pnt-clawd-bob 1.1s ease-in-out infinite;
-}
-
-@keyframes pnt-clawd-bob {
-  0%, 100% { transform: translateY(0); }
-  40% { transform: translateY(-5px); }
-  60% { transform: translateY(-5px); }
-  75% { transform: translateY(1px); }
-  85% { transform: translateY(-1px); }
-}
-
-/* Clawd's sparkle and blink are <animate> elements inside CLAWD_SVG itself, not
-   CSS — the pnt-sparkle and pnt-blink keyframes that used to sit here were
-   referenced by no rule and have been removed. */
-
-/* Clawd's palette. These are rules rather than fill="" attributes on the SVG
-   because var() is not resolved inside an SVG presentation attribute. Not scoped
-   under #pnt-label: CLAWD_MINI also appears inside a toolbar button and the
-   toast, both of which are outside the label. */
-.pnt-clawd-body   { fill: var(--pnt-clawd-body); }
-.pnt-clawd-leg    { fill: var(--pnt-clawd-leg); }
-.pnt-clawd-eye    { fill: var(--pnt-clawd-eye); }
-.pnt-clawd-spark  { fill: var(--pnt-accent); }
-.pnt-clawd-shadow { fill: var(--pnt-clawd-shadow); }
 
 #pnt-label .pnt-label-content {
   display: flex;
@@ -494,9 +449,12 @@
   gap: var(--pnt-sm);
 }
 
-/* Identity line — primary, slightly heavier */
+/* Identity line — the title step, bold, tighter leading. */
 #pnt-label .pnt-line-identity {
   font-size: var(--pnt-text-lg);
+  font-weight: var(--pnt-weight-bold);
+  line-height: var(--pnt-leading-tight);
+  letter-spacing: -0.01em;
 }
 
 /* Vertical rhythm — tight within a category, generous between categories */
@@ -504,7 +462,7 @@
   margin-top: var(--pnt-gap-base);
 }
 #pnt-label .pnt-line-identity + .pnt-line-text {
-  margin-top: var(--pnt-gap-tight);
+  margin-top: var(--pnt-gap-pair);
 }
 #pnt-label .pnt-line-meta + .pnt-line-visual {
   margin-top: var(--pnt-gap-pair);
@@ -515,7 +473,6 @@
 
 #pnt-label .pnt-label-tag {
   color: var(--pnt-accent);
-  font-weight: var(--pnt-weight-bold);
 }
 
 #pnt-label .pnt-label-id {
@@ -525,24 +482,28 @@
 
 #pnt-label .pnt-label-class {
   color: var(--pnt-syntax-class);
+  font-weight: var(--pnt-weight-medium);
 }
 
+/* Dimensions are a value, so they are mono; quiet, because the identity is
+   the thing being read and the size is the thing being checked. */
 #pnt-label .pnt-label-size {
-  color: var(--pnt-text-faint);
+  color: var(--pnt-text-3);
   margin-left: auto;
   padding-left: var(--pnt-md);
-  font-size: var(--pnt-text-sm);
+  font: var(--pnt-weight-regular) var(--pnt-text-sm)/var(--pnt-leading-tight) var(--pnt-font-mono);
   font-variant-numeric: tabular-nums;
   letter-spacing: var(--pnt-tracking-num);
 }
 
 #pnt-label .pnt-label-prop {
-  color: var(--pnt-text-muted);
+  color: var(--pnt-text-2);
   font-size: var(--pnt-text-sm);
+  font-variant-numeric: tabular-nums;
 }
 
 #pnt-label .pnt-label-text {
-  color: var(--pnt-text-dim);
+  color: var(--pnt-text-2);
   font-size: var(--pnt-text-sm);
   font-style: italic;
   max-width: 100%;
@@ -575,7 +536,7 @@
 }
 
 #pnt-label .pnt-label-sep {
-  color: var(--pnt-sep);
+  color: var(--pnt-text-4);
   margin: 0 var(--pnt-xs);
 }
 
@@ -598,17 +559,17 @@
 }
 
 #pnt-label .pnt-label-breadcrumb {
-  color: var(--pnt-text-faint);
+  color: var(--pnt-text-3);
   font-size: var(--pnt-text-sm);
 }
 
 #pnt-label .pnt-label-breadcrumb .pnt-label-tag {
-  color: var(--pnt-accent-dark);
+  color: var(--pnt-accent);
   font-weight: var(--pnt-weight-medium);
 }
 
 #pnt-label .pnt-label-breadcrumb .pnt-label-sep {
-  color: var(--pnt-sep);
+  color: var(--pnt-text-4);
 }
 
 /* ===== Action Toolbar =====
@@ -619,7 +580,12 @@
    `all: initial` on this and its descendants resets every regular property, so
    font-family and box-sizing have to be re-declared below. Custom properties are
    the one thing `all` does not reset (CSS Cascade 4 §3.2), which is why the
-   --pnt-* tokens still reach in here from :root. */
+   --pnt-* tokens still reach in here from :root.
+
+   The pill: one glass capsule of labelled buttons, the keyboard hints at its
+   end, and Select Parent as a second capsule in the accent because it moves
+   the selection rather than copying it. Labels are sans, sentence case, 12px
+   at medium weight — the 1.x tracked caps are gone with the mono. */
 #pnt-toolbar {
   all: initial;
   position: fixed;
@@ -627,52 +593,64 @@
   display: flex;
   align-items: stretch;
   gap: var(--pnt-gap-section);
-  font-family: var(--pnt-font);
+  font-family: var(--pnt-font-sans);
   box-sizing: border-box;
   transition: top var(--pnt-duration) var(--pnt-ease),
               left var(--pnt-duration) var(--pnt-ease);
 }
 
-#pnt-toolbar .pnt-bar {
+#pnt-toolbar .pnt-bar,
+#pnt-toolbar .pnt-parent-btn {
   all: initial;
-  background: var(--pnt-surface);
-  border: 1px solid rgb(from var(--pnt-accent) r g b / 0.5);
+  background: var(--pnt-glass);
+  -webkit-backdrop-filter: blur(var(--pnt-blur)) saturate(1.15);
+  backdrop-filter: blur(var(--pnt-blur)) saturate(1.15);
+  border: 1px solid var(--pnt-border-2);
   border-radius: var(--pnt-radius-lg);
-  padding: var(--pnt-xs);
-  display: flex;
-  gap: var(--pnt-xs);
-  box-shadow: var(--pnt-shadow-bar);
-  font-family: var(--pnt-font);
+  box-shadow: var(--pnt-shadow-1);
+  font-family: var(--pnt-font-sans);
   box-sizing: border-box;
+  display: flex;
+  align-items: center;
+}
+
+#pnt-toolbar .pnt-bar {
+  padding: 3px;
+  gap: var(--pnt-gap-tight);
 }
 
 #pnt-toolbar .pnt-bar button {
   all: initial;
   background: transparent;
-  color: var(--pnt-text);
-  border: 1px solid transparent;
-  border-radius: var(--pnt-radius-sm);
-  padding: var(--pnt-btn-y) var(--pnt-btn-x);
-  font: var(--pnt-weight-medium) var(--pnt-text-base)/var(--pnt-leading-tight) var(--pnt-font);
-  text-transform: uppercase;
-  letter-spacing: var(--pnt-tracking-wide);
+  color: var(--pnt-text-1);
+  border: 0;
+  border-radius: var(--pnt-radius-md);
+  padding: var(--pnt-sm) 9px;
+  font: var(--pnt-weight-medium) var(--pnt-text-base)/var(--pnt-leading-tight) var(--pnt-font-sans);
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: var(--pnt-sm);
+  gap: 7px;
   white-space: nowrap;
   justify-content: center;
-  transition: background var(--pnt-duration), border-color var(--pnt-duration);
+  transition: background var(--pnt-duration) var(--pnt-ease),
+              color var(--pnt-duration) var(--pnt-ease);
   box-sizing: border-box;
 }
 
 #pnt-toolbar .pnt-bar button:hover {
-  background: rgb(from var(--pnt-accent) r g b / 0.15);
-  border-color: rgb(from var(--pnt-accent) r g b / 0.5);
+  background: var(--pnt-surface-2);
 }
 
 #pnt-toolbar .pnt-bar button:active {
-  background: rgb(from var(--pnt-accent) r g b / 0.25);
+  background: color-mix(in srgb, var(--pnt-surface-2) 60%, var(--pnt-border-3));
+}
+
+/* `all: initial` takes the focus ring with it; give it back, in the accent. */
+#pnt-toolbar button:focus-visible,
+#pnt-settings-btn:focus-visible {
+  outline: 2px solid var(--pnt-focus);
+  outline-offset: 1px;
 }
 
 #pnt-toolbar button svg,
@@ -680,41 +658,61 @@
   width: var(--pnt-icon);
   height: var(--pnt-icon);
   flex-shrink: 0;
+  stroke-width: 1.75;
+}
+
+/* The keyboard ladder, made visible: what is actually bound and nothing else.
+   A quiet run at the end of the bar behind a hairline. */
+#pnt-toolbar .pnt-hints {
+  display: flex;
+  align-items: center;
+  gap: var(--pnt-xs);
+  margin-left: var(--pnt-gap-tight);
+  padding: 0 var(--pnt-sm) 0 var(--pnt-gap-section);
+  border-left: 1px solid var(--pnt-border-1);
+  color: var(--pnt-text-3);
+  font: var(--pnt-weight-regular) var(--pnt-text-sm)/1 var(--pnt-font-sans);
+  white-space: nowrap;
+}
+
+.pnt-kbd {
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  padding: 0 var(--pnt-xs);
+  border-radius: var(--pnt-radius-xs);
+  font: var(--pnt-weight-medium) var(--pnt-text-micro)/1 var(--pnt-font-mono);
+  color: var(--pnt-text-3);
+  background: var(--pnt-surface-2);
+  border: 1px solid var(--pnt-border-1);
+  box-sizing: border-box;
 }
 
 /* Select Parent — navigation, not a copy action, so it reads as the accent on
-   the same chrome. No vertical padding: the height comes from stretch. */
+   the same glass. No vertical padding: the height comes from stretch. */
 #pnt-toolbar .pnt-parent-btn {
-  all: initial;
-  background: var(--pnt-surface);
   color: var(--pnt-accent);
-  border: 1px solid var(--pnt-accent);
-  border-radius: var(--pnt-radius-lg);
   padding: 0 var(--pnt-lg);
-  font: var(--pnt-weight-medium) var(--pnt-text-base)/var(--pnt-leading-tight) var(--pnt-font);
-  text-transform: uppercase;
-  letter-spacing: var(--pnt-tracking-wide);
+  font: var(--pnt-weight-medium) var(--pnt-text-base)/var(--pnt-leading-tight) var(--pnt-font-sans);
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: var(--pnt-sm);
+  gap: 7px;
   white-space: nowrap;
-  box-shadow: var(--pnt-shadow-bar);
-  box-sizing: border-box;
-  transition: background var(--pnt-duration), border-color var(--pnt-duration),
-              color var(--pnt-duration), opacity var(--pnt-duration);
+  transition: background var(--pnt-duration) var(--pnt-ease),
+              border-color var(--pnt-duration) var(--pnt-ease),
+              color var(--pnt-duration) var(--pnt-ease),
+              opacity var(--pnt-duration) var(--pnt-ease);
 }
 
-/* Solid invert — the fill floods to the accent and the label flips to the
-   on-accent ink. Both states must stay fully opaque: unlike the bar's buttons,
-   this one sits on the page, so a translucent fill lets the page show through. */
 #pnt-toolbar .pnt-parent-btn:hover {
-  background: var(--pnt-accent);
-  color: var(--pnt-on-accent);
+  background: color-mix(in srgb, var(--pnt-accent) 14%, var(--pnt-surface-0));
+  border-color: color-mix(in srgb, var(--pnt-accent) 40%, var(--pnt-border-2));
 }
 
+/* Pressed floods to the accent with its ink; the one moment this capsule is
+   opaque, and it lasts as long as the mouse button is down. */
 #pnt-toolbar .pnt-parent-btn:active {
-  background: var(--pnt-accent-dark);
+  background: var(--pnt-accent);
+  border-color: var(--pnt-accent);
   color: var(--pnt-on-accent);
 }
 
@@ -726,9 +724,11 @@
 
 /* Narrow viewports: drop to icons so the rail stops overflowing the screen.
    Driven by a class rather than a media query because the JS has to re-measure
-   the buttons' locked widths whenever the density flips. */
+   the buttons' locked widths whenever the density flips. The hints go with
+   the labels. */
 #pnt-toolbar.pnt-compact .pnt-bar button span,
-#pnt-toolbar.pnt-compact .pnt-parent-btn span {
+#pnt-toolbar.pnt-compact .pnt-parent-btn span,
+#pnt-toolbar.pnt-compact .pnt-hints {
   display: none;
 }
 
@@ -747,11 +747,29 @@
 
 /* Edit opens a mode rather than performing an action, so it stays an icon at
    every density — the two labelled buttons beside it are what the bar is for,
-   and a third word would make the rail the widest thing on the page. */
+   and a third word would make the rail the widest thing on the page. The
+   accent marks it as the one button that changes what the chrome is. */
 #pnt-toolbar .pnt-bar button.pnt-icon-btn {
   padding-left: var(--pnt-md);
   padding-right: var(--pnt-md);
   color: var(--pnt-accent);
+}
+
+/* The loading state of a copy button: a ring in the accent, turning. */
+.pnt-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--pnt-border-3);
+  border-top-color: var(--pnt-accent);
+  box-sizing: border-box;
+  flex-shrink: 0;
+  animation: pnt-spinner 0.8s linear infinite;
+}
+
+@keyframes pnt-spinner {
+  to { transform: rotate(360deg); }
 }
 
 /* An undo can land on an element other than the one being edited. It gets a
@@ -761,7 +779,7 @@
 #pnt-edit-flash {
   position: fixed;
   border: var(--pnt-ring) solid var(--pnt-accent);
-  border-radius: var(--pnt-radius-sm);
+  border-radius: var(--pnt-radius-md);
   opacity: 0;
   pointer-events: none;
 }
@@ -1558,8 +1576,7 @@
 /* ===== Settings Button =====
    Viewport chrome, not selection chrome: mounted by activate() and pinned to the
    top-right corner for as long as point mode is on, whether or not anything is
-   selected. Same opaque treatment as .pnt-parent-btn and for the same reason —
-   it sits directly on the page, so a translucent fill would let the page through.
+   selected. The same glass as the bar, quiet until hovered.
 
    Square and icon-only, which keeps its footprint small against the label. It
    still collides: three of the placement strategies dock the label to the
@@ -1574,27 +1591,30 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
-  background: var(--pnt-surface);
-  color: var(--pnt-accent);
-  border: 1px solid var(--pnt-accent);
-  border-radius: var(--pnt-radius-lg);
-  box-shadow: var(--pnt-shadow-bar);
+  width: 28px;
+  height: 28px;
+  background: var(--pnt-glass);
+  -webkit-backdrop-filter: blur(var(--pnt-blur)) saturate(1.15);
+  backdrop-filter: blur(var(--pnt-blur)) saturate(1.15);
+  color: var(--pnt-text-2);
+  border: 1px solid var(--pnt-border-2);
+  border-radius: var(--pnt-radius-md);
+  box-shadow: var(--pnt-shadow-1);
   cursor: pointer;
   box-sizing: border-box;
-  transition: background var(--pnt-duration), color var(--pnt-duration),
-              opacity var(--pnt-duration);
+  transition: background var(--pnt-duration) var(--pnt-ease),
+              color var(--pnt-duration) var(--pnt-ease),
+              opacity var(--pnt-duration) var(--pnt-ease);
 }
 
 #pnt-settings-btn:hover {
-  background: var(--pnt-accent);
-  color: var(--pnt-on-accent);
+  background: color-mix(in srgb, var(--pnt-surface-2) 85%, transparent);
+  color: var(--pnt-text-1);
 }
 
 #pnt-settings-btn:active {
-  background: var(--pnt-accent-dark);
-  color: var(--pnt-on-accent);
+  background: var(--pnt-accent-soft);
+  color: var(--pnt-accent);
 }
 
 /* Yielded to the selection chrome. Not display:none — the layout pass has to
@@ -1604,18 +1624,26 @@
   pointer-events: none;
 }
 
-/* ===== Toast Notification ===== */
+/* ===== Toast Notification =====
+   A sentence on glass with a mark in front of it — a check in the ok colour,
+   an alert in danger. It arrives on the standard curve and leaves on the
+   shorter exit; the transition is read from the state being entered, which is
+   what makes one rule pair do both. */
 #pnt-toast {
   all: initial;
-  background: var(--pnt-accent);
-  color: var(--pnt-on-accent);
-  padding: var(--pnt-xs) var(--pnt-btn-x);
+  background: var(--pnt-glass);
+  -webkit-backdrop-filter: blur(var(--pnt-blur)) saturate(1.15);
+  backdrop-filter: blur(var(--pnt-blur)) saturate(1.15);
+  color: var(--pnt-text-1);
+  border: 1px solid var(--pnt-border-2);
+  box-shadow: var(--pnt-shadow-1);
+  padding: 0 var(--pnt-btn-x) 0 var(--pnt-md);
   border-radius: var(--pnt-radius-lg);
-  font: var(--pnt-weight-medium) var(--pnt-text-base)/var(--pnt-leading-tight) var(--pnt-font);
-  text-transform: uppercase;
-  letter-spacing: var(--pnt-tracking-wide);
+  font: var(--pnt-weight-medium) var(--pnt-text-base)/var(--pnt-leading-tight) var(--pnt-font-sans);
   opacity: 0;
-  transition: opacity var(--pnt-duration-slow);
+  transform: translateY(4px);
+  transition: opacity var(--pnt-duration-exit) var(--pnt-ease-exit),
+              transform var(--pnt-duration-exit) var(--pnt-ease-exit);
   pointer-events: none;
   white-space: nowrap;
   box-sizing: border-box;
@@ -1628,11 +1656,28 @@
 
 #pnt-toast.pnt-toast-visible {
   opacity: 1;
+  transform: none;
+  transition: opacity var(--pnt-duration) var(--pnt-ease),
+              transform var(--pnt-duration) var(--pnt-ease);
+}
+
+#pnt-toast .pnt-toast-icon {
+  display: flex;
+  color: var(--pnt-ok);
+}
+
+#pnt-toast .pnt-toast-icon svg {
+  width: var(--pnt-icon);
+  height: var(--pnt-icon);
+  stroke-width: 2;
 }
 
 #pnt-toast.pnt-toast-error {
-  background: var(--pnt-error);
-  color: var(--pnt-on-error);
+  border-color: color-mix(in srgb, var(--pnt-danger) 45%, var(--pnt-border-2));
+}
+
+#pnt-toast.pnt-toast-error .pnt-toast-icon {
+  color: var(--pnt-danger);
 }
 
 /* ===== Point Mode Cursor ===== */
