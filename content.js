@@ -37,6 +37,11 @@
   let editing = false;
   let editPanelEl = null;
   let editPanelPos = null;
+  // The panel is attached — flush against the selected element's facing edge
+  // and following it — until the user drags it, after which it floats where it
+  // was put. CONTEXT.md, Edit panel.
+  let editPanelAttached = false;
+  let editPanelDragged = false;
   let editPopoverEl = null;
   // Which control the open picker belongs to. The picker is its own root now, so
   // it cannot be found by walking the panel — and the swatch that opened it is
@@ -151,6 +156,10 @@
     tetherTickLoud: 26, // tick length while a control is hot
     tetherThick: 2, // tick thickness, and the run's stroke weight
     tetherStub: 10, // the run leaves the panel at least this far before turning
+    // An attached panel sits this far outside the tick — close enough that the
+    // tick reads as the joint between element and panel, far enough that the
+    // tick is not swallowed by the panel's border.
+    tetherAttach: 6,
   };
 
   // ===== Theme =====
@@ -1671,6 +1680,24 @@
     if (panel.x < box.x + box.w && panel.x + panel.w > box.x &&
         panel.y < box.y + box.h && panel.y + panel.h > box.y) return result;
 
+    // An attached panel needs no run: the tick it sits against is the
+    // association (CONTEXT.md, Tether). Attached is geometric — the panel abuts
+    // one edge of the clearance box, within a stub of it along that edge's
+    // normal, overlapping the edge's span — so it holds for an element wider
+    // than the panel's reach, where any centre-facing heuristic would pick a
+    // side that faces nothing. Mirrored in test/tether.mjs — change both.
+    const near = GEOMETRY.tetherStub + th;
+    const spanX = panel.x < box.x + box.w && panel.x + panel.w > box.x;
+    const spanY = panel.y < box.y + box.h && panel.y + panel.h > box.y;
+    const gapR = panel.x - (box.x + box.w);
+    const gapL = box.x - (panel.x + panel.w);
+    const gapB = panel.y - (box.y + box.h);
+    const gapT = box.y - (panel.y + panel.h);
+    const abuts =
+      (spanY && ((gapR >= 0 && gapR <= near) || (gapL >= 0 && gapL <= near))) ||
+      (spanX && ((gapB >= 0 && gapB <= near) || (gapT >= 0 && gapT <= near)));
+    if (abuts) return result;
+
     const a = tetherSide(panel, bcx, bcy, GEOMETRY.tetherStub);
     // The far end is a tick's centre, exactly — the run has to land on the
     // middle of the tick, not near it.
@@ -1714,6 +1741,31 @@
     return result;
   }
 
+  // Where an attached panel goes: flush against the element's facing edge, a
+  // tick's clearance plus tetherAttach out, top-aligned with the element and
+  // pulled inside the viewport. Right, then left, then below, then above; null
+  // when no side has room, and the caller floats it instead. Pure, like
+  // computeTether, and mirrored in test/tether.mjs — change both.
+  function computeEditPanelPlacement(rect, panel, vw, vh) {
+    const M = GEOMETRY.margin;
+    const off = GEOMETRY.tetherGap + GEOMETRY.tetherThick + GEOMETRY.tetherAttach;
+    const clampTop = (t) => Math.max(M, Math.min(t, vh - panel.h - M));
+    const clampLeft = (l) => Math.max(M, Math.min(l, vw - panel.w - M));
+    const tall = panel.h > vh - 2 * M;
+    // A side is usable only when the whole panel lands inside the viewport
+    // margins: an element hanging off one edge must not drag the panel off
+    // with it. The sweep in test/tether.mjs found the case.
+    const right = { side: "right", top: clampTop(rect.top), left: rect.left + rect.width + off };
+    if (!tall && right.left >= M && right.left + panel.w <= vw - M) return right;
+    const left = { side: "left", top: clampTop(rect.top), left: rect.left - off - panel.w };
+    if (!tall && left.left >= M && left.left + panel.w <= vw - M) return left;
+    const below = { side: "bottom", top: rect.top + rect.height + off, left: clampLeft(rect.left) };
+    if (below.top >= M && below.top + panel.h <= vh - M) return below;
+    const above = { side: "top", top: rect.top - off - panel.h, left: clampLeft(rect.left) };
+    if (above.top >= M && above.top + panel.h <= vh - M) return above;
+    return null;
+  }
+
   // Paint it. The pooling, the per-node snap-vs-glide decision, the `used` Set
   // and the single reflow flush are renderRedline()'s, for the same reasons.
   function renderTether(options) {
@@ -1722,6 +1774,10 @@
       clearTether();
       return;
     }
+    // An attached panel goes where the element goes — a scroll, a reflow, a
+    // padding write that changed its size. Re-placed before the tether is
+    // measured, so the ticks and the panel move as one.
+    if (editPanelEl && editPanelAttached && !editPanelDragged) placeEditPanel();
 
     const instant = !!(options && options.instant);
     const rect = selectedElement.getBoundingClientRect();
@@ -3718,6 +3774,17 @@
 
     editPanelEl.appendChild(head);
     editPanelEl.appendChild(body);
+
+    // The keyboard ladder for this mode, made visible — and only what is
+    // bound: one undo timeline, its redo, and Escape back to the selection.
+    const foot = document.createElement("div");
+    foot.className = "pnt-edit-foot";
+    foot.setAttribute("aria-hidden", "true");
+    foot.innerHTML =
+      `<span><kbd class="pnt-kbd">⌘Z</kbd>undo</span>` +
+      `<span><kbd class="pnt-kbd">⇧⌘Z</kbd>redo</span>` +
+      `<span><kbd class="pnt-kbd">esc</kbd>back</span>`;
+    editPanelEl.appendChild(foot);
     document.documentElement.appendChild(editPanelEl);
 
     seedSplitControls(selectedElement);
@@ -5299,6 +5366,8 @@
     editPanelEl.remove();
     editPanelEl = null;
     editPanelPos = null;
+    editPanelAttached = false;
+    editPanelDragged = false;
     editSplit.clear();
   }
 
@@ -5329,18 +5398,23 @@
     const w = editPanelEl.offsetWidth;
     const h = editPanelEl.offsetHeight;
 
-    if (editPanelPos) {
+    if (editPanelPos && editPanelDragged) {
       // Already dragged: keep the user's spot, only pulling it back into view.
       const { top, left } = clampEditPanel(editPanelPos.top, editPanelPos.left, w, h, vw, vh);
       editPanelPos = { top, left };
     } else {
-      const layout = computeChromeLayout(
-        selectedElement.getBoundingClientRect(),
-        { w: 0, h: 0 },
-        { w, h },
-        vw, vh
-      );
-      editPanelPos = { top: layout.toolbar.top, left: layout.toolbar.left };
+      const rect = selectedElement.getBoundingClientRect();
+      const spot = computeEditPanelPlacement(rect, { w, h }, vw, vh);
+      if (spot) {
+        editPanelPos = { top: spot.top, left: spot.left };
+        editPanelAttached = true;
+      } else {
+        // No side has room — float it where the toolbar would have gone, and
+        // let the tether draw the run.
+        const layout = computeChromeLayout(rect, { w: 0, h: 0 }, { w, h }, vw, vh);
+        editPanelPos = { top: layout.toolbar.top, left: layout.toolbar.left };
+        editPanelAttached = false;
+      }
     }
     editPanelEl.style.top = editPanelPos.top + "px";
     editPanelEl.style.left = editPanelPos.left + "px";
@@ -5373,6 +5447,8 @@
         editPanelEl.offsetWidth, editPanelEl.offsetHeight, vw, vh
       );
       editPanelPos = { top, left };
+      editPanelDragged = true;
+      editPanelAttached = false;
       editPanelEl.style.top = top + "px";
       editPanelEl.style.left = left + "px";
       // The panel deliberately has no positional transition, so the run must

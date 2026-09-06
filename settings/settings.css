@@ -378,7 +378,7 @@ details:not([open]) > .sp-summary .sp-caret {
 .sp-note strong { color: var(--pnt-text-muted); }
 
 .sp-note code {
-  font-family: var(--pnt-font);
+  font-family: var(--pnt-font-mono);
   color: var(--pnt-text-muted);
 }
 
@@ -1041,3 +1041,8 @@ details:not([open]) > .sp-summary .sp-caret {
   /* The selection specimen's sweep is the page's one animation. */
   .an-beam::before { animation: none; }
 }
+
+/* The payload is code and the count is a number; both stay mono now that
+   --pnt-font means the sans. */
+.sp-pay-out,
+.sp-pay-count { font-family: var(--pnt-font-mono); }

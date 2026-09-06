@@ -5,12 +5,16 @@
 // arrangement as placement.mjs and redline.mjs). Change it there and change it
 // here.
 //
-// GAP / TICK / TICK_LOUD / THICK / STUB must match GEOMETRY.tetherGap /
-// .tetherTick / .tetherTickLoud / .tetherThick / .tetherStub in content.js.
+// GAP / TICK / TICK_LOUD / THICK / STUB / ATTACH / MARGIN must match
+// GEOMETRY.tetherGap / .tetherTick / .tetherTickLoud / .tetherThick /
+// .tetherStub / .tetherAttach / .margin in content.js.
 //
 // The tether is Edit Mode's association chrome: four ticks at the element's
-// edge midpoints plus a dashed run from the edit panel to the tick on the
-// facing edge. It exists because the selection ring sat on top of the four
+// edge midpoints and — only while the panel floats — a dashed run from the
+// edit panel to the tick on the facing edge. Since 2.0 the panel is attached
+// by default: computeEditPanelPlacement (mirrored below too) puts it a tick's
+// clearance outside the element, and a panel that close draws no run, because
+// the tick it sits against is the association. It exists because the selection ring sat on top of the four
 // properties the panel writes (border-width, border-color, border-radius,
 // box-shadow), so THE invariant this file is here to defend is:
 //
@@ -26,6 +30,8 @@ const TICK = 16;
 const TICK_LOUD = 26;
 const THICK = 2;
 const STUB = 10;
+const ATTACH = 6;
+const MARGIN = 4;
 
 // ===== Mirror of computeTether (content.js) =====
 
@@ -112,6 +118,20 @@ export function computeTether(rect, panel, vw, vh, opts) {
   if (panel.x < box.x + box.w && panel.x + panel.w > box.x &&
       panel.y < box.y + box.h && panel.y + panel.h > box.y) return result;
 
+  // Attached: the panel abuts one edge of the clearance box within a stub,
+  // overlapping that edge's span.
+  const near = STUB + th;
+  const spanX = panel.x < box.x + box.w && panel.x + panel.w > box.x;
+  const spanY = panel.y < box.y + box.h && panel.y + panel.h > box.y;
+  const gapR = panel.x - (box.x + box.w);
+  const gapL = box.x - (panel.x + panel.w);
+  const gapB = panel.y - (box.y + box.h);
+  const gapT = box.y - (panel.y + panel.h);
+  const abuts =
+    (spanY && ((gapR >= 0 && gapR <= near) || (gapL >= 0 && gapL <= near))) ||
+    (spanX && ((gapB >= 0 && gapB <= near) || (gapT >= 0 && gapT <= near)));
+  if (abuts) return result;
+
   const a = tetherSide(panel, bcx, bcy, STUB);
   const s = tetherFacingTick(box, a.x, a.y);
   const b = { x: s.x, y: s.y };
@@ -129,6 +149,28 @@ export function computeTether(rect, panel, vw, vh, opts) {
     result.segs = [...tetherLeg(a, out, elbow), ...tetherLeg(out, b, out)];
   }
   return result;
+}
+
+// ===== Mirror of computeEditPanelPlacement (content.js) =====
+
+export function computeEditPanelPlacement(rect, panel, vw, vh) {
+  const M = MARGIN;
+  const off = GAP + THICK + ATTACH;
+  const clampTop = (t) => Math.max(M, Math.min(t, vh - panel.h - M));
+  const clampLeft = (l) => Math.max(M, Math.min(l, vw - panel.w - M));
+  const tall = panel.h > vh - 2 * M;
+  // A side is usable only when the whole panel lands inside the viewport
+  // margins: an element hanging off one edge must not drag the panel off
+  // with it. The sweep in test/tether.mjs found the case.
+  const right = { side: "right", top: clampTop(rect.top), left: rect.left + rect.width + off };
+  if (!tall && right.left >= M && right.left + panel.w <= vw - M) return right;
+  const left = { side: "left", top: clampTop(rect.top), left: rect.left - off - panel.w };
+  if (!tall && left.left >= M && left.left + panel.w <= vw - M) return left;
+  const below = { side: "bottom", top: rect.top + rect.height + off, left: clampLeft(rect.left) };
+  if (below.top >= M && below.top + panel.h <= vh - M) return below;
+  const above = { side: "top", top: rect.top - off - panel.h, left: clampLeft(rect.left) };
+  if (above.top >= M && above.top + panel.h <= vh - M) return above;
+  return null;
 }
 
 // Which tick does a run land on, and what is its normal axis? Mirrors the
@@ -275,6 +317,81 @@ check("a separated panel does get a run", (t) => {
 check("no panel means no run", (t) => {
   const out = computeTether(EL, null, 1280, 800);
   t(out.segs.length === 0, "expected no segments without a panel");
+});
+
+// ===== Attached =====
+
+check("an attached panel draws ticks only", (t) => {
+  // Exactly where computeEditPanelPlacement puts it on the right.
+  const off = GAP + THICK + ATTACH;
+  const panel = { x: EL.left + EL.width + off, y: EL.top, w: 248, h: 338 };
+  const out = computeTether(EL, panel, 1280, 800);
+  t(out.segs.length === 0, "a panel sitting against the tick should need no run");
+  t(out.ticks.length === 4, "the ticks should still stand");
+});
+
+check("a panel one stub further away gets a run again", (t) => {
+  const off = GAP + THICK + ATTACH + STUB + THICK + 1;
+  const out = computeTether(EL, { x: EL.left + EL.width + off, y: EL.top, w: 248, h: 338 }, 1280, 800);
+  t(out.segs.length >= 1, "past the attach distance the association needs a run");
+});
+
+check("placement prefers right, then left, then below, then above", (t) => {
+  const size = { w: 248, h: 338 };
+  t(computeEditPanelPlacement(EL, size, 1280, 800).side === "right", "room on the right should win");
+  t(computeEditPanelPlacement({ left: 900, top: 300, width: 250, height: 140 }, size, 1280, 800).side === "left",
+    "no room on the right should fall to the left");
+  t(computeEditPanelPlacement({ left: 200, top: 40, width: 880, height: 140 }, size, 1280, 800).side === "bottom",
+    "a wide element leaves only below");
+  t(computeEditPanelPlacement({ left: 200, top: 600, width: 880, height: 140 }, size, 1280, 800).side === "top",
+    "a wide low element leaves only above");
+  t(computeEditPanelPlacement({ left: 20, top: 20, width: 1240, height: 760 }, size, 1280, 800) === null,
+    "an element filling the viewport has no side, so the panel floats");
+});
+
+check("sweep · an attached panel never enters the clearance and never needs a run", (t) => {
+  let placed = 0;
+  let slidCount = 0;
+  let bad = 0;
+  let first = "";
+  const VW = 1280, VH = 800;
+  for (const [ew, eh] of [[40, 30], [250, 140], [900, 500], [1240, 760]]) {
+    for (const ex of [-120, 0, 60, 400, 900, 1200]) {
+      for (const ey of [-80, 0, 40, 300, 700, 780]) {
+        const el = { left: ex, top: ey, width: ew, height: eh };
+        for (const size of [{ w: 248, h: 338 }, { w: 248, h: 120 }, { w: 248, h: 900 }]) {
+          const spot = computeEditPanelPlacement(el, size, VW, VH);
+          if (!spot) continue;
+          placed++;
+          const panel = { x: spot.left, y: spot.top, w: size.w, h: size.h };
+          const out = computeTether(el, panel, VW, VH);
+          const box = out.box;
+          const overlaps = panel.x < box.x + box.w && panel.x + panel.w > box.x &&
+                           panel.y < box.y + box.h && panel.y + panel.h > box.y;
+          const inside = panel.x >= MARGIN && panel.y >= MARGIN &&
+                         panel.x + panel.w <= VW - MARGIN && (size.h > VH - 2 * MARGIN || panel.y + panel.h <= VH - MARGIN);
+          // The viewport clamp may slide an attached panel along the element's
+          // edge. Slid far enough — an element mostly off-screen — the element's
+          // centre ends up beyond the panel's side, and a run is then the right
+          // call; the no-run rule holds for every placement that was not slid.
+          const slid = (spot.side === "right" || spot.side === "left")
+            ? Math.abs(spot.top - el.top) > 0.01
+            : Math.abs(spot.left - el.left) > 0.01;
+          if (slid) slidCount++;
+          const why = overlaps ? "panel overlaps the clearance box"
+            : !inside ? "panel left the viewport"
+            : (!slid && out.segs.length) ? "an attached, unslid panel emitted a run" : "";
+          if (why) {
+            bad++;
+            if (!first) first = `el=${JSON.stringify(el)} size=${JSON.stringify(size)} side=${spot.side}: ${why}`;
+          }
+        }
+      }
+    }
+  }
+  rows.push({ case: `  (${placed} placements attached, ${slidCount} of them slid by the viewport)`, result: "info", detail: "" });
+  t(placed > 0, "nothing attached — the sweep proves nothing");
+  t(bad === 0, `${bad} attached placements broke the rule; first: ${first}`);
 });
 
 // ===== The invariant, swept =====

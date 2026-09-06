@@ -48,11 +48,11 @@
 /* ===== Tier 1: theme-invariant scales ===== */
 :root {
   /* Type. Two faces from one family: sans for labels and controls, mono for
-     values, tokens and selectors. --pnt-font is the pre-2.0 name and still
-     points at the mono until every surface has chosen its face (Phase 3). */
+     values, tokens and selectors. --pnt-font is the pre-2.0 name; since Phase
+     3b it means the sans, and every value that should be mono says so. */
   --pnt-font-sans: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
   --pnt-font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  --pnt-font: var(--pnt-font-mono);
+  --pnt-font: var(--pnt-font-sans);
   --pnt-text-micro: 10px;   /* tracked-caps micro-labels only — never prose */
   --pnt-text-sm: 11px;      /* secondary readouts */
   --pnt-text-base: 12px;    /* labels, controls, values */
