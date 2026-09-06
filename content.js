@@ -159,17 +159,22 @@
   // One attribute themes all five injected roots, because custom properties
   // inherit and `all: initial` does not reset them (CSS Cascade 4 §3.2).
   const THEME_KEY = "theme";
-  const DEFAULT_THEME = "terracotta-dark";
+  const DEFAULT_THEME = "system";
+  // 1.x stored "terracotta-dark" / "terracotta-light"; 2.0 calls the pair
+  // "dark" / "light" and defaults to "system". Read through this so an old
+  // preference lands on the palette it meant. Mirrored in settings.js and
+  // background.js — change all three.
+  const LEGACY_THEME_IDS = { "terracotta-dark": "dark", "terracotta-light": "light" };
+  const migrateThemeId = (id) => LEGACY_THEME_IDS[id] || id;
   const darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
   let themePref = DEFAULT_THEME;
 
-  // "system" has no palette of its own — it picks one of the two terracotta
-  // blocks. Resolving here rather than duplicating every block inside an @media
+  // "system" has no palette of its own — it picks dark or light. Resolving here rather than duplicating every block inside an @media
   // query keeps tokens.css single-source, and lets the settings page preview
   // exactly what the page will render.
   function resolveTheme(pref) {
     if (pref !== "system") return pref;
-    return darkQuery.matches ? "terracotta-dark" : "terracotta-light";
+    return darkQuery.matches ? "dark" : "light";
   }
 
   function applyTheme() {
@@ -187,9 +192,9 @@
   // Fired immediately at script load, not on activate(), so the first paint of
   // the chrome already has the right palette. activate() applies whatever has
   // arrived by then; until it does, the tokens.css :root block is the default,
-  // so an unresolved read shows terracotta-dark rather than an unstyled box.
+  // so an unresolved read shows the dark palette rather than an unstyled box.
   chrome.storage?.local.get(THEME_KEY, (stored) => {
-    if (stored && typeof stored[THEME_KEY] === "string") themePref = stored[THEME_KEY];
+    if (stored && typeof stored[THEME_KEY] === "string") themePref = migrateThemeId(stored[THEME_KEY]);
     if (probeActive) applyTheme();
   });
 
@@ -198,7 +203,7 @@
   // message plumbing through the service worker.
   chrome.storage?.onChanged.addListener((changes, area) => {
     if (area !== "local" || !changes[THEME_KEY]) return;
-    themePref = changes[THEME_KEY].newValue || DEFAULT_THEME;
+    themePref = migrateThemeId(changes[THEME_KEY].newValue || DEFAULT_THEME);
     if (probeActive) applyTheme();
   });
 

@@ -1,7 +1,7 @@
 const activeTabs = new Set();
 
 const THEME_KEY = "theme";
-const DEFAULT_BADGE = "#d97757"; // terracotta-dark's accent
+const DEFAULT_BADGE = "#f0452b"; // the dark theme's accent
 
 // The content script's injection lists are duplicated here for tabs that were
 // already open when the extension was installed or reloaded — chrome.scripting
@@ -14,8 +14,8 @@ const INJECT_CSS = ["tokens.css", "content.css"];
 // These mirror --pnt-accent from each theme block; a theme missing from here
 // falls back to the default rather than showing no badge colour.
 const BADGE_ACCENT = {
-  "terracotta-dark": "#d97757",
-  "terracotta-light": "#a94f30",
+  dark: "#f0452b",
+  light: "#d13a1d",
   dracula: "#bd93f9",
   monokai: "#f92672",
   nord: "#88c0d0",
@@ -23,13 +23,20 @@ const BADGE_ACCENT = {
   "tokyo-night": "#bb9af7",
 };
 
+// 1.x stored "terracotta-dark" / "terracotta-light"; 2.0 calls the pair
+// "dark" / "light" and defaults to "system". Read through this so an old
+// preference lands on the palette it meant. Mirrored in settings.js and
+// background.js — change all three.
+const LEGACY_THEME_IDS = { "terracotta-dark": "dark", "terracotta-light": "light" };
+const migrateThemeId = (id) => LEGACY_THEME_IDS[id] || id;
+
 async function badgeColor() {
   try {
     const stored = await chrome.storage.local.get(THEME_KEY);
-    let theme = stored[THEME_KEY] || "terracotta-dark";
-    // "system" has no palette; both terracotta blocks share an accent family, so
-    // the dark one's accent is the right badge in either resolution.
-    if (theme === "system") theme = "terracotta-dark";
+    let theme = migrateThemeId(stored[THEME_KEY] || "system");
+    // "system" has no palette; both halves share an accent family, so the dark
+    // one's accent is the right badge in either resolution.
+    if (theme === "system") theme = "dark";
     return BADGE_ACCENT[theme] || DEFAULT_BADGE;
   } catch {
     return DEFAULT_BADGE;

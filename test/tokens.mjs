@@ -8,7 +8,7 @@
 //      reads as a rendering bug rather than a missing declaration.
 //   3. A var(--pnt-…) that no theme declares — a typo resolves to nothing and
 //      the property is simply dropped.
-//   4. Text that cannot be read against its own surface. Eight hand-tuned
+//   4. Text that cannot be read against its own surface. Seven hand-tuned
 //      palettes is exactly how an unreadable theme ships.
 //
 // No assertion library, same as test/placement.mjs — verdicts are computed and
@@ -68,7 +68,7 @@ for (const b of blocks) {
   }
 }
 
-const REFERENCE = "terracotta-dark";
+const REFERENCE = "dark";
 const reference = themes.find((t) => t.id === REFERENCE);
 
 const results = [];
@@ -193,27 +193,25 @@ function contrast(fg, bg) {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-// `floor` fails the run; `target` only warns. --pnt-text-faint and --pnt-accent
-// sit at the lower floor deliberately: the faint grey is a de-emphasised 10px
-// readout that the shipped 1.2.0 design already set at 3.4:1, and raising it to
-// 4.5 would collapse the label's four-step text hierarchy into two. The accent
-// doubles as a border and icon colour, where 3:1 is the correct non-text bar.
-// Both are reported rather than hidden. See DESIGN.md.
+// `floor` fails the run; `target` only warns. Since 2.0 every text token has
+// floor and target at 4.5 — the sub-AA grey that DESIGN.md §8 recorded is gone
+// with the 1.x hierarchy, so there is nothing left to merely warn about. The
+// non-text pairs sit at the 3:1 bar WCAG sets for UI components: text-4 is a
+// disabled tone and never prose, the accent doubles as a border and icon
+// colour, ok is only ever an icon, and accent-hover is a fill that exists for
+// as long as a pointer is over it.
 const PAIRS = [
-  { fg: "--pnt-text", bg: "--pnt-surface", floor: 4.5, target: 4.5 },
-  { fg: "--pnt-text-dim", bg: "--pnt-surface", floor: 4.5, target: 4.5 },
-  { fg: "--pnt-text-muted", bg: "--pnt-surface", floor: 4.5, target: 4.5 },
-  { fg: "--pnt-text-faint", bg: "--pnt-surface", floor: 3.0, target: 4.5 },
-  { fg: "--pnt-syntax-id", bg: "--pnt-surface", floor: 4.5, target: 4.5 },
-  { fg: "--pnt-syntax-class", bg: "--pnt-surface", floor: 4.5, target: 4.5 },
-  { fg: "--pnt-accent", bg: "--pnt-surface", floor: 3.0, target: 4.5 },
+  { fg: "--pnt-text-1", bg: "--pnt-surface-0", floor: 4.5, target: 4.5 },
+  { fg: "--pnt-text-2", bg: "--pnt-surface-0", floor: 4.5, target: 4.5 },
+  { fg: "--pnt-text-3", bg: "--pnt-surface-0", floor: 4.5, target: 4.5 },
+  { fg: "--pnt-text-4", bg: "--pnt-surface-0", floor: 3.0, target: 3.0 },
+  { fg: "--pnt-syntax-id", bg: "--pnt-surface-0", floor: 4.5, target: 4.5 },
+  { fg: "--pnt-syntax-class", bg: "--pnt-surface-0", floor: 4.5, target: 4.5 },
+  { fg: "--pnt-accent", bg: "--pnt-surface-0", floor: 3.0, target: 3.0 },
+  { fg: "--pnt-ok", bg: "--pnt-surface-0", floor: 3.0, target: 3.0 },
   { fg: "--pnt-on-accent", bg: "--pnt-accent", floor: 4.5, target: 4.5 },
-  { fg: "--pnt-on-error", bg: "--pnt-error", floor: 4.5, target: 4.5 },
-  // --pnt-accent-dark is only ever the :active fill under the parent button — a
-  // fill that exists for as long as a mouse button is held down. Held to the
-  // lower floor for that reason, and reported so the weakest state is on record
-  // rather than unmeasured.
-  { fg: "--pnt-on-accent", bg: "--pnt-accent-dark", floor: 3.0, target: 4.5 },
+  { fg: "--pnt-on-accent", bg: "--pnt-accent-hover", floor: 3.0, target: 3.0 },
+  { fg: "--pnt-on-danger", bg: "--pnt-danger", floor: 4.5, target: 4.5 },
 ];
 
 const contrastRows = [];
