@@ -28,6 +28,20 @@ there is no separate flag. Drawn as *slow ants* since 2.0: the hover's dashed
 outline come up to the accent at the ring weight and crawling — chosen in
 round two of the brand directions over a ring, corner brackets and a glow.
 
+**Selection chrome** — everything drawn for a selection besides the outline:
+the info label and the toolbar, placed together by one solver so they cannot
+collide. Whether they are one card or two pieces is a design choice, not a
+change of meaning.
+
+**Info label** — the readout: identity, text, layout, paint, breadcrumb. Shown
+on hover as well as on selection. Not interactive.
+_Avoid_: info panel (a panel is the thing that edits), tooltip.
+
+**Toolbar** — the selection's actions: Copy Code, Screenshot, Edit, Select
+Parent. Shown only while something is selected; never clipped, whatever the
+viewport.
+_Avoid_: action bar, bar.
+
 **Redline** — held-Option spacing measurement. A sub-mode of Selection: it
 cannot be entered without one, and every path that drops the selection ends it.
 
