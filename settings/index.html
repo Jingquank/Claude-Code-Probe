@@ -35,6 +35,7 @@
         <p class="sp-wordmark"><b>Pointee</b><span>Settings</span></p>
         <ul class="sp-nav-list">
           <li><a href="#sec-theme" data-focus="theme">Appearance</a></li>
+          <li><a href="#sec-select" data-focus="select">Selection</a></li>
           <li><a href="#sec-measure" data-focus="measure">Measuring</a></li>
           <li><a href="#sec-edit" data-focus="edit">Editing</a></li>
           <li><a href="#sec-copy" data-focus="copy">Copying</a></li>
@@ -67,6 +68,37 @@
           </p>
           <div class="sp-pills" role="radiogroup" aria-labelledby="appearance-legend" id="theme-pills"></div>
           <p class="sp-saved" id="saved-appearance" role="status" aria-live="polite"></p>
+        </div>
+      </section>
+
+      <!-- The selection layouts: four arrangements of the same readout and
+           the same four actions, chosen in two design rounds. Each pill
+           carries a glyph of its arrangement so the row reads as a picture of
+           the choice; the rail redraws the real chrome in the one you pick. -->
+      <section class="sp-section" data-focus="select" id="sec-select" aria-labelledby="selection-legend">
+        <h2 class="sp-legend" id="selection-legend">Selection</h2>
+        <div class="sp-section-body">
+          <p class="sp-sub">
+            Where the four actions sit once you select an element. The readout is
+            the same in every layout; only the actions move — on the element's
+            edge as a pill, beside the readout's lines, under its name, or along
+            its bottom as a labelled bar.
+          </p>
+          <div class="sp-pills sp-layouts" role="radiogroup" aria-labelledby="selection-legend" id="layout-pills">
+            <button type="button" class="sp-pill" role="radio" data-set="selectionLayout" data-val="edge" aria-checked="false">
+              <svg class="sp-glyph" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="2" width="13" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".55"/><rect x="3" y="10" width="7" height="4" rx="2" fill="currentColor"/></svg><span>On the edge</span>
+            </button>
+            <button type="button" class="sp-pill" role="radio" data-set="selectionLayout" data-val="beside" aria-checked="false">
+              <svg class="sp-glyph" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="2" width="13" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".55"/><circle cx="4.5" cy="5.5" r="1.1" fill="currentColor"/><circle cx="4.5" cy="8" r="1.1" fill="currentColor"/><circle cx="4.5" cy="10.5" r="1.1" fill="currentColor"/><path d="M7.5 5.5h4M7.5 8h4M7.5 10.5h3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".55"/></svg><span>Beside the lines</span>
+            </button>
+            <button type="button" class="sp-pill" role="radio" data-set="selectionLayout" data-val="under" aria-checked="false">
+              <svg class="sp-glyph" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="2" width="13" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".55"/><path d="M4.5 5h7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".55"/><circle cx="5" cy="8" r="1.1" fill="currentColor"/><circle cx="8" cy="8" r="1.1" fill="currentColor"/><circle cx="11" cy="8" r="1.1" fill="currentColor"/><path d="M4.5 11h5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".55"/></svg><span>Under the name</span>
+            </button>
+            <button type="button" class="sp-pill" role="radio" data-set="selectionLayout" data-val="bottom" aria-checked="false">
+              <svg class="sp-glyph" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="2" width="13" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".55"/><path d="M4.5 5h7M4.5 7.5h5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".55"/><rect x="1.5" y="10" width="13" height="4" rx="1.5" fill="currentColor"/></svg><span>Along the bottom</span>
+            </button>
+          </div>
+          <p class="sp-saved" id="saved-selection" role="status" aria-live="polite"></p>
         </div>
       </section>
 
@@ -362,6 +394,7 @@
       <h2 class="sp-legend">Preview
         <span class="sp-tag-slot">
           <span class="sp-tag" data-pv="theme">appearance</span>
+          <span class="sp-tag" data-pv="select">selection</span>
           <span class="sp-tag" data-pv="measure">measuring</span>
           <span class="sp-tag" data-pv="edit">editing</span>
           <span class="sp-tag" data-pv="copy">copying</span>
@@ -371,8 +404,13 @@
            instead of stacking them for a frame. -->
       <div class="sp-pv-slot">
         <p class="sp-sub" data-pv="theme">
-          Every surface the theme paints, piece by piece — the hover outline,
-          the selection's ants, the info panel, the toolbar, the gear.
+          Every surface the theme paints, piece by piece — a selection with its
+          label and actions, the hover outline, the gear.
+        </p>
+        <p class="sp-sub" data-pv="select">
+          A selection with its label and its four actions, drawn in the layout
+          you pick — the real chrome, in the theme above. Click a pill and it
+          redraws.
         </p>
         <p class="sp-sub" data-pv="measure">
           A held-Option measurement, drawn to scale: gaps, dashed extension
@@ -399,7 +437,72 @@
           settings.css's own, the selection wearing the same ants
           content.css spins around a live selection.
         -->
-        <div class="pnt-mock">
+        <div class="pnt-mock" id="chrome-mock">
+
+          <!--
+            The selection specimen: the real label and toolbar with the markup
+            updateLabel() and showToolbar() build, mounted the way content.js
+            mounts them for the chosen layout — settings.js moves the toolbar
+            node and the hints (paintLayout) — over a card wearing the
+            selection outline. First and full width, so it leads the
+            Appearance sheet and is the Selection preview on its own; the
+            other specimens fade while the pointer is in that section.
+
+            Kept short on purpose: #pnt-label is white-space: nowrap, so a
+            longer readout would overflow the rail rather than wrap.
+          -->
+          <div class="an-item an-span an-selection">
+            <p class="an-cap" aria-hidden="true">Selection · <span id="an-layout-name">On the edge</span></p>
+            <div class="sl-stage" aria-hidden="true">
+              <div id="pnt-label">
+                <div class="pnt-label-head">
+                  <div class="pnt-label-line pnt-line-identity">
+                    <span class="pnt-label-tag">div</span
+                    ><span class="pnt-label-class">.card</span>
+                    <span class="pnt-label-size">320 × 208</span>
+                  </div>
+                </div>
+                <div class="pnt-label-content">
+                  <div class="pnt-label-line pnt-line-meta">
+                    <span class="pnt-label-prop">flex</span>
+                    <span class="pnt-label-sep">·</span>
+                    <span class="pnt-label-prop">column</span>
+                  </div>
+                  <div class="pnt-label-line pnt-line-visual">
+                    <span class="pnt-label-prop"><span class="pnt-color-swatch" style="background-color:#ffffff"></span>#ffffff</span>
+                    <span class="pnt-label-sep">·</span>
+                    <span class="pnt-label-prop">radius 12px</span>
+                  </div>
+                  <div class="pnt-label-line pnt-line-breadcrumb pnt-label-breadcrumb">
+                    <span>div.grid <span class="pnt-label-sep">›</span> <span class="pnt-label-tag">div</span></span>
+                  </div>
+                </div>
+              </div>
+              <div class="an-beam sl-el">
+                <div class="an-sel">
+                  <span class="sp-element-title">Pro Plan</span>
+                  <span class="sp-element-body">For teams that need more.</span>
+                </div>
+                <div id="pnt-toolbar">
+                  <div class="pnt-bar">
+                    <button type="button" tabindex="-1" data-action="copy" aria-label="Copy Code">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg><span>Copy Code</span>
+                    </button>
+                    <button type="button" tabindex="-1" data-action="shot" aria-label="Screenshot">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span>Screenshot</span>
+                    </button>
+                    <button type="button" tabindex="-1" data-action="edit" class="pnt-accent-btn" aria-label="Edit">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg><span>Edit</span>
+                    </button>
+                    <button type="button" tabindex="-1" data-action="parent" class="pnt-accent-btn" aria-label="Select Parent">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3"/><path d="M12 20v-8"/><polyline points="9 15 12 12 15 15"/></svg><span>Select Parent</span>
+                    </button>
+                    <span class="pnt-hints" aria-hidden="true"><kbd class="pnt-kbd">⌥</kbd><span>measure</span><kbd class="pnt-kbd">esc</kbd></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
 
           <div class="an-item">
             <p class="an-cap" aria-hidden="true">Hover</p>
@@ -410,69 +513,10 @@
           </div>
 
           <div class="an-item">
-            <p class="an-cap" aria-hidden="true">Selection</p>
-            <div class="an-beam" aria-hidden="true">
-              <div class="an-sel">
-                <span class="sp-element-title">Pro Plan</span>
-                <span class="sp-element-body">For teams that need more.</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="an-item">
             <p class="an-cap" aria-hidden="true">Gear</p>
             <button type="button" id="pnt-settings-btn" tabindex="-1" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           </button>
-          </div>
-
-          <!--
-            The info panel, with the same markup updateLabel() builds. Kept short
-            on purpose: #pnt-label is white-space: nowrap, so a longer readout
-            would overflow the rail rather than wrap.
-          -->
-          <div class="an-item an-span an-label">
-          <p class="an-cap" aria-hidden="true">Info panel</p>
-          <div id="pnt-label">
-            <div class="pnt-label-content">
-              <div class="pnt-label-line pnt-line-identity">
-                <span class="pnt-label-tag">div</span
-                ><span class="pnt-label-class">.card</span>
-                <span class="pnt-label-size">320 × 208</span>
-              </div>
-              <div class="pnt-label-line pnt-line-meta">
-                <span class="pnt-label-prop">flex</span>
-                <span class="pnt-label-sep">·</span>
-                <span class="pnt-label-prop">column</span>
-              </div>
-              <div class="pnt-label-line pnt-line-visual">
-                <span class="pnt-label-prop"><span class="pnt-color-swatch" style="background-color:#ffffff"></span>#ffffff</span>
-                <span class="pnt-label-sep">·</span>
-                <span class="pnt-label-prop">radius 12px</span>
-              </div>
-              <div class="pnt-label-line pnt-line-breadcrumb pnt-label-breadcrumb">
-                div.grid <span class="pnt-label-sep">›</span> <span class="pnt-label-tag">div</span>
-              </div>
-            </div>
-          </div>
-          </div>
-
-          <!-- The toolbar, full width — the rail is wide enough now -->
-          <div class="an-item an-span">
-          <p class="an-cap" aria-hidden="true">Toolbar</p>
-          <div id="pnt-toolbar">
-            <div class="pnt-bar">
-              <button type="button" tabindex="-1" title="Copy Code">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg><span>Copy Code</span>
-              </button>
-              <button type="button" tabindex="-1" title="Screenshot">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span>Screenshot</span>
-              </button>
-            </div>
-            <button type="button" class="pnt-parent-btn" tabindex="-1" title="Select Parent">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3"/><path d="M12 20v-8"/><polyline points="9 15 12 12 15 15"/></svg><span>Select Parent</span>
-            </button>
-          </div>
           </div>
 
         </div>

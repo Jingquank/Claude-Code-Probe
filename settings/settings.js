@@ -70,9 +70,22 @@ const COPY_PREFS = {
   copyFence: ["on", "off"],
 };
 
+// Mirror of CHROME_PREFS in content.js — change both. Where the toolbar
+// sits relative to the info label; the ids are what is stored, the phrases
+// are what the pills say.
+const CHROME_PREFS = {
+  selectionLayout: ["edge", "beside", "under", "bottom"],
+};
+const LAYOUT_NAMES = {
+  edge: "On the edge",
+  beside: "Beside the lines",
+  under: "Under the name",
+  bottom: "Along the bottom",
+};
+
 // One roster for everything the sheet writes, so a new setting only has to be
 // added to the map above to get storage, keyboard, and live-sync for free.
-const ALL_PREFS = { ...REDLINE_PREFS, ...EDIT_PREFS, ...COPY_PREFS };
+const ALL_PREFS = { ...REDLINE_PREFS, ...EDIT_PREFS, ...COPY_PREFS, ...CHROME_PREFS };
 
 const prefs = {};
 for (const key of Object.keys(ALL_PREFS)) prefs[key] = ALL_PREFS[key][0];
@@ -244,6 +257,9 @@ const store = {
 
 const pillHost = document.getElementById("theme-pills");
 const savedAppearance = document.getElementById("saved-appearance");
+const savedSelection = document.getElementById("saved-selection");
+const layoutHost = document.getElementById("layout-pills");
+const chromeMockEl = document.getElementById("chrome-mock");
 const savedMeasuring = document.getElementById("saved-measuring");
 const savedEditing = document.getElementById("saved-editing");
 const savedCopying = document.getElementById("saved-copying");
@@ -422,7 +438,7 @@ function applyPreset(name) {
 }
 
 // All three sheets, so a control is painted wherever it lives.
-const controlHosts = [sheetEl, editSheetEl, copySheetEl].filter(Boolean);
+const controlHosts = [sheetEl, editSheetEl, copySheetEl, layoutHost].filter(Boolean);
 const eachControl = (selector, fn) => {
   for (const host of controlHosts) for (const node of host.querySelectorAll(selector)) fn(node);
 };
@@ -445,6 +461,7 @@ function paintPrefs() {
     editMockEl.dataset.groups = prefs.editGroups;
     editMockEl.dataset.tokens = prefs.editTokenControls;
   }
+  paintLayout();
   // The preset row is not a stored setting — it reports which bulk set the
   // field switches currently spell, and nothing at all once they spell none.
   const preset = presetOf();
@@ -484,6 +501,62 @@ function paintPrefs() {
       .join(" · ");
 }
 
+// The selection specimen redraws in the chosen layout the way content.js
+// does it: the layout class on <html>, so content.css's layout blocks apply
+// to the mock as they do to the page; the toolbar node moved to its mount;
+// the hints to their home; and, Along the bottom, the card locked to its
+// bar's width. Transcribed by hand from mountToolbar(), updateLabel()'s hints
+// and lockCardWidth() — cdp.mjs checks the real ones, this one is checked by
+// eye on the page.
+const HINTS_HTML = '<kbd class="pnt-kbd">⌥</kbd><span>measure</span><kbd class="pnt-kbd">esc</kbd>';
+
+function paintLayout() {
+  const layout = prefs.selectionLayout;
+  const root = document.documentElement;
+  for (const id of CHROME_PREFS.selectionLayout) root.classList.remove(`pnt-layout-${id}`);
+  root.classList.add(`pnt-layout-${layout}`);
+  if (!chromeMockEl) return;
+
+  const label = chromeMockEl.querySelector("#pnt-label");
+  const toolbar = chromeMockEl.querySelector("#pnt-toolbar");
+  const beam = chromeMockEl.querySelector(".sl-el");
+  const head = label.querySelector(".pnt-label-head");
+  const body = label.querySelector(".pnt-label-content");
+
+  label.querySelector(".pnt-label-hints")?.remove();
+  label.querySelector(".pnt-line-breadcrumb .pnt-hints")?.remove();
+
+  label.classList.toggle("pnt-with-actions", layout !== "edge");
+  if (layout === "beside") label.prepend(toolbar);
+  else if (layout === "under") head.after(toolbar);
+  else if (layout === "bottom") label.appendChild(toolbar);
+  else beam.appendChild(toolbar);
+
+  if (layout === "edge" || layout === "beside") {
+    const caption = document.createElement("div");
+    caption.className = "pnt-label-hints";
+    caption.innerHTML = HINTS_HTML;
+    body.after(caption);
+  } else if (layout === "bottom") {
+    const hints = document.createElement("span");
+    hints.className = "pnt-hints";
+    hints.innerHTML = HINTS_HTML;
+    label.querySelector(".pnt-line-breadcrumb").appendChild(hints);
+  }
+
+  label.style.width = "";
+  if (layout === "bottom") {
+    const bar = toolbar.querySelector(".pnt-bar");
+    bar.style.width = "max-content";
+    const w = bar.offsetWidth;
+    bar.style.width = "";
+    label.style.width = (w + label.offsetWidth - label.clientWidth) + "px";
+  }
+
+  const name = document.getElementById("an-layout-name");
+  if (name) name.textContent = LAYOUT_NAMES[layout];
+}
+
 // Feedback lands in the section where the change happened, and it does not
 // claim more than is true: without the extension's storage (this page opened
 // straight from disk, say) nothing persists, and the line says so.
@@ -515,8 +588,10 @@ function selectTheme(id) {
 // is read back is exactly what was clicked — the vocabulary cannot drift.
 function announceText(key, value) {
   const control = document.querySelector(`[data-set="${key}"][data-val="${value}"], [data-sw="${key}"]`);
-  const label = control?.closest(".sp-spec")?.querySelector(".sp-spec-label")?.textContent || key;
-  const valueText = control?.dataset.set ? control.textContent : value;
+  // The layout pills stand outside a spec row; "Layout" is their label.
+  const label = control?.closest(".sp-spec")?.querySelector(".sp-spec-label")?.textContent
+    || (key in CHROME_PREFS ? "Layout" : key);
+  const valueText = control?.dataset.set ? control.textContent.trim() : value;
   return `${label} · ${valueText}`;
 }
 
@@ -525,6 +600,7 @@ function announceText(key, value) {
 function noteFor(key) {
   if (key in EDIT_PREFS) return savedEditing;
   if (key in COPY_PREFS) return savedCopying;
+  if (key in CHROME_PREFS) return savedSelection;
   return savedMeasuring;
 }
 
