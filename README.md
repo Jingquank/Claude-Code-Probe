@@ -30,7 +30,8 @@ Then load it: `chrome://extensions` → Developer mode → Load unpacked → sel
 
 1. Click the extension icon to enter Point Mode
 2. Hover over elements — a dashed outline and the box-model bands show what you're pointing at
-3. Click to select — the outline starts to crawl and a toolbar appears
+3. Click to select — the outline starts to crawl and the four actions appear, in
+   whichever layout you picked in settings (a pill on the element's edge, by default)
 4. Pick what to copy:
 
 | | What you get |
@@ -145,12 +146,12 @@ measuring continues from it — walk a row of siblings without ever releasing th
 A gear sits in the top-right corner for as long as Point Mode is on — whether or not
 anything is selected. It opens the settings page in a tab.
 
-The page has a sidebar that maps its four sections, cards of dotted-leader rows, and a
+The page has a sidebar that maps its five sections, cards of dotted-leader rows, and a
 preview rail that answers whichever section you're in: Pointee's own chrome while you
-pick a theme, a measuring vignette while you tune redlines, the edit panel while you
-tune editing, the clipboard payload itself while you tune copying. Hovering a row
-spotlights the part of the preview that row controls; pointing at a sidebar link
-previews its section.
+pick a theme, a selection redrawn in each layout while you pick one, a measuring
+vignette while you tune redlines, the edit panel while you tune editing, the clipboard
+payload itself while you tune copying. Hovering a row spotlights the part of the
+preview that row controls; pointing at a sidebar link previews its section.
 
 **Appearance** — the theme. Eight of them.
 
@@ -163,6 +164,19 @@ previews its section.
 The info panel already colours tag, `#id` and `.class` separately, which is the same
 thing an editor theme defines — so these map onto real palette roles rather than being
 approximations of them.
+
+**Selection** — where the four actions sit once you select an element. The readout is
+the same in every layout; only the actions move.
+
+| | |
+|---|---|
+| On the edge | the default — a pill of four icons riding the element's bottom edge, its left lined up with the readout |
+| Beside the lines | a spine of icons down the readout's left, each level with the line it acts on |
+| Under the name | a strip of icons directly under the identity line, the keyboard hints at its end |
+| Along the bottom | a labelled bar along the card's bottom; the card is never wider than the bar |
+
+Icon-only actions name themselves in a tooltip. Changing the layout redraws a
+selection already open in another tab.
 
 **Measuring** — six controls over the held-Option redlines, defaults matching what
 ships: readout unit (`px` / `rem`, against the page's root font-size), precision
@@ -269,8 +283,8 @@ view. `test/` holds the rig that proves it:
 
 | | |
 |---|---|
-| `test/placement.mjs` | the executable spec — placement algorithms and a 23-case geometry matrix |
-| `test/sim.mjs` | headless runner, comparing algorithms across viewports |
+| `test/placement.mjs` | the executable spec — placement algorithms, the straddle rule, and a 23-case geometry matrix |
+| `test/sim.mjs` | headless runner — the matrix across viewports, once per selection layout |
 | `test/redline.mjs` | the redline solver's spec — named cases plus a 10,000-config sweep |
 | `test/edit-tokens.mjs` | Edit Mode's token resolver — specificity, scale families, stepping |
 | `test/edit-color.mjs` | Edit Mode's colour conversions — round trips bounded by 8-bit quantisation |
@@ -298,8 +312,9 @@ python3 -m http.server 8765              # then open /test/harness.html
 ```
 
 The harness is keyboard-driven — `s` simulates, `r` sweeps the live extension, `n`/`p`
-walk the cases — because Point Mode captures every click on the page, including on the
-harness's own buttons. Serve it over HTTP: `file://` works only if the extension has
+walk the cases, `l` cycles the simulated layout — because Point Mode captures every
+click on the page, including on the harness's own buttons. The live sweep reads which
+layout the extension is in and reconciles against that one. Serve it over HTTP: `file://` works only if the extension has
 "Allow access to file URLs".
 
 `content.js` can't import the spec — MV3 content scripts are classic scripts — so the

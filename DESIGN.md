@@ -203,14 +203,30 @@ label. Placed by `computeChromeLayout()` together with the toolbar so the two
 stay on screen and off each other for any element geometry, and hidden while
 measuring or editing.
 
-**Toolbar.** Two glass capsules on a transparent rail: the action bar — Copy
-Code, Screenshot, the Edit pencil in the accent because it opens a mode rather
-than performing an action — and Select Parent in the accent because it moves
-the selection rather than copying it. Labels are sentence-case sans at 12px;
-at narrow widths the labels and hints drop and the buttons keep their icons.
-At the end of the bar, behind a hairline, the keyboard ladder made visible:
-**⌥** to measure, **esc** to step back — and nothing else, because nothing else
-is bound. A hint that lies is worse than none.
+**Toolbar.** Four actions — Copy Code, Screenshot, the Edit pencil in the
+accent because it opens a mode rather than performing an action, and Select
+Parent in the accent because it moves the selection rather than copying it —
+drawn in the chosen *selection layout*, a preference since 2.0 with four
+values. **On the edge**, the default: a glass pill of four icons riding the
+element's bottom edge, its centre line on the edge and its left six pixels
+in, so the readout sits above and the actions below with nothing between the
+words and the thing they describe. **Beside the lines**: a spine of icons
+down the label's left, each roughly level with the line it acts on. **Under
+the name**: a strip of icons under the identity line, the keyboard hints at
+its end. **Along the bottom**: a labelled bar behind a hairline along the
+card's foot, and the card is never wider than the bar — labels in
+sentence-case sans at 12px, dropping to icons under 470px. The readout is
+the same in all four; only the actions move. The keyboard ladder goes with
+them — **⌥** to measure, **esc** to step back, and nothing else, because
+nothing else is bound; a hint that lies is worse than none — as a caption
+under the readout for the pill and the spine, in the strip, or on the
+breadcrumb row for the bar.
+
+**Tooltip.** The name of an icon-only action, in its own glass root beside
+the label — never inside the card, so showing it can never move the chrome.
+Positioned from the button it names: above, centred, or below when the top
+has no room; beside a spine button. It appears only when the button's label
+is off screen, so the bar above the compact breakpoint never shows one.
 
 **Gear.** A 28px glass square pinned to the viewport's top-right for as long as
 Point Mode is on. It yields — fades, but stays in layout — when the label or
@@ -248,13 +264,16 @@ are never themed — they are the colour space, not decoration.
 at 60%, value pills in the accent with mono numbers. Nothing here self-
 animates; the nodes glide between targets and snap when tracking scroll.
 
-**Settings page.** A sticky sidebar that maps the four sections — the current
+**Settings page.** A sticky sidebar that maps the five sections — the current
 one marked by an accent dot as you scroll, a pointer over a link previewing
 its section in the rail — sections as cards on surface-1 with dotted-leader
 rows, and a preview rail that renders the *real* chrome through `content.css`
 and `tokens.css`, so it cannot drift from what the extension draws. Controls
-are sentence case: pills carrying the theme's own swatch, a sunken segmented
-control with the chosen value raised, switches on the theme's tones.
+are sentence case: pills carrying the theme's own swatch, pills carrying a
+glyph of each selection layout, a sunken segmented control with the chosen
+value raised, switches on the theme's tones. The Selection preview is a
+selection itself — the label and the four actions over an outlined card,
+redrawn in the layout under the pointer's last click.
 
 ---
 
@@ -266,7 +285,7 @@ test where a test can reach it, and stated here where one cannot.
 ### Geometry stays in JS — the one deliberate exception
 
 `GEOMETRY` in `content.js` keeps `margin`, `gap`, `pair`, `minLabelHeight`,
-`narrowToolbar`, `radiusFallback`, `redlinePillOffset`, `redlineGuideOvershoot`,
+`narrowToolbar`, `straddleInset`, `radiusFallback`, `redlinePillOffset`, `redlineGuideOvershoot`,
 `redlinePillMargin`, `tetherGap`, `tetherTick`, `tetherTickLoud`, `tetherThick`,
 `tetherStub` and `tetherAttach` as JavaScript numbers.
 
@@ -290,7 +309,7 @@ token because it draws a stroke; `GEOMETRY.gap: 6` is not because the solver doe
 arithmetic on it. The redline's 1px stroke is CSS; its pill offset is `GEOMETRY`,
 because the solver adds and clamps it.
 
-`test/placement.mjs` mirrors four of them, `test/redline.mjs` the three
+`test/placement.mjs` mirrors five of them, `test/redline.mjs` the three
 `redline*` keys, `test/tether.mjs` the six `tether*` keys and `margin`. Change one, change
 both — the harness's live sweep, the redline sweep and the tether sweep are what
 catch the drift.
@@ -604,7 +623,7 @@ in-package, and the panel learned to attach. The plan that carried it is
 ```sh
 node test/tokens.mjs       # 88 checks: literals, completeness, undeclared vars,
                            # badge drift, contrast floors — 0 warnings
-node test/sim.mjs          # 138/138 — the placement spec against the implementation
+node test/sim.mjs          # 138/138 per selection layout — the placement spec against the implementation
 node test/tether.mjs       # tether geometry, 6912 configs; panel attachment, 265 placements
 node test/edit-audit.mjs   # host-page writes still live in one section
 node test/edit-tokens.mjs  # the token resolver, over three real corpora

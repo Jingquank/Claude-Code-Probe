@@ -39,8 +39,17 @@ _Avoid_: info panel (a panel is the thing that edits), tooltip.
 
 **Toolbar** — the selection's actions: Copy Code, Screenshot, Edit, Select
 Parent. Shown only while something is selected; never clipped, whatever the
-viewport.
+viewport; drawn in the chosen selection layout.
 _Avoid_: action bar, bar.
+
+**Selection layout** — where the toolbar sits relative to the info label: on
+the element's edge as a pill, beside the readout's lines as a spine, under
+the identity as a strip, or along the card's bottom as a bar. A preference;
+the readout is the same in all four.
+_Avoid_: mode (a mode changes what the tool does; a layout changes where it is).
+
+**Tooltip** — the name of an icon-only action, drawn in its own root beside
+the label and positioned from the button it names. Never part of the card.
 
 **Redline** — held-Option spacing measurement. A sub-mode of Selection: it
 cannot be entered without one, and every path that drops the selection ends it.

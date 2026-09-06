@@ -224,8 +224,13 @@ function clickPointFor(el, rect) {
   return null;
 }
 
-const escape = () =>
+// Only while something is selected: with nothing selected, Escape is the
+// extension's way out of Point Mode, and the sweep would switch itself off
+// on its first case.
+const escape = () => {
+  if (!document.querySelector("#pnt-overlay-container.pnt-selected")) return;
   document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+};
 
 async function runLive() {
   const results = [];
@@ -342,7 +347,7 @@ const state = { sim: null, live: null, layout: detectLayout() || "edge" };
 function dump() {
   console.log("=== PROBE HARNESS ===");
   for (const [mode, res] of Object.entries(state)) {
-    if (!res) continue;
+    if (!Array.isArray(res)) continue; // state.layout is a name, not a result set
     console.log(`--- ${mode} (viewport ${vpw()}x${vph()}) ---`);
     console.table(res.map((r) => ({
       case: r.id, verdict: r.verdict, flags: (r.flags || []).join(","),

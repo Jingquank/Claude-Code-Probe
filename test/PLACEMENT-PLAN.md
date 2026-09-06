@@ -89,6 +89,25 @@ Strategies, in order — ordered by how little they intrude:
 | 5 | `cluster-inside-top` | both stacked inside the top edge | too short to split inside |
 | 6 | `docked` | pinned to a viewport edge | element scrolled out of view |
 
+Since 2.0 the toolbar has four mounts (the *selection layout* preference).
+Three of them put the actions inside the label, so the solver is called with
+`toolbar = null` and a `label.minH` — the card's height with its readout
+clipped away entirely — below which the label hides rather than clip a button.
+The fourth, *On the edge*, is the default and adds a rule ahead of the table
+above, tried whenever the whole pill fits on the element's bottom edge:
+
+| | Strategy | Placement |
+|---|---|---|
+| 0a | `straddle-above` | pill on the bottom edge, its left `straddleInset` in; label above the element |
+| 0b | `straddle-below` | the same pill; label below it |
+| 0c | `straddle-inside` | the same pill; label inside the element's top |
+
+The label takes the first of the three that fits on screen and clears the
+pill. When none does, or the edge is off screen, the pill takes the slot the
+table gives the toolbar — so it is never clipped, whatever the element. Run
+`node test/placement.mjs` and the spec proves the rule's invariants across
+the matrix; `test/sim.mjs` evaluates all four layouts.
+
 Strategies 1–3 leave the element completely unobscured. Across realistic desktop
 viewports that's **81% of configurations**; the rest are cases where the element
 is larger than the screen, so covering ~145px of it costs nothing you could see

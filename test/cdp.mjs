@@ -1443,6 +1443,147 @@ try {
     if (!seen.bare.includes("# edits:")) fail("switching a field off dropped the edits too");
     if (seen.keys.includes("selector")) fail("the delta block ignored the field setting");
   });
+
+  // ===== Selection layouts =====
+  // One toolbar, four mounts (docs/SELECTION-LAYOUTS-PLAN.md). Each check
+  // switches the preference through storage — the path the settings page
+  // takes — with an element already selected, and reads where the actions
+  // landed. The layouts' geometry is the placement spec's business; these
+  // prove the DOM-bound half the spec cannot see.
+
+  await check("layouts · each layout mounts the actions where it says", async (fail) => {
+    await loadHarness(ws);
+    const seen = await evaluate(ws, `
+      window.__t.probeOn();
+      window.__t.select(".card h2");
+      const read = () => {
+        const label = document.getElementById("pnt-label");
+        const tb = document.getElementById("pnt-toolbar");
+        const kids = [...label.children];
+        return {
+          html: (document.documentElement.className.match(/pnt-layout-\\w+/) || [null])[0],
+          inside: !!tb && tb.parentElement === label,
+          index: kids.indexOf(tb),
+          last: kids.length - 1,
+          first: kids[0] && kids[0].className,
+          actions: [...tb.querySelectorAll("button")].map((b) => b.dataset.action),
+          labelsShown: [...tb.querySelectorAll("button span")].some((el) => el.offsetWidth > 0),
+          captionHints: !!label.querySelector(".pnt-label-hints"),
+          crumbHints: !!label.querySelector(".pnt-line-breadcrumb .pnt-hints"),
+          stripHints: getComputedStyle(tb.querySelector(".pnt-hints")).display !== "none",
+          withActions: label.classList.contains("pnt-with-actions"),
+          cardW: label.getBoundingClientRect().width,
+          barW: tb.querySelector(".pnt-bar").getBoundingClientRect().width,
+        };
+      };
+      const out = {};
+      for (const id of ["edge", "beside", "under", "bottom"]) {
+        window.__t.prefs({ selectionLayout: id });
+        await new Promise((r) => setTimeout(r, 60));
+        out[id] = read();
+      }
+      window.__t.prefs({ selectionLayout: "edge" });
+      return out;
+    `);
+    for (const [id, r] of Object.entries(seen)) {
+      if (r.html !== "pnt-layout-" + id) fail(`${id}: <html> carries ${r.html}`);
+      if (r.actions.join() !== "copy,shot,edit,parent") fail(`${id}: actions are ${r.actions.join()}`);
+      if (r.withActions !== (id !== "edge")) fail(`${id}: pnt-with-actions is ${r.withActions}`);
+    }
+    const { edge, beside, under, bottom } = seen;
+    if (edge.inside) fail("edge: the pill mounted inside the label");
+    if (!edge.captionHints || edge.crumbHints) fail("edge: the hints are not a caption");
+    if (!beside.inside || beside.index !== 0) fail(`beside: the spine is child ${beside.index}, not first`);
+    if (!beside.captionHints) fail("beside: no hints caption");
+    if (!under.inside || under.index !== 1 || under.first !== "pnt-label-head") fail(`under: the strip is child ${under.index} after ${under.first}`);
+    if (!under.stripHints || under.captionHints) fail("under: the hints are not in the strip");
+    if (!bottom.inside || bottom.index !== bottom.last) fail(`bottom: the bar is child ${bottom.index} of ${bottom.last}`);
+    if (!bottom.crumbHints || bottom.captionHints) fail("bottom: the hints are not in the breadcrumb row");
+    if (!bottom.labelsShown) fail("bottom: the bar's labels are hidden");
+    if (Math.abs(bottom.cardW - bottom.barW - 2) > 1) fail(`bottom: card ${bottom.cardW}px wide against a ${bottom.barW}px bar`);
+    for (const id of ["edge", "beside", "under"]) {
+      if (seen[id].labelsShown) fail(`${id}: a button label is showing in an icon layout`);
+    }
+  });
+
+  await check("layouts · a tooltip names the icon and never moves the card", async (fail) => {
+    const seen = await evaluate(ws, `
+      window.__t.prefs({ selectionLayout: "under" });
+      await new Promise((r) => setTimeout(r, 60));
+      const label = document.getElementById("pnt-label");
+      const tip = document.getElementById("pnt-tip");
+      const before = label.getBoundingClientRect();
+      const btn = document.querySelector('#pnt-toolbar button[data-action="shot"]');
+      btn.dispatchEvent(new PointerEvent("pointerover", { bubbles: true }));
+      const after = label.getBoundingClientRect();
+      const tr = tip.getBoundingClientRect(), br = btn.getBoundingClientRect();
+      const shown = { on: tip.classList.contains("pnt-tip-on"), text: tip.textContent,
+        inside: label.contains(tip), clear: tr.bottom <= br.top || tr.top >= br.bottom,
+        moved: before.top !== after.top || before.height !== after.height || before.width !== after.width };
+      btn.dispatchEvent(new PointerEvent("pointerout", { bubbles: true, relatedTarget: document.body }));
+      const hidden = !tip.classList.contains("pnt-tip-on");
+      // The bar's labels are on screen, so the bar asks for no tip.
+      window.__t.prefs({ selectionLayout: "bottom" });
+      await new Promise((r) => setTimeout(r, 60));
+      document.querySelector('#pnt-toolbar button[data-action="shot"]')
+        .dispatchEvent(new PointerEvent("pointerover", { bubbles: true }));
+      const labelledTip = tip.classList.contains("pnt-tip-on");
+      window.__t.prefs({ selectionLayout: "edge" });
+      return { ...shown, hidden, labelledTip };
+    `);
+    if (!seen.on) fail("no tooltip on pointerover");
+    if (seen.text !== "Screenshot") fail(`the tooltip says ${JSON.stringify(seen.text)}`);
+    if (seen.inside) fail("the tooltip is inside the card");
+    if (!seen.clear) fail("the tooltip covers the button it names");
+    if (seen.moved) fail("showing the tooltip moved the card");
+    if (!seen.hidden) fail("the tooltip stayed after pointerout");
+    if (seen.labelledTip) fail("a labelled button showed a tooltip");
+  });
+
+  await check("layouts · Select Parent keeps the strip where it was", async (fail) => {
+    const seen = await evaluate(ws, `
+      window.__t.prefs({ selectionLayout: "under" });
+      await new Promise((r) => setTimeout(r, 60));
+      const label = document.getElementById("pnt-label");
+      const tb = document.getElementById("pnt-toolbar");
+      const tag = () => label.querySelector(".pnt-label-head .pnt-label-tag").textContent;
+      const was = tag();
+      tb.querySelector('button[data-action="parent"]').click();
+      await new Promise((r) => setTimeout(r, 60));
+      const out = { was, now: tag(), sameNode: document.getElementById("pnt-toolbar") === tb,
+        index: [...label.children].indexOf(tb) };
+      window.__t.prefs({ selectionLayout: "edge" });
+      return out;
+    `);
+    if (seen.was === seen.now) fail(`the identity still reads ${seen.now}`);
+    if (!seen.sameNode) fail("the hop rebuilt the toolbar");
+    if (seen.index !== 1) fail(`after the hop the strip is child ${seen.index}`);
+  });
+
+  await check("layouts · the pill leaves an off-screen edge for the toolbar's slot", async (fail) => {
+    const seen = await evaluate(ws, `
+      window.__t.esc();
+      const tall = document.createElement("div");
+      tall.id = "tall-fixture";
+      tall.style.cssText = "height:300vh;width:240px;margin:24px;background:#eee";
+      document.body.prepend(tall);
+      window.scrollTo(0, 0);
+      const r = tall.getBoundingClientRect();
+      tall.dispatchEvent(new MouseEvent("click", { bubbles: true, clientX: r.left + 5, clientY: r.top + 5 }));
+      await new Promise((r) => setTimeout(r, 80));
+      const tb = document.getElementById("pnt-toolbar");
+      const b = tb.getBoundingClientRect();
+      const vh = document.documentElement.clientHeight;
+      const out = { edge: tall.getBoundingClientRect().bottom, vh, top: b.top, bottom: b.bottom,
+        onScreen: b.top >= 0 && b.bottom <= vh, selected: document.querySelector(".pnt-selected") !== null };
+      window.__t.esc();
+      tall.remove();
+      return out;
+    `);
+    if (!seen.selected) fail("the tall element was not selected");
+    if (seen.edge <= seen.vh) fail(`the fixture's edge is on screen at ${seen.edge} of ${seen.vh}`);
+    if (!seen.onScreen) fail(`the pill sits at ${seen.top}–${seen.bottom} in a ${seen.vh}px viewport`);
+  });
 } finally {
   try { if (ws) ws.close(); } catch { /* already gone */ }
   browser.kill();
