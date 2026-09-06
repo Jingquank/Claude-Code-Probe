@@ -7,11 +7,20 @@ or where two things that sound alike are not the same thing.
 This is a glossary, not a spec. How anything works lives in `DESIGN.md`,
 `test/PLACEMENT-PLAN.md`, or the code.
 
+## Product
+
+**Pointee** — the extension. Named for what a pointer points at: you point at
+an element, and the agent gets the pointee. It names no agent — Claude Code,
+Cursor and Codex are examples in the README, never part of the name, the
+chrome, or the payload.
+_Avoid_: Claude Code Probe, the probe — the name until 2.0.
+
 ## Modes
 
-**Probe Mode** — the extension is switched on for a tab. Hovering outlines
+**Point Mode** — the extension is switched on for a tab. Hovering outlines
 whatever is under the pointer; clicking selects. Everything below happens inside
-it. Signalled by `ccp-probe-active` on `<html>`.
+it. Signalled by `pnt-point-active` on `<html>`.
+_Avoid_: Probe Mode — the name until 2.0, when the product became Pointee.
 
 **Selection** — one element is locked in, and the toolbar is showing. The
 extension has exactly one selection at a time. Its truthiness *is* the state:
@@ -116,7 +125,7 @@ things an element genuinely cannot report: which *class* means which value
 `var()` can be seen, and so the only way to know a value is a token rather than
 merely equal to one.
 
-**Own chrome** — the DOM this extension injects, all `ccp-`-prefixed. Kept
+**Own chrome** — the DOM this extension injects, all `pnt-`-prefixed. Kept
 distinct from the page's own DOM everywhere: in hit-testing, in what the info
 label reports, and in which stylesheets the token resolver reads. The
 extension's design tokens are not the page's design tokens.
