@@ -228,10 +228,13 @@ measuring or editing.
 accent because it opens a mode rather than performing an action, and Select
 Parent in the accent because it moves the selection rather than copying it —
 drawn in the chosen *selection layout*, a preference since 2.0 with four
-values. **On the edge**, the default: a glass pill of four icons riding the
-element's bottom edge, its centre line on the edge and its left six pixels
-in, so the readout sits above and the actions below with nothing between the
-words and the thing they describe. **Beside the lines**: a spine of icons
+values. **On the edge**, the default: a glass pill of four icons hanging a
+gap under the element's bottom edge, its left six pixels in, so the readout
+sits above and the actions below with nothing between the words and the
+thing they describe. Until round four the pill straddled the edge, its centre
+line on it, and covered the bottom sixteen pixels of whatever it rode — the
+last line of a paragraph, the caption of an image; outside the element it
+covers nothing, and the rule is the same for a card and a line of text. **Beside the lines**: a spine of icons
 down the label's left, each roughly level with the line it acts on. **Under
 the name**: a strip of icons under the identity line, the keyboard hints at
 its end. **Along the bottom**: a labelled bar behind a hairline along the
@@ -351,7 +354,7 @@ test where a test can reach it, and stated here where one cannot.
 ### Geometry stays in JS — the one deliberate exception
 
 `GEOMETRY` in `content.js` keeps `margin`, `gap`, `pair`, `minLabelHeight`,
-`narrowToolbar`, `straddleInset`, `radiusFallback`, `redlinePillOffset`, `redlineGuideOvershoot`,
+`narrowToolbar`, `edgeInset`, `radiusFallback`, `redlinePillOffset`, `redlineGuideOvershoot`,
 `redlinePillMargin`, `tetherGap`, `tetherTick`, `tetherTickLoud`, `tetherThick`,
 `tetherStub` and `tetherAttach` as JavaScript numbers.
 

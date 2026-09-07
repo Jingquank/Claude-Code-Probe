@@ -51,7 +51,7 @@ label beside it reads out:
 ### Select
 
 Click, and the outline starts to crawl. The four actions appear in the layout you chose in
-settings — by default a pill of icons riding the element's bottom edge. The label and the
+settings — by default a pill of icons just under the element's bottom edge. The label and the
 actions are placed together in one pass, so they stay on screen and off each other for any
 element, including ones taller than the window and `<body>` itself.
 

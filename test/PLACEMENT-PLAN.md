@@ -98,9 +98,9 @@ above, tried whenever the whole pill fits on the element's bottom edge:
 
 | | Strategy | Placement |
 |---|---|---|
-| 0a | `straddle-above` | pill on the bottom edge, its left `straddleInset` in; label above the element |
-| 0b | `straddle-below` | the same pill; label below it |
-| 0c | `straddle-inside` | the same pill; label inside the element's top |
+| 0a | `edge-above` | pill a gap under the bottom edge, its left `edgeInset` in; label above the element |
+| 0b | `edge-below` | the same pill; label below it |
+| 0c | `edge-inside` | the same pill; label inside the element's top |
 
 The label takes the first of the three that fits on screen and clears the
 pill. When none does, or the edge is off screen, the pill takes the slot the

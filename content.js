@@ -159,7 +159,7 @@
     pair: 6,
     minLabelHeight: 24,
     narrowToolbar: 470, // the .pnt-compact breakpoint
-    straddleInset: 6, // On the edge: the pill's left sits this far in from the element's
+    edgeInset: 6, // On the edge: the pill's left sits this far in from the element's
     radiusFallback: 4, // assumed corner radius when the element is square
     redlinePillOffset: 8, // pill center sits this far perpendicular to its line
     redlineGuideOvershoot: 4, // dashed guide runs this far past the measurement line
@@ -1000,8 +1000,8 @@
   // the actions inside the label — then the label is placed alone.
   // `label.minH` is how far the label may shrink before it hides: with the
   // actions inside, the readout yields and the actions never do.
-  // `opts.straddle` is the On-the-edge rule: the toolbar is a pill riding the
-  // element's bottom edge, and the label places itself around it.
+  // `opts.edge` is the On-the-edge rule: the toolbar is a pill hanging just
+  // below the element's bottom edge, and the label places itself around it.
   function computeChromeLayout(rect, label, toolbar, vw, vh, opts) {
     const M = GEOMETRY.margin, GAP = GEOMETRY.gap, PAIR = GEOMETRY.pair;
 
@@ -1058,25 +1058,29 @@
     // Scrolled entirely out of view — dock to the edge it disappeared behind.
     if (vis.bottom < vis.top || vis.right < vis.left) return dock(rect.bottom < 0);
 
-    // On the edge: the pill's centre line on the element's bottom edge, its
-    // left a straddleInset in from the element's left — whenever the whole
-    // pill is on screen there. The label then goes above the element, else
-    // below the pill, else inside the element's top: the first that fits and
-    // clears the pill. When none does, or the edge is off screen, the pill
-    // takes the slot the toolbar gets below, so it is never clipped.
-    if (opts && opts.straddle && !T.hidden) {
-      const half = T.h / 2;
-      if (rect.bottom - half >= M && rect.bottom + half <= vh - M) {
-        const tb = mk(T, rect.bottom - half, rect.left + GEOMETRY.straddleInset);
+    // On the edge: the pill hangs a gap below the element's bottom edge, its
+    // left an edgeInset in from the element's left — whenever the whole pill
+    // is on screen there. It used to straddle the edge, its centre line on it,
+    // and covered the bottom sixteen pixels of whatever it rode: the last line
+    // of a paragraph, the caption of an image. Outside the element it covers
+    // nothing, and the rule is the same for a card and a line of text. The
+    // label then goes above the element, else below the pill, else inside
+    // the element's top: the first that fits and clears the pill. When none
+    // does, or the edge is off screen, the pill takes the slot the toolbar
+    // gets below, so it is never clipped.
+    if (opts && opts.edge && !T.hidden) {
+      const pillTop = rect.bottom + GAP;
+      if (pillTop >= M && pillTop + T.h <= vh - M) {
+        const tb = mk(T, pillTop, rect.left + GEOMETRY.edgeInset);
         const around = (top, left, strategy) => {
           const lb = mk(L, top, left);
           return ok(lb, tb) && (lb.hidden || overlapArea(lb, tb) === 0)
             ? { strategy: strategy, label: lb, toolbar: tb } : null;
         };
         const r =
-          around(vis.top - GAP - L.h, vis.left, "straddle-above") ||
-          around(tb.top + T.h + GAP, vis.left, "straddle-below") ||
-          around(vis.top + GAP, vis.left + GAP, "straddle-inside");
+          around(vis.top - GAP - L.h, vis.left, "edge-above") ||
+          around(tb.top + T.h + GAP, vis.left, "edge-below") ||
+          around(vis.top + GAP, vis.left + GAP, "edge-inside");
         if (r) return r;
       }
     }
@@ -1182,7 +1186,7 @@
       : null;
 
     const layout = computeChromeLayout(el.getBoundingClientRect(), label, toolbar, vw, vh, {
-      straddle: !!toolbar && chromePrefs.selectionLayout === "edge",
+      edge: !!toolbar && chromePrefs.selectionLayout === "edge",
     });
 
     if (instant) labelEl.classList.add("pnt-no-transition");
@@ -8215,7 +8219,7 @@
   // Where the node goes is the whole difference between the layouts. Inside
   // the label for the spine, the strip and the bar — so the solver sees one
   // box and the buttons ride with the readout — and its own fixed root for the
-  // pill, which is placed on the element's edge by the solver's straddle rule.
+  // pill, which is placed under the element's edge by the solver's edge rule.
   function mountToolbar() {
     const layout = chromePrefs.selectionLayout;
     const head = labelEl && labelEl.querySelector(":scope > .pnt-label-head");
@@ -8235,6 +8239,13 @@
   function showTip(button, opts) {
     const text = button.dataset.tip;
     if (!tipEl || !text) return;
+    // Every root shares the top z-index, so document order decides who
+    // paints over whom — and the panel, the picker and the rung list are all
+    // appended after the tip root was. Re-appending it as it shows puts it
+    // above whichever of them the pointer is over.
+    if (tipEl !== document.documentElement.lastElementChild) {
+      document.documentElement.appendChild(tipEl);
+    }
     const above = Boolean(opts && opts.above);
     const label = above ? null : button.querySelector("span");
     if (label && label.offsetWidth > 0) return hideTip(); // the label already says it

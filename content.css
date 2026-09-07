@@ -825,8 +825,8 @@ html.pnt-layout-under #pnt-toolbar .pnt-hints {
 }
 
 /* ----- On the edge: the pill -----
-   A capsule of four icons on the glass, its centre line on the element's
-   bottom edge and its left 6px in from the element's — the straddle rule in
+   A capsule of four icons on the glass, a gap under the element's bottom
+   edge and its left 6px in from the element's — the edge rule in
    computeChromeLayout. */
 html.pnt-layout-edge #pnt-toolbar .pnt-bar {
   background: var(--pnt-glass);
@@ -1341,11 +1341,17 @@ html.pnt-layout-bottom #pnt-toolbar .pnt-bar {
    Advanced section's <details> had. */
 #pnt-edit-panel .pnt-edit-groupbody {
   all: initial;
+  box-sizing: border-box;
   display: block;
   font-family: var(--pnt-font);
   interpolate-size: allow-keywords;
   height: auto;
   overflow: clip;
+  /* The cells' hover wash reaches past the grid by their negative margins,
+     and this box clips. Padding it by the same amounts, and pulling it back
+     out by the same margins, puts the wash inside the clip. */
+  padding: 3px var(--pnt-gap-tight) var(--pnt-xs);
+  margin: -3px calc(-1 * var(--pnt-gap-tight)) calc(-1 * var(--pnt-xs));
   transition: height var(--pnt-duration) var(--pnt-ease),
               opacity var(--pnt-duration-fast) var(--pnt-ease);
 }
@@ -1426,8 +1432,10 @@ html.pnt-layout-bottom #pnt-toolbar .pnt-bar {
   position: relative;
   display: block;
   min-width: 0;
-  padding: 3px var(--pnt-xs) var(--pnt-xs);
-  margin: -3px calc(-1 * var(--pnt-xs)) calc(-1 * var(--pnt-xs));
+  /* Two pixels sideways, not four: the narrowest grid gap is four, and a
+     wash that reached further would overlap its neighbour's. */
+  padding: 3px var(--pnt-gap-tight) var(--pnt-xs);
+  margin: -3px calc(-1 * var(--pnt-gap-tight)) calc(-1 * var(--pnt-xs));
   border-radius: var(--pnt-radius-sm);
   font-family: var(--pnt-font);
   transition: background var(--pnt-duration-fast) var(--pnt-ease);

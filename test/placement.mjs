@@ -17,8 +17,8 @@
 // #pnt-label / #pnt-toolbar and is the check that this transcription is honest.
 //
 // GEOMETRY in content.js is the other half of this mirror: M / GAP / PAIR /
-// MIN_LABEL_H / STRADDLE_INSET below must match GEOMETRY.margin / .gap / .pair /
-// .minLabelHeight / .straddleInset.
+// MIN_LABEL_H / EDGE_INSET below must match GEOMETRY.margin / .gap / .pair /
+// .minLabelHeight / .edgeInset.
 
 // ===== Current algorithms =====
 
@@ -162,11 +162,11 @@ const fitsV = (top, h, vh) => top >= M && top + h <= vh - M;
 export const MIN_LABEL_H = 24;
 
 // On the edge: the pill's left sits this far in from the element's left.
-export const STRADDLE_INSET = 6;
+export const EDGE_INSET = 6;
 
 // ===== The four selection layouts =====
 // Since 2.0 the toolbar has four mounts (the selectionLayout preference):
-//   edge    a pill on the element's bottom edge — its own box, the straddle rule
+//   edge    a pill a gap under the element's bottom edge — its own box, the edge rule
 //   beside  a spine down the label's left
 //   under   a strip under the identity line       } inside the label: one box,
 //   bottom  a labelled bar along the label's foot  } toolbar null
@@ -187,14 +187,14 @@ export function boxesForLayout(vw, layout) {
   }
 }
 
-export const optsForLayout = (layout) => ({ straddle: layout === "edge" });
+export const optsForLayout = (layout) => ({ edge: layout === "edge" });
 
 // `boxes.toolbar` is null while merely hovering, and in the layouts that
 // mount the actions inside the label — then the label is placed alone.
 // `boxes.label.minH` is how far the label may shrink before it hides: with
 // the actions inside, the readout yields and the actions never do.
-// `opts.straddle` is the On-the-edge rule: the toolbar is a pill riding the
-// element's bottom edge, and the label places itself around it.
+// `opts.edge` is the On-the-edge rule: the toolbar is a pill hanging just
+// below the element's bottom edge, and the label places itself around it.
 export function layoutChrome(rect, vw, vh, boxes = boxesFor(vw), opts = {}) {
   const T = boxes.toolbar
     ? { ...boxes.toolbar, hidden: false }
@@ -247,24 +247,24 @@ export function layoutChrome(rect, vw, vh, boxes = boxesFor(vw), opts = {}) {
   if (vis.bottom < vis.top || vis.right < vis.left) return dock(rect.bottom < 0);
 
   // On the edge: the pill's centre line on the element's bottom edge, its
-  // left STRADDLE_INSET in from the element's left — whenever the whole pill
+  // left EDGE_INSET in from the element's left — whenever the whole pill
   // is on screen there. The label then goes above the element, else below
   // the pill, else inside the element's top: the first that fits and clears
   // the pill. When none does, or the edge is off screen, the pill takes the
   // slot the toolbar gets below, so it is never clipped.
-  if (opts.straddle && !T.hidden) {
-    const half = T.h / 2;
-    if (rect.bottom - half >= M && rect.bottom + half <= vh - M) {
-      const toolbar = mk(T, rect.bottom - half, rect.left + STRADDLE_INSET);
+  if (opts.edge && !T.hidden) {
+    const pillTop = rect.bottom + GAP;
+    if (pillTop >= M && pillTop + T.h <= vh - M) {
+      const toolbar = mk(T, pillTop, rect.left + EDGE_INSET);
       const around = (top, left, strategy) => {
         const label = mk(L, top, left);
         return ok(label, toolbar) && (label.hidden || intersectArea(label, toolbar) === 0)
           ? { strategy, label, toolbar } : null;
       };
       const r =
-        around(vis.top - GAP - L.h, vis.left, "straddle-above") ||
-        around(toolbar.top + T.h + GAP, vis.left, "straddle-below") ||
-        around(vis.top + GAP, vis.left + GAP, "straddle-inside");
+        around(vis.top - GAP - L.h, vis.left, "edge-above") ||
+        around(toolbar.top + T.h + GAP, vis.left, "edge-below") ||
+        around(vis.top + GAP, vis.left + GAP, "edge-inside");
       if (r) return r;
     }
   }
@@ -372,11 +372,11 @@ export function runSim(vw, vh, boxes = BOX) {
 }
 
 // ===== Self-check =====
-// Run directly (`node test/placement.mjs`), the spec proves the straddle
-// rule's own invariants across the matrix: wherever the pill was placed on
-// the edge, its centre line is the element's bottom edge, its left is the
+// Run directly (`node test/placement.mjs`), the spec proves the edge rule's
+// own invariants across the matrix: wherever the pill was placed under the
+// edge, its top is one gap below the element's bottom edge, its left is the
 // inset in (clamped to the viewport), and the label clears it; and at the
-// laptop size the rule wins on every case where the edge is on screen.
+// laptop size the rule wins on every case where there is room under the edge.
 // test/sim.mjs then evaluates all four layouts for clipping and overlap.
 const isMain = typeof process !== "undefined" && /placement\.mjs$/.test(process.argv[1] || "");
 if (isMain) {
@@ -387,26 +387,27 @@ if (isMain) {
     for (const c of CASES) {
       const rect = caseRect(c, vw, vh);
       const boxes = boxesForLayout(vw, "edge");
-      const r = layoutChrome(rect, vw, vh, boxes, { straddle: true });
-      const half = boxes.toolbar.h / 2;
-      const edgeOn = rect.bottom - half >= M && rect.bottom + half <= vh - M &&
+      const r = layoutChrome(rect, vw, vh, boxes, { edge: true });
+      const pillTop = rect.bottom + GAP;
+      const edgeOn = pillTop >= M && pillTop + boxes.toolbar.h <= vh - M &&
         Math.min(rect.bottom, vh) >= Math.max(rect.top, 0) && Math.min(rect.right, vw) >= Math.max(rect.left, 0);
       checked++;
       const at = `${c.id} @ ${vw}x${vh}`;
-      if (r.strategy.startsWith("straddle")) {
+      if (r.strategy.startsWith("edge")) {
         straddled++;
-        if (!edgeOn) problems.push(`${at}: straddled with the edge off screen`);
-        if (r.toolbar.top + half !== rect.bottom) problems.push(`${at}: pill centre ${r.toolbar.top + half} is not the edge ${rect.bottom}`);
-        const wantLeft = Math.max(M, Math.min(rect.left + STRADDLE_INSET, vw - boxes.toolbar.w - M));
+        if (!edgeOn) problems.push(`${at}: under the edge with no room there`);
+        if (r.toolbar.top !== pillTop) problems.push(`${at}: pill top ${r.toolbar.top} is not a gap under the edge ${rect.bottom}`);
+        const wantLeft = Math.max(M, Math.min(rect.left + EDGE_INSET, vw - boxes.toolbar.w - M));
         if (r.toolbar.left !== wantLeft) problems.push(`${at}: pill left ${r.toolbar.left}, wanted ${wantLeft}`);
         if (!r.label.hidden && intersectArea(r.label, r.toolbar) > 0) problems.push(`${at}: label on the pill`);
+        if (r.toolbar.top < rect.bottom) problems.push(`${at}: the pill covers the element`);
       } else if (vw === 1440 && vh === 900 && edgeOn) {
-        problems.push(`${at}: edge on screen but placed by ${r.strategy}`);
+        problems.push(`${at}: room under the edge but placed by ${r.strategy}`);
       }
     }
   }
-  if (straddled === 0) problems.push("the straddle rule never fired");
+  if (straddled === 0) problems.push("the edge rule never fired");
   for (const p of problems) console.log("  FAIL  " + p);
-  console.log(`placement: ${checked} edge placements checked, ${straddled} on the edge, ${problems.length} problems`);
+  console.log(`placement: ${checked} edge placements checked, ${straddled} under the edge, ${problems.length} problems`);
   if (problems.length) process.exit(1);
 }

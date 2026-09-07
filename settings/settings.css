@@ -709,9 +709,9 @@ body {
 }
 
 /* The selection specimen's stage: the label above, the outlined card below,
-   with room under the card for the pill's lower half when it straddles the
-   edge. content.css lays the actions out inside the label for the other
-   three layouts, exactly as on a page. */
+   with room under the card for the pill that hangs beneath its edge.
+   content.css lays the actions out inside the label for the other three
+   layouts, exactly as on a page. */
 .sl-stage {
   display: flex;
   flex-direction: column;
@@ -726,14 +726,17 @@ body {
   max-width: 320px;
 }
 
-/* On the edge: the pill rides the card's bottom edge, its left 6px in — the
-   straddle rule, drawn by hand. Class + id, to outrank the fixed rule. */
+/* On the edge: the pill hangs under the card's bottom edge, its left 6px in
+   — the edge rule, drawn by hand. Class + id, to outrank the fixed rule. */
 .pnt-mock .sl-el > #pnt-toolbar {
   position: absolute;
   left: calc(var(--pnt-ring) + 6px);
-  bottom: var(--pnt-ring);
-  transform: translateY(50%);
+  /* A gap under the card's bottom edge, as the solver places it since round
+     four; the beam reserves the pill's height below so nothing overlaps. */
+  top: calc(100% - var(--pnt-ring) + var(--pnt-sm));
 }
+
+.pnt-mock .sl-el:has(> #pnt-toolbar) { margin-bottom: 38px; }
 
 .an-item {
   display: flex;
