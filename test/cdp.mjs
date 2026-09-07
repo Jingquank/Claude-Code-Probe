@@ -1981,6 +1981,131 @@ try {
     if (r.sizeAfterWheel !== "18px") fail(`the wheel still steps: ${r.sizeAfterWheel}`);
     if (r.capTip !== "--title-sm") fail(`the capsule's tooltip is "${r.capTip}", not the full name`);
   });
+  // ===== Page values (ADR 0004) =====
+  await check("page values · a value on no token steps through the page's own", async (fail) => {
+    await loadHarness(ws);
+    const r = await evaluate(ws, `
+      window.__t.prefs({ editTokenControls: "both", editGroups: "standard" });
+      window.__t.probeOn();
+      window.__t.select(".card h2");
+      window.__t.edit();
+      const out = {};
+      const row = window.__t.row("line-height");
+      const num = row.querySelector(".pnt-edit-num");
+      out.kind = num.dataset.kind;
+      out.state = num.dataset.state;
+      const cap = row.querySelector(".pnt-edit-tok");
+      out.capsule = cap ? cap.textContent : null;
+      out.capsulePage = Boolean(cap && cap.classList.contains("pnt-edit-page"));
+      out.tip = cap ? cap.dataset.tip : null;
+      out.before = window.__t.css(".card h2", "line-height");
+      row.querySelector(".pnt-edit-arrow.pnt-edit-up").click();
+      out.after = window.__t.css(".card h2", "line-height");
+      // Padding is not harvested: a histogram is not a scale.
+      const pad = window.__t.row("padding");
+      out.paddingKind = pad.querySelector(".pnt-edit-num").dataset.kind;
+      out.paddingCapsule = Boolean(pad.querySelector(".pnt-edit-tok"));
+      window.__t.undo();
+      window.__t.esc();
+      window.__t.esc();
+      return out;
+    `);
+    if (r.kind !== "page") fail(`line-height's field is ${r.kind}, not on a page ladder`);
+    if (r.state !== "on") fail(`the heading's own leading is not on the page ladder: ${r.state}`);
+    if (!r.capsulePage || !/page/.test(r.capsule || "")) fail(`the capsule reads ${JSON.stringify(r.capsule)}`);
+    if (!/leadings on this page/.test(r.tip || "")) fail(`the capsule's tooltip reads ${JSON.stringify(r.tip)}`);
+    if (r.after === r.before) fail("the arrow did not step to the next leading on the page");
+    if (r.paddingKind !== "none" || r.paddingCapsule) fail("padding grew a page ladder; spacing is not harvested");
+  });
+
+  await check("page values · a hashed class is no scale", async (fail) => {
+    const r = await evaluate(ws, `
+      window.__t.probeOn();
+      window.__t.select(".hashed-fixture", 3, 3);
+      window.__t.edit();
+      const pad = window.__t.row("padding");
+      const out = {
+        kind: pad.querySelector(".pnt-edit-num").dataset.kind,
+        capsule: Boolean(pad.querySelector(".pnt-edit-tok")),
+      };
+      window.__t.esc();
+      window.__t.esc();
+      return out;
+    `);
+    if (r.kind !== "none") fail(`padding on a hashed class reads ${r.kind}`);
+    if (r.capsule) fail("a hashed class offered a stepper");
+  });
+
+  await check("rung list · every rung, and a match in scope that becomes a claim", async (fail) => {
+    const r = await evaluate(ws, `
+      window.__t.probeOn();
+      window.__t.select(".coincidence", 3, 3);
+      window.__t.edit();
+      const out = {};
+      window.addEventListener("error", (e) => { out.pageError = e.message + " @" + e.lineno; });
+      const row = window.__t.row("font-size");
+      out.kind = row.querySelector(".pnt-edit-num").dataset.kind;
+      row.querySelector(".pnt-edit-tok b").click();
+      const list = document.getElementById("pnt-rung-list");
+      out.open = Boolean(list);
+      if (list) {
+        out.rungs = [...list.querySelectorAll(".pnt-rung:not(.pnt-rung-match) b")].map((b) => b.textContent);
+        out.current = list.querySelector(".pnt-rung-on b") ? list.querySelector(".pnt-rung-on b").textContent : null;
+        out.matches = [...list.querySelectorAll(".pnt-rung-match b")].map((b) => b.textContent);
+        const match = list.querySelector(".pnt-rung-match");
+        if (match) match.click();
+      }
+      out.closed = !document.getElementById("pnt-rung-list");
+      out.style = document.querySelector(".coincidence").getAttribute("style");
+      out.size = window.__t.css(".coincidence", "font-size");
+      const after = window.__t.row("font-size");
+      out.kindAfter = after.querySelector(".pnt-edit-num").dataset.kind;
+      out.capsuleAfter = after.querySelector(".pnt-edit-tok") ? after.querySelector(".pnt-edit-tok b").textContent : null;
+      out.labelOn = after.querySelector(".pnt-edit-label").classList.contains("pnt-edit-on");
+      out.block = await window.__t.copy();
+      return out;
+    `);
+    if (r.pageError) fail(`the page threw: ${r.pageError}`);
+    if (r.kind !== "page") fail(`a raw 22px should sit on the page ladder, not ${r.kind}`);
+    if (!r.open) return fail("the capsule's name did not open the rung list");
+    if (!r.rungs || r.rungs.length < 2) fail(`the list shows ${JSON.stringify(r.rungs)}`);
+    if (r.current !== "22px") fail(`the current rung is marked as ${JSON.stringify(r.current)}`);
+    if (!r.matches || !r.matches.includes("--title-md")) fail(`matches in scope: ${JSON.stringify(r.matches)} — --title-md equals 22px`);
+    if (!r.closed) fail("choosing a match left the list open");
+    if (!/var\(--title-md\)/.test(r.style || "")) fail(`the claim did not write the var(): ${JSON.stringify(r.style)}`);
+    if (r.size !== "22px") fail(`the claim changed the size: ${r.size}`);
+    if (r.kindAfter !== "tok" || r.capsuleAfter !== "md") fail(`after the claim the field reads ${r.kindAfter} / ${r.capsuleAfter}`);
+    if (!r.labelOn) fail("the claim is not marked as an edit on the label");
+    if (!/font-size: 22px → (--title-md|var\(--title-md\))/.test(r.block || "")) {
+      fail(`the delta does not carry the claim: ${JSON.stringify(((r.block || "").match(/# +font-size:[^\n]*/) || [""])[0])}`);
+    }
+    await evaluate(ws, "window.__t.esc(); window.__t.esc(); return true;");
+  });
+
+  await check("page values · the picker offers the page's colours beside the source's", async (fail) => {
+    const r = await evaluate(ws, `
+      window.__t.probeOn();
+      window.__t.select(".card h2");
+      window.__t.edit();
+      window.__t.swatch("color");
+      const pop = window.__t.pop();
+      const out = {
+        source: pop.querySelectorAll(".pnt-edit-pal:not(.pnt-edit-pal-page)").length,
+        page: pop.querySelectorAll(".pnt-edit-pal-page").length,
+        captions: [...pop.querySelectorAll(".pnt-edit-palcap span")].map((s) => s.textContent),
+      };
+      const first = pop.querySelector(".pnt-edit-pal-page");
+      out.firstTitle = first ? first.title : null;
+      window.__t.esc();
+      window.__t.esc();
+      window.__t.esc();
+      return out;
+    `);
+    if (r.source === 0) fail("the source palette is gone");
+    if (r.page === 0) fail("no page colours were offered");
+    if (!r.captions.includes("in the source") || !r.captions.includes("on the page")) fail(`captions: ${JSON.stringify(r.captions)}`);
+    if (!/on this page \d+ time/.test(r.firstTitle || "")) fail(`a page swatch's title reads ${JSON.stringify(r.firstTitle)}`);
+  });
 } finally {
   try { if (ws) ws.close(); } catch { /* already gone */ }
   browser.kill();

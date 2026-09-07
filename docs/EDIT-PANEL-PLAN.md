@@ -205,6 +205,15 @@ under the pointer wherever it is; the scrollbar and shadows appear only when
 there is more; Light and Dark both read; the handoff plays forward and back;
 reduced motion crossfades.
 
+## Deferred on the way
+
+Two items of the harvest coverage did not ship in round four's token step.
+The size / weight / leading triples as *observed type styles*: the style chip
+names the composite in force and has no register for an unnamed one, so the
+triples are not collected until the chip learns to show a page style. The
+shadow's tint as a page colour: box-shadow's colour needs its own parse and
+the picker already offers the fills. Both are small once wanted.
+
 ## Open, left to the galleries
 
 Settled by the choices above: the caret row is the disclosure vocabulary

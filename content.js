@@ -62,6 +62,8 @@
   let editFlashTimer = null;
   let tokenIndex = null;
   let editTokenFamilies = null;
+  // Page values (ADR 0004): the ladders and colours read off the page itself.
+  let editPageValues = null;
   // Composite type styles: the named sources that set several type properties
   // at once (.text-lg carrying size and leading, a --heading-md var stem
   // carrying three). Built per Edit Mode entry like the families above;
@@ -102,6 +104,7 @@
     "pnt-settings-btn",
     "pnt-toast",
     "pnt-edit-panel",
+    "pnt-rung-list",
     "pnt-color-picker",
     "pnt-text-editor",
     "pnt-probe-cell",
@@ -2125,6 +2128,42 @@
     return { prefix, step };
   }
 
+  // A single-class selector whose last segment is a build hash — Emotion's
+  // css-1a2b3c, Chakra's css-70qvj9 — is a component's style, not a utility,
+  // and every such class on a page shares the prefix "css". Two of them
+  // setting padding at different values used to form a family, and the
+  // stepper would swap an element into another component's hash. A step is
+  // a hash when it is six or more hex characters, or five or more that mix
+  // digits and letters with at most one vowel; real steps (2xl, 1.5, 500,
+  // small, xxs) are none of those.
+  function isHashedStep(step) {
+    if (typeof step !== "string") return false;
+    if (/^[0-9a-f]{6,}$/i.test(step)) return true;
+    return step.length >= 5 && /^[0-9a-z]+$/i.test(step) && /\d/.test(step) &&
+      /[a-z]/i.test(step) && (step.match(/[aeiou]/gi) || []).length <= 1;
+  }
+
+  // A page ladder's rungs can sit half a pixel apart (22 and 22.5 on the same
+  // page), so it matches at a quarter where a token family matches at a half.
+  const PAGE_RUNG_TOLERANCE = 0.25;
+
+  // Page values (ADR 0004): the distinct values a property actually takes on
+  // this page, as a ladder a stepper can walk. Numbers in, sorted distinct
+  // rungs out, each carrying how often it occurred; unnamed, because the page
+  // lends rungs and only the source lends names. Two rungs to be a ladder,
+  // for the same reason a family of one is not a family.
+  function ladderFromValues(values) {
+    const counts = new Map();
+    for (const v of values || []) {
+      if (typeof v !== "number" || !isFinite(v)) continue;
+      const key = Math.round(v * 100) / 100;
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    const members = Array.from(counts, ([resolved, count]) => ({ name: null, resolved, count }))
+      .sort((a, b) => a.resolved - b.resolved);
+    return members.length >= 2 ? members : null;
+  }
+
   // [{ name, resolved }] → [{ prefix, members: [{ name, step, resolved }] }]
   // sorted by resolved value.
   //
@@ -2140,7 +2179,7 @@
     for (const e of entries || []) {
       if (!e || typeof e.resolved !== "number" || !isFinite(e.resolved)) continue;
       const split = splitTokenName(e.name);
-      if (!split) continue;
+      if (!split || isHashedStep(split.step)) continue;
       if (!byPrefix.has(split.prefix)) byPrefix.set(split.prefix, []);
       byPrefix.get(split.prefix).push({ name: e.name, step: split.step, resolved: e.resolved });
     }
@@ -2177,9 +2216,9 @@
   // One rung up or down, clamped at the ends. Off-scale values step to the
   // neighbour in the direction of travel, so a stepper always does something
   // predictable even when the current value is between rungs.
-  function stepToken(members, resolved, dir) {
+  function stepToken(members, resolved, dir, tolerance) {
     if (!members || members.length === 0) return null;
-    const exact = matchToken(members, resolved);
+    const exact = matchToken(members, resolved, tolerance);
     if (exact) {
       const i = members.indexOf(exact);
       const next = Math.min(members.length - 1, Math.max(0, i + (dir > 0 ? 1 : -1)));
@@ -2570,6 +2609,9 @@
       // The captured text is CSS-escaped ("p-1\.5"); the DOM class is not.
       const className = m[1].replace(/\\(.)/g, "$1");
       if (isOurs.name(className)) continue;
+      // A hashed class is a component's style, not a scale — see isHashedStep.
+      const stepOf = splitTokenName(className);
+      if (stepOf && isHashedStep(stepOf.step)) continue;
       for (let i = 0; i < rule.style.length; i++) {
         const prop = rule.style[i];
         if (prop.startsWith("--")) continue;
@@ -3379,6 +3421,8 @@
     editTypeStyles = collectTypeStyleUniverse(selectedElement);
     editTypeLadders = groupTypeStyleLadders(editTypeStyles);
     editTypeClaim = detectTypeStyle(selectedElement);
+    // The page's own values, for the ladders and the picker's second palette.
+    editPageValues = collectPageValues();
     // Anything the page was not allowed to read is chased through the service
     // worker and folded in when it lands. Not awaited: the panel opens now.
     topUpBlockedSheets(selectedElement);
@@ -3434,6 +3478,7 @@
     editTypeStyles = null;
     editTypeLadders = null;
     editTypeClaim = null;
+    editPageValues = null;
     // The measuring cell is scaffolding for the index, so it leaves with it
     // rather than sitting in the page for the rest of the session.
     releaseTokenProbes();
@@ -3459,6 +3504,7 @@
       // its own right — without this the guard below preventDefaults every
       // pointerdown on the picker and all three drag surfaces go dead.
       (editPopoverEl && editPopoverEl.contains(node)) ||
+      (rungListEl && rungListEl.contains(node)) ||
       (textEditorEl && textEditorEl.contains(node)) ||
       (settingsButtonEl && settingsButtonEl.contains(node)) ||
       (toastEl && toastEl.contains(node))
@@ -3819,6 +3865,132 @@
     return null;
   }
 
+  // The ladder a field steps along: the token family its value sits on, or,
+  // failing that, the page's own values for the property (ADR 0004). Named
+  // first — a family lends the name the delta can use; page values lend only
+  // rungs, and a step that lands on one reports the value.
+  function ladderForControl(el, control) {
+    if (!el || !el.isConnected || control.uniform) return null;
+    const family = familyForControl(el, control);
+    if (family) return { kind: "token", prefix: family.prefix, members: family.members };
+    const key = PAGE_LADDER_KEY[control.prop];
+    const members = key && editPageValues && editPageValues.ladders[key];
+    if (!members) return null;
+    return { kind: "page", prefix: "page:" + key, key, members };
+  }
+
+  function ladderByPrefix(prefix) {
+    if (!prefix) return null;
+    if (prefix.startsWith("page:")) {
+      const key = prefix.slice(5);
+      const members = editPageValues && editPageValues.ladders[key];
+      return members ? { kind: "page", prefix, key, members } : null;
+    }
+    const family = editTokenFamilies && editTokenFamilies.find((f) => f.prefix === prefix);
+    return family ? { kind: "token", prefix, members: family.members } : null;
+  }
+
+  // ===== Page Values =====
+  // ADR 0004. The source model above claims a token only when the source is
+  // in force, which is right for a delta block an agent will apply to source
+  // and silent on most production pages, whose lengths are hard-coded or
+  // compiled away. So a second scale is read straight off the page: the
+  // distinct sizes, weights, leadings, trackings, radii and stroke widths the
+  // elements here actually carry, and the colours of their text and fills.
+  // Every field can step on any page; the source model keeps the one thing
+  // the page cannot give, the name. Spacing is not harvested — a page's
+  // paddings are a histogram, not a scale.
+  //
+  // One walk per Edit Mode entry, bounded: past this many elements the rest
+  // of the page is not read, which loses rungs rather than time.
+  const PAGE_VALUE_BUDGET = 4000;
+  const PAGE_COLOUR_CAP = 24;
+
+  // Which control steps along which harvested ladder. The radius sides share
+  // the corner ladder; nothing else in the panel has one.
+  const PAGE_LADDER_KEY = {
+    "font-size": "font-size",
+    "font-weight": "font-weight",
+    "line-height": "line-height",
+    "letter-spacing": "letter-spacing",
+    "border-width": "border-width",
+    "border-radius": "border-radius",
+    "border-top-left-radius": "border-radius",
+    "border-top-right-radius": "border-radius",
+    "border-bottom-right-radius": "border-radius",
+    "border-bottom-left-radius": "border-radius",
+  };
+
+  // What the ladder is called when the capsule names it: the property in the
+  // page's own words.
+  const PAGE_LADDER_WORD = {
+    "font-size": "sizes", "font-weight": "weights", "line-height": "leadings",
+    "letter-spacing": "trackings", "border-width": "stroke widths", "border-radius": "radii",
+  };
+
+  const PAGE_SKIP_TAGS = new Set(["SCRIPT", "STYLE", "LINK", "META", "TITLE", "HEAD", "NOSCRIPT", "TEMPLATE"]);
+
+  function collectPageValues() {
+    const raw = {};
+    for (const key of Object.keys(PAGE_LADDER_WORD)) raw[key] = [];
+    const colours = new Map();
+    const note = (parsed, css) => {
+      if (!parsed || parsed.a <= 0) return;
+      const hex = formatHex(parsed);
+      const entry = colours.get(hex) || { hex, css, count: 0 };
+      entry.count++;
+      colours.set(hex, entry);
+    };
+
+    let seen = 0;
+    let truncated = false;
+    const root = document.body || document.documentElement;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
+    for (let node = walker.currentNode; node; node = walker.nextNode()) {
+      if (PAGE_SKIP_TAGS.has(node.tagName) || isOurs.node(node)) continue;
+      if (++seen > PAGE_VALUE_BUDGET) { truncated = true; break; }
+      const style = getComputedStyle(node);
+      if (style.display === "none") continue;
+
+      // Type reads off the elements that carry text of their own; a wrapper
+      // only inherits, and counting it would weigh every value by its depth.
+      if (ownsText(node)) {
+        const size = parseFloat(style.fontSize);
+        if (isFinite(size)) raw["font-size"].push(size);
+        const weight = parseFloat(style.fontWeight);
+        if (isFinite(weight)) raw["font-weight"].push(weight);
+        const lead = parseFloat(style.lineHeight);
+        if (style.lineHeight !== "normal" && isFinite(lead)) raw["line-height"].push(lead);
+        raw["letter-spacing"].push(style.letterSpacing === "normal" ? 0 : parseFloat(style.letterSpacing) || 0);
+        note(resolveColor(style.color), style.color);
+      }
+      note(resolveColor(style.backgroundColor), style.backgroundColor);
+      const stroke = parseFloat(style.borderTopWidth);
+      if (stroke > 0) {
+        raw["border-width"].push(stroke);
+        note(resolveColor(style.borderTopColor), style.borderTopColor);
+      }
+      const radius = parseFloat(style.borderTopLeftRadius);
+      if (radius > 0) raw["border-radius"].push(radius);
+    }
+
+    const ladders = {};
+    for (const key of Object.keys(raw)) ladders[key] = ladderFromValues(raw[key]);
+    const palette = Array.from(colours.values())
+      .sort((a, b) => b.count - a.count)
+      .slice(0, PAGE_COLOUR_CAP);
+    return { ladders, colours: palette, sampled: seen, truncated };
+  }
+
+  // The words a page ladder's capsule and tooltip use.
+  function pageLadderTip(ladder, onRung) {
+    const word = PAGE_LADDER_WORD[ladder.key] || "values";
+    const n = ladder.members.length;
+    return onRung
+      ? `One of ${n} ${word} on this page`
+      : `Between the ${word} on this page — the arrows step to one`;
+  }
+
   // Colour tokens in scope on this element, for the picker's palette. Only
   // names that resolve to a colour are offered — a --space-4 has no business in
   // a swatch row.
@@ -4166,6 +4338,7 @@
       editRebuilding = false;
     }
     hideTip();
+    closeRungList();
 
     for (const group of groupsFor(selectedElement)) {
       // An edit reveals its group: a closed group hiding a changed value
@@ -4789,8 +4962,8 @@
   // suits a different question: typing when you know the number, arrows when
   // you are counting steps, scrubbing when you are judging by eye. The chip's
   // ends carry the arrows: faint at rest, the hint that it scrubs; a control
-  // on hover — a rung along the ladder where a scale exists, a step of the
-  // number where it does not.
+  // on hover — a rung along the ladder where one exists, a step of the
+  // number where none does.
   function buildNumericControl(control) {
     const holder = document.createElement("span");
     holder.className = "pnt-edit-fieldwrap";
@@ -4799,13 +4972,13 @@
     wrap.className = "pnt-edit-num";
     wrap.dataset.prop = control.prop;
 
-    // The stepper only exists when this element's value is actually sitting
-    // on one of the page's scales. Offering "‹ — ›" over a value that belongs
-    // to no scale would promise a move that cannot happen.
-    const family = control.uniform || editPrefs.editTokenControls === "value"
+    // The ladder this field steps along: the token family its value sits on,
+    // or the page's own values for the property. Offering "‹ — ›" over a
+    // value that belongs to neither would promise a move that cannot happen.
+    const ladder = editPrefs.editTokenControls === "value"
       ? null
-      : familyForControl(selectedElement, control);
-    wrap.dataset.kind = family ? "tok" : "none";
+      : ladderForControl(selectedElement, control);
+    wrap.dataset.kind = ladder ? (ladder.kind === "token" ? "tok" : "page") : "none";
 
     const input = document.createElement("input");
     input.className = "pnt-edit-input";
@@ -4814,7 +4987,7 @@
     input.spellcheck = false;
     input.setAttribute("aria-label", control.label);
 
-    wrap.appendChild(arrowButton(control, family, -1));
+    wrap.appendChild(arrowButton(control, ladder, -1));
     wrap.appendChild(input);
     if (control.unit) {
       const unit = document.createElement("i");
@@ -4822,7 +4995,7 @@
       unit.textContent = control.unit;
       wrap.appendChild(unit);
     }
-    wrap.appendChild(arrowButton(control, family, 1));
+    wrap.appendChild(arrowButton(control, ladder, 1));
 
     input.addEventListener("keydown", (e) => onNumericKey(e, control));
     input.addEventListener("blur", () => commitNumericInput(control, input));
@@ -4831,8 +5004,11 @@
     wrap.addEventListener("pointerdown", (e) => onNumericScrubStart(e, control, input));
 
     // "token" hides the raw number once a scale is available: the whole point
-    // of a design system is that the pixel count is not the decision.
-    if (editPrefs.editTokenControls === "token" && family) wrap.classList.add("pnt-edit-quiet");
+    // of a design system is that the pixel count is not the decision. A page
+    // ladder has no name to show instead, so its number stays.
+    if (editPrefs.editTokenControls === "token" && ladder && ladder.kind === "token") {
+      wrap.classList.add("pnt-edit-quiet");
+    }
 
     if (control.auto) {
       const pair = document.createElement("span");
@@ -4854,24 +5030,38 @@
       holder.appendChild(wrap);
     }
 
-    if (family) {
+    // The capsule: the second control of the two-control token form. A token
+    // family's wears the accent and the name; a page ladder's wears the field
+    // fill and says only that the value is on the page. Its name opens the
+    // rung list.
+    if (ladder) {
       const stepper = document.createElement("span");
-      stepper.className = "pnt-edit-tok";
-      stepper.dataset.family = family.prefix;
+      stepper.className = "pnt-edit-tok" + (ladder.kind === "page" ? " pnt-edit-page" : "");
+      stepper.dataset.family = ladder.prefix;
+      const scale = ladder.kind === "token"
+        ? `the ${ladder.prefix} scale`
+        : `the ${PAGE_LADDER_WORD[ladder.key] || "values"} on this page`;
       const down = document.createElement("button");
       down.type = "button";
       down.textContent = "‹";
-      down.title = `Step ${control.label} down the ${family.prefix} scale`;
+      down.title = `Step ${control.label} down ${scale}`;
       const name = document.createElement("b");
+      name.title = "Every rung, and any token in scope that equals this value";
+      name.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (rungListEl && rungListEl.dataset.control === control.prop) closeRungList();
+        else openRungList(control, stepper);
+      });
       const up = document.createElement("button");
       up.type = "button";
       up.textContent = "›";
-      up.title = `Step ${control.label} up the ${family.prefix} scale`;
+      up.title = `Step ${control.label} up ${scale}`;
       down.addEventListener("click", (e) => {
-        e.preventDefault(); e.stopPropagation(); stepControlToken(control, family, -1);
+        e.preventDefault(); e.stopPropagation(); stepControlToken(control, ladder, -1);
       });
       up.addEventListener("click", (e) => {
-        e.preventDefault(); e.stopPropagation(); stepControlToken(control, family, 1);
+        e.preventDefault(); e.stopPropagation(); stepControlToken(control, ladder, 1);
       });
       stepper.appendChild(down);
       stepper.appendChild(name);
@@ -4881,19 +5071,22 @@
     return holder;
   }
 
-  function arrowButton(control, family, dir) {
+  function arrowButton(control, ladder, dir) {
     const button = document.createElement("button");
     button.className = "pnt-edit-arrow " + (dir > 0 ? "pnt-edit-up" : "pnt-edit-dn");
     button.type = "button";
     button.tabIndex = -1;
-    button.title = family
-      ? `Step ${control.label} ${dir > 0 ? "up" : "down"} the ${family.prefix} scale`
-      : `${dir > 0 ? "Increase" : "Decrease"} ${control.label}`;
+    const way = dir > 0 ? "up" : "down";
+    button.title = !ladder
+      ? `${dir > 0 ? "Increase" : "Decrease"} ${control.label}`
+      : ladder.kind === "token"
+        ? `Step ${control.label} ${way} the ${ladder.prefix} scale`
+        : `Step ${control.label} ${way} through the ${PAGE_LADDER_WORD[ladder.key] || "values"} on this page`;
     button.setAttribute("aria-label", button.title);
     button.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      if (family) stepControlToken(control, family, dir);
+      if (ladder) stepControlToken(control, ladder, dir);
       else nudgeNumeric(control, dir, e.shiftKey);
     });
     return button;
@@ -4910,19 +5103,41 @@
     refreshEditControls();
   }
 
-  // A step along a scale, not an arithmetic nudge. When the target rung is a
-  // utility class the element already wears, the edit is a class swap — that
-  // is what the source contains, so that is what the delta should say.
-  function stepControlToken(control, family, dir) {
+  // A step along a scale, not an arithmetic nudge. On a token family the
+  // target rung is a class swap or a var() — what the source contains, so
+  // what the delta should say. On a page ladder it is the value, written as
+  // one: the page lends rungs and no names.
+  function stepControlToken(control, ladder, dir) {
     const el = selectedElement;
     if (!el || !el.isConnected) return;
+    if (ladder.kind === "page") {
+      const current = numericState(el, control).value;
+      const next = stepToken(ladder.members, current, dir, PAGE_RUNG_TOLERANCE);
+      if (next) moveToRung(control, ladder, next);
+      return;
+    }
     const prop = control.reads || control.prop;
     const current = resolveLength(
       getComputedStyle(el).getPropertyValue(prop).trim(), tokenRemBase(), tokenEmBase(el));
     if (current === null) return;
-    const next = stepToken(family.members, current, dir);
-    if (!next) return;
+    const next = stepToken(ladder.members, current, dir);
+    if (next) moveToRung(control, ladder, next);
+  }
 
+  // Land on one rung of a ladder, whichever way it was chosen — an arrow, ⌥↑↓,
+  // or a row of the rung list.
+  function moveToRung(control, ladder, next) {
+    const el = selectedElement;
+    if (!el || !el.isConnected || !next) return;
+    if (ladder.kind === "page") {
+      if (Math.abs(numericState(el, control).value - next.resolved) < 0.01) return;
+      beginEditGesture(el, control.prop);
+      applyNumeric(control, next.resolved);
+      commitEditGesture();
+      refreshEditControls();
+      return;
+    }
+    const prop = control.reads || control.prop;
     const detected = detectPropertyToken(el, prop, getComputedStyle(el).getPropertyValue(prop).trim(), tokenIndex);
     const isVar = next.name.startsWith("--");
     const asClass = detected && detected.kind === "class" && !isVar;
@@ -4996,6 +5211,169 @@
       seg.appendChild(button);
     }
     return seg;
+  }
+
+  // ===== Rung list =====
+  // The field's ladder laid out: every rung with the current one marked, and
+  // beneath it any token in scope that equals the current value — ADR 0004's
+  // suggestion on demand, the way Figma's Dev Mode offers a variable for a
+  // raw value. Its own root beside the panel, like the picker and for the
+  // same reasons. Choosing a rung lands on it; choosing a match writes the
+  // var() and only then counts as a claim.
+  let rungListEl = null;
+
+  function openRungList(control, anchor) {
+    closeRungList();
+    const el = selectedElement;
+    if (!el || !el.isConnected) return;
+    const ladder = editPrefs.editTokenControls === "value" ? null : ladderForControl(el, control);
+    if (!ladder) return;
+
+    const pop = document.createElement("div");
+    pop.id = "pnt-rung-list";
+    pop.dataset.control = control.prop;
+
+    const head = document.createElement("div");
+    head.className = "pnt-edit-pophead";
+    const title = document.createElement("span");
+    title.className = "pnt-edit-poptitle";
+    title.textContent = ladder.kind === "token"
+      ? `${control.label} · ${ladder.prefix}`
+      : `${control.label} · ${PAGE_LADDER_WORD[ladder.key] || "values"} on this page`;
+    const close = document.createElement("button");
+    close.className = "pnt-edit-popclose";
+    close.type = "button";
+    close.innerHTML = ICONS.close;
+    close.title = "Close";
+    close.setAttribute("aria-label", "Close the rung list");
+    close.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      closeRungList();
+    });
+    head.appendChild(title);
+    head.appendChild(close);
+    pop.appendChild(head);
+
+    const unit = control.unit || "";
+    const current = numericState(el, control).value;
+    const tolerance = ladder.kind === "page" ? PAGE_RUNG_TOLERANCE : 0.5;
+    // A page value keeps whatever decimals it has: 22.5 is a different rung
+    // from 22 and 23, and rounding it to either would mark the wrong one.
+    const show = (v) => ladder.kind === "page"
+      ? String(Math.round(v * 100) / 100)
+      : formatNumeric(v, control);
+    const rows = document.createElement("div");
+    rows.className = "pnt-rung-rows";
+    for (const member of ladder.members) {
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "pnt-rung" + (ladder.kind === "page" ? " pnt-rung-page" : "");
+      row.classList.toggle("pnt-rung-on", Math.abs(member.resolved - current) <= tolerance);
+      const name = document.createElement("b");
+      const value = document.createElement("s");
+      if (ladder.kind === "token") {
+        name.textContent = member.name;
+        value.textContent = `${show(member.resolved)}${unit}`;
+      } else {
+        name.textContent = `${show(member.resolved)}${unit}`;
+        value.textContent = member.count > 1 ? `×${member.count}` : "";
+      }
+      row.appendChild(name);
+      row.appendChild(value);
+      row.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        moveToRung(control, ladder, member);
+        closeRungList();
+      });
+      rows.appendChild(row);
+    }
+    pop.appendChild(rows);
+
+    // Tokens this element can see whose value equals the one it has, when
+    // the source does not already say so. Lengths only: a var that happens
+    // to equal a weight is a coincidence nobody writes.
+    const matches = ladder.kind === "page" && control.unit === "px" ? scopeMatches(el, control) : [];
+    if (matches.length) {
+      const sep = document.createElement("div");
+      sep.className = "pnt-rung-sep";
+      pop.appendChild(sep);
+      const heading = document.createElement("p");
+      heading.className = "pnt-rung-h";
+      heading.textContent = "Matches in scope";
+      pop.appendChild(heading);
+      const list = document.createElement("div");
+      list.className = "pnt-rung-rows";
+      for (const match of matches) {
+        const row = document.createElement("button");
+        row.type = "button";
+        row.className = "pnt-rung pnt-rung-match";
+        row.title = `Write ${control.label} as var(${match.name})`;
+        const name = document.createElement("b");
+        name.textContent = match.name;
+        const value = document.createElement("s");
+        value.textContent = `${formatNumeric(match.resolved, control)}${unit}`;
+        row.appendChild(name);
+        row.appendChild(value);
+        row.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          claimMatch(control, match);
+          closeRungList();
+        });
+        list.appendChild(row);
+      }
+      pop.appendChild(list);
+    }
+
+    // After the panel in the document, so it paints above it — the same
+    // ordering rule the picker documents. Placed the way the picker is:
+    // beside the panel, level with the capsule that opened it.
+    document.documentElement.appendChild(pop);
+    rungListEl = pop;
+    positionColorPicker(pop, anchor);
+  }
+
+  function closeRungList() {
+    if (!rungListEl) return;
+    rungListEl.remove();
+    rungListEl = null;
+  }
+
+  // In-scope custom properties that resolve to the element's current length.
+  // Value coincidence, offered and never claimed on its own (ADR 0004).
+  function scopeMatches(el, control) {
+    const prop = control.reads || control.prop;
+    const rem = tokenRemBase();
+    const em = tokenEmBase(el);
+    const target = resolveLength(getComputedStyle(el).getPropertyValue(prop).trim(), rem, em);
+    if (target === null) return [];
+    const out = [];
+    for (const { name, value } of collectElementTokens(el)) {
+      const resolved = resolveLength(value, rem, em);
+      if (resolved !== null && Math.abs(resolved - target) <= 0.5) out.push({ name, resolved });
+      if (out.length >= 8) break;
+    }
+    return out;
+  }
+
+  // Write the value the element already has as the token that equals it.
+  // Nothing on screen changes; the source does, and that is the edit the
+  // delta carries: `22px → var(--title-md)`.
+  function claimMatch(control, match) {
+    const el = selectedElement;
+    if (!el || !el.isConnected) return;
+    beginEditGesture(el, control.prop);
+    setEditValue(el, control.prop, {
+      css: `${match.resolved}px`,
+      inline: `var(${match.name})`,
+      priority: neededPriority(el, control.prop),
+      cls: null,
+      token: { kind: "var", name: match.name },
+    });
+    commitEditGesture();
+    renderEditControls();
   }
 
   // ===== Edit Colour Picker =====
@@ -5081,7 +5459,7 @@
 
       const idleCaption = () => {
         capName.textContent = "";
-        capValue.textContent = "page tokens";
+        capValue.textContent = "in the source";
       };
       const nameCaption = (token) => {
         capName.textContent = token.name;
@@ -5119,6 +5497,48 @@
       // header names what is being edited and carries the way out, so it stays
       // the top edge of the surface.
       pop.querySelector(".pnt-edit-pophead").after(palette);
+      palette.after(caption);
+    }
+
+    // The page's own colours (ADR 0004): what the text and the fills here
+    // actually wear, most frequent first. A pick is a colour, not a name —
+    // the delta reports the hex, and nothing is claimed.
+    const pageColours = editPageValues ? editPageValues.colours : [];
+    if (pageColours.length) {
+      const palette = document.createElement("div");
+      palette.className = "pnt-edit-palette pnt-edit-palette-page";
+      const caption = document.createElement("div");
+      caption.className = "pnt-edit-palcap";
+      const capName = document.createElement("b");
+      const capValue = document.createElement("span");
+      caption.appendChild(capName);
+      caption.appendChild(capValue);
+      const idle = () => { capName.textContent = ""; capValue.textContent = "on the page"; };
+      const name = (c) => { capName.textContent = c.hex; capValue.textContent = `×${c.count}`; };
+      idle();
+      for (const colour of pageColours) {
+        const swatch = document.createElement("button");
+        swatch.className = "pnt-edit-pal pnt-edit-pal-page";
+        swatch.style.backgroundColor = colour.hex;
+        swatch.title = `${colour.hex} — on this page ${colour.count} time${colour.count > 1 ? "s" : ""}`;
+        swatch.setAttribute("aria-label", swatch.title);
+        swatch.addEventListener("pointerenter", () => name(colour));
+        swatch.addEventListener("pointerleave", idle);
+        swatch.addEventListener("focus", () => name(colour));
+        swatch.addEventListener("blur", idle);
+        swatch.addEventListener("click", (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          const rgb = parseCssColor(colour.hex);
+          hsv = rgbToHsv(rgb.r, rgb.g, rgb.b);
+          alpha = rgb.a;
+          commit(null);
+          paint();
+        });
+        palette.appendChild(swatch);
+      }
+      const above = pop.querySelector(".pnt-edit-palcap") || pop.querySelector(".pnt-edit-pophead");
+      above.after(palette);
       palette.after(caption);
     }
 
@@ -5425,11 +5845,11 @@
     if ((e.key === "ArrowUp" || e.key === "ArrowDown") && e.altKey) {
       e.preventDefault();
       e.stopPropagation();
-      const family = control.uniform || editPrefs.editTokenControls === "value"
+      const ladder = editPrefs.editTokenControls === "value"
         ? null
-        : familyForControl(selectedElement, control);
-      if (!family) return;
-      stepControlToken(control, family, e.key === "ArrowUp" ? 1 : -1);
+        : ladderForControl(selectedElement, control);
+      if (!ladder) return;
+      stepControlToken(control, ladder, e.key === "ArrowUp" ? 1 : -1);
       const again = editPanelEl && editPanelEl.querySelector(
         `.pnt-edit-row[data-control="${control.prop}"] .pnt-edit-input`);
       if (again) again.focus();
@@ -5638,12 +6058,21 @@
         // the tooltip, since a capsule can cut it short.
         const stepper = row.querySelector(".pnt-edit-tok");
         if (stepper) {
-          const family = editTokenFamilies &&
-            editTokenFamilies.find((f) => f.prefix === stepper.dataset.family);
-          const onRung = family ? matchToken(family.members, state.value) : null;
-          stepper.querySelector("b").textContent = onRung ? shortTokenName(onRung.name) : "—";
+          const ladder = ladderByPrefix(stepper.dataset.family);
+          const onRung = ladder
+            ? matchToken(ladder.members, state.value, ladder.kind === "page" ? PAGE_RUNG_TOLERANCE : undefined)
+            : null;
+          const name = stepper.querySelector("b");
+          if (ladder && ladder.kind === "page") {
+            // One word: a three-column cell has room for no more beside the
+            // arrows, and the tooltip says the rest.
+            name.textContent = onRung ? "page" : "—";
+            stepper.dataset.tip = pageLadderTip(ladder, Boolean(onRung));
+          } else {
+            name.textContent = onRung ? shortTokenName(onRung.name) : "—";
+            stepper.dataset.tip = onRung ? onRung.name : `Off the ${stepper.dataset.family} scale`;
+          }
           stepper.classList.toggle("pnt-edit-offscale", !onRung);
-          stepper.dataset.tip = onRung ? onRung.name : `Off the ${stepper.dataset.family} scale`;
           if (wrap) wrap.dataset.state = onRung ? "on" : "off";
         }
       }
@@ -5710,6 +6139,7 @@
 
   function removeEditPanel() {
     if (!editPanelEl) return;
+    closeRungList();
     if (editRail) {
       editRail.detach();
       editRail = null;
@@ -6299,7 +6729,14 @@
   // back would leave a dirty dot and a delta line for a change nobody can see.
   function sameEditValue(a, b) {
     if (!a || !b) return a === b;
-    return a.css === b.css && (a.cls || null) === (b.cls || null);
+    if (a.css !== b.css || (a.cls || null) !== (b.cls || null)) return false;
+    // Naming a token the source did not, at the same value, is an edit: the
+    // claim is what the delta carries (ADR 0004 — a match chosen from the
+    // rung list). Losing the name on the way back to the same value is not,
+    // and the original is restored instead.
+    const gained = Boolean(b.token && b.token.name) &&
+      !(a.token && a.token.name === b.token.name);
+    return !gained;
   }
 
   function pushUndo(entry) {
@@ -7421,6 +7858,7 @@
     if (toastEl && toastEl.contains(e.target)) return;
     if (editPanelEl && editPanelEl.contains(e.target)) return;
     if (editPopoverEl && editPopoverEl.contains(e.target)) return;
+    if (rungListEl && rungListEl.contains(e.target)) return;
     if (textEditorEl && textEditorEl.contains(e.target)) return;
 
     e.preventDefault();
@@ -7491,6 +7929,8 @@
       // more than a step.
       if (textEditorEl) {
         closeTextEditor();
+      } else if (rungListEl) {
+        closeRungList();
       } else if (editPopoverEl) {
         closeColorPicker();
       } else if (editing) {

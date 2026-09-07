@@ -292,10 +292,12 @@ tick on the facing edge appears *only while the panel floats*: an attached
 panel abuts one edge of the clearance within a stub, and the tick it sits
 against is the association. `test/tether.mjs` sweeps both properties.
 
-**Colour picker and long-text editor.** Their own roots beside the panel, in
-the same glass, so neither is clipped by the panel's overflow or paints over
-the rows it is tuning. The picker's saturation square, hue rail and alpha rail
-are never themed — they are the colour space, not decoration.
+**Colour picker, long-text editor and rung list.** Their own roots beside the
+panel, in the same glass, so none is clipped by the panel's overflow or paints
+over the rows it is tuning. The picker's saturation square, hue rail and alpha
+rail are never themed — they are the colour space, not decoration. The rung
+list opens from a capsule's name: the ladder's rungs with the current one
+marked, then any token in scope that equals the current value.
 
 **Scrollbar.** Every surface the chrome scrolls — the panel body, the
 long-text editor's textarea, the settings page and its payload box — draws
@@ -469,6 +471,39 @@ A utility-class step is applied and then *checked*: `.card p` outranks
 is the common case, so when the computed value did not move, the class comes off
 and the delta reports the value instead. Claiming the swap would be advice that
 does nothing in the source either.
+
+**Page values sit beside token families (ADR 0004).** The claiming rule above
+is right for a delta block an agent will apply to source, and it is why the
+token layer was silent on most production pages: their lengths are hard-coded
+or compiled away, so the panel offered no scale at all. Since round four a
+second scale is read straight off the page once per Edit Mode entry —
+`collectPageValues` walks up to four thousand elements and keeps the distinct
+sizes, weights, leadings and trackings of the text that is here, the radii and
+stroke widths, and the colours of the text and the fills, most frequent first.
+Every field steps along the token family its value sits on, or failing that
+the page's own values for the property; a step that lands on a page value
+reports the value, and only a family lends a name. The capsule under a field
+says which: the accent and the name for a family, the field fill and the word
+`page` for the page's own. Spacing is not harvested — a page's paddings are a
+histogram, not a scale. The picker offers the page's colours in a second
+palette under the source's, and a pick there is a colour, not a claim.
+
+**The rung list is the suggestion on demand.** The capsule's name opens the
+field's ladder laid out — every rung, the current one marked — and beneath it
+any custom property in scope that resolves to the current value, the way
+Figma's Dev Mode suggests a variable for a raw value. Choosing a match writes
+the `var()` and only then counts as a claim: `sameEditValue` treats a name
+gained at the same value as an edit, so the delta carries `22px → --title-md`,
+while a name lost on the way back to the same value is not one, and the
+original is restored.
+
+**A build hash is not a step.** Emotion and Chakra emit single-class
+selectors named `css-<hash>` that all share the prefix `css`; two of them
+setting padding at different values formed a family, and the stepper would
+have swapped an element into another component's hash. `isHashedStep` refuses
+a last segment of six or more hex characters, or five or more that mix digits
+and letters with at most one vowel, both when classes are indexed and when
+families are grouped; the harness carries the fixture.
 
 **The extension's own tokens are not the page's.** `tokens.css` and
 `content.css` ride along on every page as content scripts, so the stylesheet

@@ -134,7 +134,9 @@ one undo entry: a scrub, a held arrow key, a drag in the colour picker.
 **Token family** — a name-prefixed scale a stepper can walk (`--title-sm/md/lg`,
 `text-xs…text-2xl`, `p-0…p-96`). Membership is decided by the *values*, not by
 the names: any shared prefix with two rungs at two different numbers is a
-family, whatever its steps are called.
+family, whatever its steps are called. The named scale; page values are the
+unnamed one. A build hash (`css-1a2b3c`) is never a step: it names a
+component's style, not a rung.
 
 The names were tried first — a step had to be numeric or one of thirty-one words
 we had written down — and that was a guess about how other people name things.
@@ -174,6 +176,13 @@ source really references it — a page value that happens to equal a token is
 still a value. Decided 2026-09-06, when the source-only layer turned out to be
 silent on most production pages.
 _Avoid_: observed tokens, harvested tokens (they are not tokens), page scale.
+
+**Rung list** — a field's ladder laid out: every rung with the current one
+marked, and beneath it any token in scope that equals the current value. Its
+own root beside the panel, like the colour picker. Choosing a rung lands on it;
+choosing a match writes the token and only then counts as a claim — the
+suggestion on demand that ADR 0004 allows and value coincidence alone never
+earns.
 
 **Own chrome** — the DOM this extension injects, all `pnt-`-prefixed. Kept
 distinct from the page's own DOM everywhere: in hit-testing, in what the info

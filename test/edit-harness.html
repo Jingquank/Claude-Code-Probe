@@ -174,6 +174,13 @@
   .rounded-md { border-radius: 8px; }
   .rounded-lg { border-radius: 12px; }
 
+  /* Emotion-shaped hashes. Single-class selectors that share the prefix
+     "css", each a component's own style: two of them setting padding at
+     different values used to form a family, and the stepper would swap an
+     element into another component's hash. Round four's guard refuses them. */
+  .css-1a2b3c { padding: 8px; }
+  .css-9z8y7x { padding: 16px; }
+
   /* ===== The page itself ===== */
   * { box-sizing: border-box; }
   body {
@@ -286,6 +293,18 @@
 <div class="remote-pad-2">
   <h2 class="remote-title">From a sheet the page can't read</h2>
 </div>
+
+<!-- Wears a hashed class. Its padding must offer no family and no stepper:
+     the class is a component's, not a scale's. -->
+<div class="css-1a2b3c hashed-fixture">
+  <h2 class="hashed-title" style="margin: 0">A hashed class, no scale</h2>
+</div>
+
+<!-- A value that equals a token without naming it. font-size is a raw 22px
+     while --title-md resolves to 22px: the source model claims nothing, the
+     page ladder still steps, and the rung list offers --title-md as a match
+     that becomes a claim only when chosen. -->
+<h2 class="coincidence" style="font-size: 22px; margin: 16px 0 0">Twenty-two, unnamed</h2>
 
 <!-- A themed subtree. Selecting inside it must see .themed's overrides, not
      :root's, because that is what the element itself actually resolves. -->

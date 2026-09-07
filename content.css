@@ -2018,7 +2018,8 @@ html.pnt-layout-bottom #pnt-toolbar .pnt-bar {
 
 /* The picker no longer sits under the row it edits, so it names its property
    and carries the close affordance the nested version never had. */
-#pnt-color-picker .pnt-edit-pophead {
+#pnt-color-picker .pnt-edit-pophead,
+#pnt-rung-list .pnt-edit-pophead {
   all: initial;
   display: flex;
   align-items: center;
@@ -2026,7 +2027,8 @@ html.pnt-layout-bottom #pnt-toolbar .pnt-bar {
   gap: var(--pnt-gap-base);
 }
 
-#pnt-color-picker .pnt-edit-poptitle {
+#pnt-color-picker .pnt-edit-poptitle,
+#pnt-rung-list .pnt-edit-poptitle {
   all: initial;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2035,7 +2037,8 @@ html.pnt-layout-bottom #pnt-toolbar .pnt-bar {
   font: var(--pnt-weight-medium) var(--pnt-text-base)/1.4 var(--pnt-font);
 }
 
-#pnt-color-picker .pnt-edit-popclose {
+#pnt-color-picker .pnt-edit-popclose,
+#pnt-rung-list .pnt-edit-popclose {
   all: initial;
   box-sizing: border-box;
   flex: none;
@@ -2052,9 +2055,11 @@ html.pnt-layout-bottom #pnt-toolbar .pnt-bar {
               background var(--pnt-duration-fast) var(--pnt-ease);
 }
 
-#pnt-color-picker .pnt-edit-popclose svg { width: 13px; height: 13px; }
+#pnt-color-picker .pnt-edit-popclose svg,
+#pnt-rung-list .pnt-edit-popclose svg { width: 13px; height: 13px; }
 
-#pnt-color-picker .pnt-edit-popclose:hover {
+#pnt-color-picker .pnt-edit-popclose:hover,
+#pnt-rung-list .pnt-edit-popclose:hover {
   background: var(--pnt-surface-2);
   color: var(--pnt-text-1);
 }
@@ -2237,6 +2242,112 @@ html.pnt-layout-bottom #pnt-toolbar .pnt-bar {
 
 #pnt-color-picker .pnt-edit-drop:hover { border-color: var(--pnt-accent); color: var(--pnt-accent); }
 
+/* ===== Rung list =====
+   The field's ladder laid out, with any token in scope that equals the
+   current value beneath it. Its own root beside the panel, in the picker's
+   glass and with the picker's head. Names in the accent because they exist
+   in the source; a page ladder's rungs are values, and read as values. */
+#pnt-rung-list {
+  all: initial;
+  box-sizing: border-box;
+  position: fixed;
+  z-index: var(--pnt-z-chrome);
+  width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pnt-xs);
+  padding: var(--pnt-gap-section);
+  background: var(--pnt-glass);
+  -webkit-backdrop-filter: blur(var(--pnt-blur)) saturate(1.15);
+  backdrop-filter: blur(var(--pnt-blur)) saturate(1.15);
+  border: 1px solid var(--pnt-border-2);
+  border-radius: var(--pnt-radius-lg);
+  box-shadow: var(--pnt-shadow-2);
+  font-family: var(--pnt-font);
+  color: var(--pnt-text-1);
+}
+
+#pnt-rung-list .pnt-rung-rows {
+  all: initial;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+#pnt-rung-list .pnt-rung {
+  all: initial;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pnt-gap-section);
+  padding: 5px var(--pnt-sm);
+  border-radius: var(--pnt-radius-xs);
+  font: var(--pnt-weight-medium) var(--pnt-text-sm)/1 var(--pnt-font-mono);
+  color: var(--pnt-accent);
+  cursor: pointer;
+  transition: background var(--pnt-duration-fast) var(--pnt-ease);
+}
+
+#pnt-rung-list .pnt-rung b {
+  all: initial;
+  min-width: 0;
+  font: inherit;
+  color: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#pnt-rung-list .pnt-rung s {
+  all: initial;
+  flex: none;
+  font: var(--pnt-text-sm)/1 var(--pnt-font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--pnt-text-3);
+}
+
+#pnt-rung-list .pnt-rung:hover { background: var(--pnt-surface-2); }
+
+#pnt-rung-list .pnt-rung:focus-visible {
+  outline: 2px solid var(--pnt-focus);
+  outline-offset: -2px;
+}
+
+#pnt-rung-list .pnt-rung.pnt-rung-on { background: var(--pnt-accent-soft); }
+
+#pnt-rung-list .pnt-rung.pnt-rung-on::after {
+  content: "";
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--pnt-accent);
+}
+
+#pnt-rung-list .pnt-rung.pnt-rung-page { color: var(--pnt-text-1); }
+
+#pnt-rung-list .pnt-rung-sep {
+  all: initial;
+  display: block;
+  height: 1px;
+  margin: var(--pnt-gap-tight) 0;
+  background: var(--pnt-border-1);
+}
+
+#pnt-rung-list .pnt-rung-h {
+  all: initial;
+  display: block;
+  padding: var(--pnt-xs) var(--pnt-sm) 3px;
+  font: var(--pnt-weight-medium) var(--pnt-text-sm)/1 var(--pnt-font-sans);
+  color: var(--pnt-text-3);
+}
+
+/* The capsule's name opens the list; say so. */
+#pnt-edit-panel .pnt-edit-tok b:hover { text-decoration: underline; text-underline-offset: 2px; }
+
 /* ===== Settings Button =====
    Viewport chrome, not selection chrome: mounted by activate() and pinned to the
    top-right corner for as long as point mode is on, whether or not anything is
@@ -2390,7 +2501,9 @@ html.pnt-layout-bottom #pnt-toolbar .pnt-bar {
    chrome rather than inheriting the page's crosshair. Everything below that is
    actually operable overrides this on specificity. */
 #pnt-color-picker,
-#pnt-color-picker * {
+#pnt-color-picker *,
+#pnt-rung-list,
+#pnt-rung-list * {
   cursor: default !important;
 }
 
@@ -2409,6 +2522,11 @@ html.pnt-layout-bottom #pnt-toolbar .pnt-bar {
 #pnt-edit-panel .pnt-edit-seg button *,
 #pnt-edit-panel .pnt-edit-arrow,
 #pnt-edit-panel .pnt-edit-tok button,
+#pnt-edit-panel .pnt-edit-tok b,
+#pnt-rung-list .pnt-rung,
+#pnt-rung-list .pnt-rung *,
+#pnt-rung-list .pnt-edit-popclose,
+#pnt-rung-list .pnt-edit-popclose *,
 #pnt-edit-panel .pnt-type-st,
 #pnt-edit-panel .pnt-type-chip.pnt-type-drifted,
 #pnt-edit-panel .pnt-type-chip.pnt-type-drifted *,

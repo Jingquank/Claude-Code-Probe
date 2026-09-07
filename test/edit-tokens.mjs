@@ -91,12 +91,31 @@ export function splitTokenName(name) {
   return { prefix, step };
 }
 
+export function isHashedStep(step) {
+  if (typeof step !== "string") return false;
+  if (/^[0-9a-f]{6,}$/i.test(step)) return true;
+  return step.length >= 5 && /^[0-9a-z]+$/i.test(step) && /\d/.test(step) &&
+    /[a-z]/i.test(step) && (step.match(/[aeiou]/gi) || []).length <= 1;
+}
+
+export function ladderFromValues(values) {
+  const counts = new Map();
+  for (const v of values || []) {
+    if (typeof v !== "number" || !isFinite(v)) continue;
+    const key = Math.round(v * 100) / 100;
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  const members = Array.from(counts, ([resolved, count]) => ({ name: null, resolved, count }))
+    .sort((a, b) => a.resolved - b.resolved);
+  return members.length >= 2 ? members : null;
+}
+
 export function groupTokenFamilies(entries) {
   const byPrefix = new Map();
   for (const e of entries || []) {
     if (!e || typeof e.resolved !== "number" || !isFinite(e.resolved)) continue;
     const split = splitTokenName(e.name);
-    if (!split) continue;
+    if (!split || isHashedStep(split.step)) continue;
     if (!byPrefix.has(split.prefix)) byPrefix.set(split.prefix, []);
     byPrefix.get(split.prefix).push({ name: e.name, step: split.step, resolved: e.resolved });
   }
@@ -126,9 +145,9 @@ export function matchToken(members, resolved, tolerance) {
   return best;
 }
 
-export function stepToken(members, resolved, dir) {
+export function stepToken(members, resolved, dir, tolerance) {
   if (!members || members.length === 0) return null;
-  const exact = matchToken(members, resolved);
+  const exact = matchToken(members, resolved, tolerance);
   if (exact) {
     const i = members.indexOf(exact);
     const next = Math.min(members.length - 1, Math.max(0, i + (dir > 0 ? 1 : -1)));
@@ -437,6 +456,50 @@ check("family · empty input is a family-less page, not an error", (fail) => {
     const got = groupTokenFamilies(input);
     if (!Array.isArray(got) || got.length !== 0) fail(`${JSON.stringify(input)} → ${JSON.stringify(got)}`);
   }
+});
+
+// ===== 3b. Hashed classes, and page values =====
+// Round four. Emotion and Chakra emit single-class selectors named css-<hash>,
+// all sharing the prefix "css"; two of them setting padding at different
+// values formed a family, and the stepper offered to swap an element into
+// another component's hash. Real steps must survive the guard.
+
+check("hashed · a build hash is not a step", (fail) => {
+  for (const step of ["1a2b3c", "70qvj9", "abcdef12", "9z8y7x", "x1y2z3w4"]) {
+    if (!isHashedStep(step)) fail(`${step} should read as a hash`);
+  }
+  for (const step of ["2xl", "xs", "1.5", "500", "small", "xxs", "md", "4", "title", "1/2", "auto", "base", "primary"]) {
+    if (isHashedStep(step)) fail(`${step} is a real step and must not read as a hash`);
+  }
+});
+
+check("hashed · two hashed classes form no family", (fail) => {
+  const fams = groupTokenFamilies([
+    { name: "css-1a2b3c", resolved: 8 },
+    { name: "css-9z8y7x", resolved: 16 },
+    { name: "css-70qvj9", resolved: 24 },
+  ]);
+  if (fams.length !== 0) fail(`got a family: ${JSON.stringify(fams.map((f) => f.prefix))}`);
+  // ...while a real scale beside them still does.
+  const real = groupTokenFamilies([
+    { name: "css-1a2b3c", resolved: 8 },
+    { name: "p-2", resolved: 8 },
+    { name: "p-4", resolved: 16 },
+  ]);
+  if (real.length !== 1 || real[0].prefix !== "p") fail(`the p family was lost: ${JSON.stringify(real)}`);
+});
+
+// Page values (ADR 0004): the distinct values a property takes on the page,
+// sorted, counted, and two to be a ladder.
+check("page values · distinct, sorted, counted, two to step", (fail) => {
+  const ladder = ladderFromValues([14, 16, 14, 18, 14, 16, 12.5, 12.5]);
+  if (!ladder) return fail("no ladder from five distinct values");
+  const got = ladder.map((m) => `${m.resolved}×${m.count}`).join(" ");
+  if (got !== "12.5×2 14×3 16×2 18×1") fail(`got ${got}`);
+  if (ladder.some((m) => m.name !== null)) fail("a page value carries a name");
+  if (ladderFromValues([14, 14, 14]) !== null) fail("one distinct value is not a ladder");
+  if (ladderFromValues([]) !== null) fail("nothing is not a ladder");
+  if (ladderFromValues([NaN, Infinity, "14"]) !== null) fail("non-numbers made a ladder");
 });
 
 // ===== 4. matchToken =====
