@@ -119,6 +119,14 @@
   #pnt-overlay-container #pnt-tether .pnt-tether-seg {
     transition: none;
   }
+
+  /* The rail's fade and the scroll shadows' fade are state changes, not
+     motion of their own, but stillness means they switch rather than ease. */
+  .pnt-rail,
+  #pnt-edit-panel .pnt-edit-head,
+  #pnt-edit-panel .pnt-edit-foot {
+    transition: none;
+  }
 }
 
 /* ===== Redline =====
@@ -868,6 +876,7 @@ html.pnt-layout-bottom #pnt-toolbar .pnt-bar {
   visibility: visible;
 }
 
+
 /* Placement that tracks the viewport has to be instantaneous — gliding to each
    new scroll position smears the chrome across the page. !important because
    #pnt-label and #pnt-toolbar both set transition at ID specificity. */
@@ -983,6 +992,10 @@ html.pnt-layout-bottom #pnt-toolbar .pnt-bar {
   border-bottom: 1px solid var(--pnt-border-1);
   font-family: var(--pnt-font);
   cursor: grab;
+  /* Above the body, so the scroll shadow below lands on the rows. */
+  position: relative;
+  z-index: 1;
+  transition: box-shadow var(--pnt-duration-fast) var(--pnt-ease);
   /* Without this the browser claims the gesture for scrolling and the panel
      stutters or stops following the pointer on trackpads and touch. */
   touch-action: none;
@@ -990,6 +1003,17 @@ html.pnt-layout-bottom #pnt-toolbar .pnt-bar {
 
 #pnt-edit-panel .pnt-edit-head.pnt-edit-dragging {
   cursor: grabbing;
+}
+
+/* The "there is more" cue: while rows have scrolled under the header it
+   casts a short shadow on them, and the footer does the same while rows are
+   still below it. Both go at the ends. rail.js sets the two classes. */
+#pnt-edit-panel.pnt-more-above .pnt-edit-head {
+  box-shadow: 0 6px 12px -6px var(--pnt-shade);
+}
+
+#pnt-edit-panel.pnt-more-below .pnt-edit-foot {
+  box-shadow: 0 -6px 12px -6px var(--pnt-shade);
 }
 
 #pnt-edit-panel .pnt-edit-back {
@@ -2429,6 +2453,9 @@ html.pnt-layout-bottom #pnt-toolbar .pnt-bar {
   gap: var(--pnt-md);
   padding: var(--pnt-sm) var(--pnt-md);
   border-top: 1px solid var(--pnt-border-1);
+  position: relative;
+  z-index: 1;
+  transition: box-shadow var(--pnt-duration-fast) var(--pnt-ease);
   font: var(--pnt-weight-regular) var(--pnt-text-micro)/1 var(--pnt-font-sans);
   color: var(--pnt-text-3);
   white-space: nowrap;
@@ -2448,4 +2475,64 @@ html.pnt-layout-bottom #pnt-toolbar .pnt-bar {
 #pnt-color-picker .pnt-edit-palcap b,
 #pnt-color-picker .pnt-edit-palcap span {
   font-family: var(--pnt-font-mono);
+}
+
+/* ===== Rail =====
+   The one scrollbar every surface the chrome scrolls draws for itself — the
+   panel body, the long-text editor's textarea, the settings page and its
+   payload box. rail.js draws it: the native bar goes, a 3px rail sits inside
+   the scroller's right padding, the thumb is sized from the scroller's own
+   numbers, tinted with the accent, shown while scrolling and gone
+   --pnt-rail-linger after the last event. It takes no width, so nothing
+   shifts when it appears. Chosen in test/edit-scroll-prototypes.html (03).
+
+   `scrollbar-width: none` is what Chrome 121+ honours; the ::-webkit rule is
+   the same instruction for the Chrome before it. One or the other applies,
+   never both — Chrome ignores the pseudo-element once the property is set.
+
+   Last in the file on purpose, and named through the two roots: the panel
+   body and the textarea are declared with `all: initial` at ID specificity
+   above, which resets scrollbar-width to auto and would beat a bare class.
+   Same specificity, later source, is what makes this the rule that wins. */
+#pnt-edit-panel .pnt-scroller,
+#pnt-text-editor .pnt-scroller,
+.pnt-scroller { scrollbar-width: none; }
+#pnt-edit-panel .pnt-scroller::-webkit-scrollbar,
+#pnt-text-editor .pnt-scroller::-webkit-scrollbar,
+.pnt-scroller::-webkit-scrollbar { display: none; width: 0; height: 0; }
+
+.pnt-rail {
+  all: initial;
+  box-sizing: border-box;
+  position: absolute;
+  right: var(--pnt-rail-gap);
+  width: var(--pnt-rail);
+  display: block;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 1;
+  transition: opacity var(--pnt-duration-fast) var(--pnt-ease);
+}
+
+/* The settings page scrolls as a page: its rail rides the viewport. */
+.pnt-rail.pnt-rail-fixed {
+  position: fixed;
+  top: 0;
+  height: 100vh;
+  z-index: var(--pnt-z-chrome);
+}
+
+.pnt-rail.pnt-rail-on { opacity: 1; }
+.pnt-rail.pnt-rail-empty { display: none; }
+
+.pnt-rail-thumb {
+  all: initial;
+  box-sizing: border-box;
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  width: 100%;
+  border-radius: calc(var(--pnt-rail) / 2);
+  background: var(--pnt-rail-tint);
 }

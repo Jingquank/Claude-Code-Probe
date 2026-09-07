@@ -1799,6 +1799,65 @@ try {
       if (t.overflowX !== "hidden") fail(`${theme}: overflow-x is ${t.overflowX}, not hidden`);
     }
   });
+  // ===== The rail =====
+  // Round four's scrollbar: the native bar goes and rail.js draws the panel's
+  // own, and the same script sets the classes the header and footer shadows
+  // key off. The window is shrunk so the panel has to scroll; a check that
+  // happened to run on a tall window would measure nothing.
+  await check("the rail replaces the native bar and drives the shadows", async (fail) => {
+    await send(ws, "Emulation.setDeviceMetricsOverride",
+      { width: 1200, height: 520, deviceScaleFactor: 1, mobile: false });
+    let r;
+    try {
+      r = await evaluate(ws, `
+        window.__t.probeOn();
+        window.__t.select(".card h2");
+        window.__t.edit();
+        const panel = document.getElementById("pnt-edit-panel");
+        const body = panel.querySelector(".pnt-edit-body");
+        const rail = panel.querySelector(".pnt-rail");
+        const out = {
+          native: getComputedStyle(body).scrollbarWidth,
+          rail: Boolean(rail),
+          overflow: body.scrollHeight - body.clientHeight,
+        };
+        if (rail) {
+          out.onAtOpen = rail.classList.contains("pnt-rail-on");
+          body.scrollTop = 80;
+          body.dispatchEvent(new Event("scroll"));
+          out.above = panel.classList.contains("pnt-more-above");
+          out.below = panel.classList.contains("pnt-more-below");
+          out.thumb = rail.querySelector(".pnt-rail-thumb").style.transform;
+          body.scrollTop = body.scrollHeight;
+          body.dispatchEvent(new Event("scroll"));
+          out.belowAtEnd = panel.classList.contains("pnt-more-below");
+          out.aboveAtEnd = panel.classList.contains("pnt-more-above");
+        }
+        // The long-text editor's textarea wears the same rail.
+        panel.querySelector(".pnt-edit-expand").click();
+        const editor = document.getElementById("pnt-text-editor");
+        out.editorRail = Boolean(editor && editor.querySelector(".pnt-rail"));
+        out.editorNative = editor
+          ? getComputedStyle(editor.querySelector("textarea")).scrollbarWidth : null;
+        window.__t.esc(); // closes the editor
+        window.__t.esc(); // leaves Edit Mode
+        return out;
+      `);
+    } finally {
+      await send(ws, "Emulation.clearDeviceMetricsOverride");
+    }
+    if (r.overflow <= 0) return fail("the panel did not overflow at 520px — nothing to measure");
+    if (r.native !== "none") fail(`the native bar is still on: scrollbar-width is ${r.native}`);
+    if (!r.rail) return fail("no rail was drawn in the panel");
+    if (!r.onAtOpen) fail("the rail did not flash on open");
+    if (!r.above) fail("scrolled 80px in, the header casts no shadow (no pnt-more-above)");
+    if (!r.below) fail("scrolled 80px in, the footer casts no shadow (no pnt-more-below)");
+    if (!/translateY\((?!0px)/.test(r.thumb)) fail(`the thumb did not move: ${r.thumb || "no transform"}`);
+    if (r.belowAtEnd) fail("at the end, the footer still casts a shadow");
+    if (!r.aboveAtEnd) fail("at the end, the header casts no shadow");
+    if (!r.editorRail) fail("the long-text editor has no rail");
+    if (r.editorNative !== "none") fail(`the textarea keeps its native bar: ${r.editorNative}`);
+  });
 } finally {
   try { if (ws) ws.close(); } catch { /* already gone */ }
   browser.kill();

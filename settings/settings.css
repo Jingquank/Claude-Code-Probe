@@ -620,6 +620,8 @@ body {
   flex-direction: column;
   gap: var(--pnt-sm);
   min-width: 0;
+  /* The payload box's rail is drawn in here (rail.js). */
+  position: relative;
 }
 
 .sp-pay-bar {

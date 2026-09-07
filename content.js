@@ -37,6 +37,8 @@
   // redline — `editing` is only ever true while selectedElement is set.
   let editing = false;
   let editPanelEl = null;
+  // The panel body's rail (rail.js), attached with the panel and detached with it.
+  let editRail = null;
   let editPanelPos = null;
   // The panel is attached — flush against the selected element's facing edge
   // and following it — until the user drags it, after which it floats where it
@@ -66,6 +68,7 @@
   let editTypeInForce = null;
   // The long-text editor, a sibling root like the colour picker.
   let textEditorEl = null;
+  let textRail = null;
   // Strong element references, deliberately: the undo stack has to hold them
   // anyway, and edits outlive deselection — they are cleared by switching the
   // extension off, or by a page reload. Every path that touches a record
@@ -3915,6 +3918,12 @@
     renderEditControls();
     paintDegradedMarker();
     placeEditPanel();
+    // The rail replaces the native bar and drives the header and footer
+    // shadows; it flashes once on attach when there is more than fits.
+    // Guarded because the harnesses that load content.js alone load rail.js
+    // beside it, and a harness that forgets is a panel without a rail, not a
+    // panel that fails to open.
+    editRail = window.pntRail ? window.pntRail.attach(body, editPanelEl) : null;
   }
 
   // A control whose four sides already disagree opens showing all four. The
@@ -4058,6 +4067,7 @@
     // them — reachable from a theme change, the reset dot, a split link, or an
     // undo taken mid-pick. Re-find the anchor, or close if its row is gone.
     repositionColorPicker();
+    if (editRail) editRail.update();
   }
 
   // ===== Typography Grid =====
@@ -4402,6 +4412,7 @@
     document.documentElement.appendChild(pop);
     textEditorEl = pop;
     positionTextEditor();
+    textRail = window.pntRail ? window.pntRail.attach(area, pop) : null;
     area.focus();
     area.setSelectionRange(area.value.length, area.value.length);
   }
@@ -4424,6 +4435,10 @@
 
   function closeTextEditor() {
     if (!textEditorEl) return;
+    if (textRail) {
+      textRail.detach();
+      textRail = null;
+    }
     textEditorEl.remove();
     textEditorEl = null;
     commitEditGesture();
@@ -5485,6 +5500,10 @@
 
   function removeEditPanel() {
     if (!editPanelEl) return;
+    if (editRail) {
+      editRail.detach();
+      editRail = null;
+    }
     closeColorPicker();
     closeTextEditor();
     editPanelEl.remove();

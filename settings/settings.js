@@ -789,3 +789,12 @@ const versionEl = document.getElementById("sp-version");
 if (versionEl && typeof chrome !== "undefined" && chrome.runtime?.getManifest) {
   versionEl.textContent = chrome.runtime.getManifest().version;
 }
+
+// The rail, on the two surfaces this page scrolls: the page itself, and the
+// payload box under Copying. One scrollbar for every surface the chrome
+// scrolls — rail.js is the same file the content script draws with.
+if (window.pntRail) {
+  window.pntRail.attach(document.scrollingElement, null);
+  const payOut = document.getElementById("copy-out");
+  if (payOut) window.pntRail.attach(payOut, payOut.parentElement);
+}

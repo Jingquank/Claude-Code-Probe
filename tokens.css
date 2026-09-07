@@ -108,6 +108,15 @@
   --pnt-duration-fast: 120ms;
   --pnt-duration-slow: 260ms;
 
+  /* The rail — the one scrollbar every surface the chrome scrolls draws for
+     itself (rail.js; chosen in test/edit-scroll-prototypes.html). Thickness
+     and inset are scales; the tint is derived from the accent below. The
+     linger is how long the rail stays after the last scroll event — a hold,
+     not a transition, so it is not one of the four durations above. */
+  --pnt-rail: 3px;
+  --pnt-rail-gap: 3px;
+  --pnt-rail-linger: 800ms;
+
   /* Layers. Read by JS for the toast, which is positioned entirely from script. */
   --pnt-z-overlay: 2147483646;
   --pnt-z-chrome: 2147483647;
@@ -122,6 +131,11 @@
   --pnt-accent-soft: color-mix(in srgb, var(--pnt-accent) 14%, transparent);
   --pnt-focus: color-mix(in srgb, var(--pnt-accent) 70%, transparent);
   --pnt-scrim: rgb(0 0 0 / 0.12);
+  --pnt-rail-tint: rgb(from var(--pnt-accent) r g b / 0.55);
+  /* The shadow a pinned header or footer casts on the rows scrolling under it.
+     Black at low alpha reads on every ground, so it is not themed, for the
+     same reason as --pnt-scrim just above. */
+  --pnt-shade: rgb(0 0 0 / 0.28);
 
   /* Two colours that are deliberately NOT themed, kept here so no literal
      survives in content.css and so the reason travels with the value.

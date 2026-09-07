@@ -35,6 +35,7 @@
       ],
       "js": [
         "lib/html2canvas-pro.min.js",
+        "rail.js",
         "content.js"
       ],
       "css": [
