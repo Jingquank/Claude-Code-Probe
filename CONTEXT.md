@@ -54,8 +54,11 @@ the identity as a strip, or along the card's bottom as a bar. A preference;
 the readout is the same in all four.
 _Avoid_: mode (a mode changes what the tool does; a layout changes where it is).
 
-**Tooltip** — the name of an icon-only action, drawn in its own root beside
-the label and positioned from the button it names. Never part of the card.
+**Tooltip** — the name of an icon-only action, or the full name of a token
+whose capsule had to truncate it, drawn in its own root beside the surface it
+serves and positioned from the control it names. Never part of the card or the
+panel. Widened to token names on 2026-09-06, when the two-control token form
+was chosen knowing that `--spacing-horizontal-m` does not fit a capsule.
 
 **Redline** — held-Option spacing measurement. A sub-mode of Selection: it
 cannot be entered without one, and every path that drops the selection ends it.
