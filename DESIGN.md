@@ -172,18 +172,24 @@ its visible rule the entrance, and nothing needs a class to say which way it
 is going.
 
 **The inventory.** Things that move on their own: the selection's ants
-(`#pnt-ants path`, 1.6s), the label's breadcrumb marquee, the copy button's
-loading spinner, the undo flash. Things that glide: the overlay boxes, the
-label and toolbar between placements, the redline nodes and the tether nodes
-between targets, the edit panel's Advanced section opening. Everything in the
-first list is in the `prefers-reduced-motion` block of `content.css` and stops
-dead; the glides are positional and are not disabled, with one exception — the
-tether's, listed so a stated preference for stillness also stops the glide —
-and the undo flash stays *visible* and still rather than vanishing, because it
-is the only way an undo on an off-screen element announces itself. The
-settings page keeps its own inventory under the same contract at the end of
-`settings/settings.css`. Anything animated must be listed; nothing checks this,
-which makes it the weakest link in the contract.
+(`#pnt-ants path`, 1.6s), the label's breadcrumb marquee, the Screenshot
+button's shutter, click flash and check draw-in, the undo flash. Things that
+glide: the overlay boxes, the label and toolbar between placements, the
+redline nodes and the tether nodes between targets, the edit panel's Advanced
+section opening. Everything in the first list is in the
+`prefers-reduced-motion` block of `content.css` and stops dead; the glides are
+positional and are not disabled, with one exception — the tether's, listed so
+a stated preference for stillness also stops the glide — and the undo flash
+stays *visible* and still rather than vanishing, because it is the only way an
+undo on an off-screen element announces itself. The settings page keeps its
+own inventory under the same contract at the end of `settings/settings.css`.
+
+Anything animated must be listed, and the listing has to *outrank* the rule it
+quiets: the block sits near the top of `content.css`, so an equal selector
+declared later wins on source order, and the ants, the marquee and the undo
+flash all kept moving under the preference for exactly that reason until the
+Screenshot button's states were added. `test/cdp.mjs` now emulates the
+preference and measures every entry on the real chrome.
 
 ## 6. Surfaces
 
@@ -661,8 +667,9 @@ reload, not just a page reload:
    colours; light-theme shadows read as shadows.
 3. Fonts: on a strict-CSP page (github.com), the chrome renders in Geist, not
    the fallback stack. `document.fonts` lists both faces as loaded.
-4. Reduced motion at the OS level: the ants hold still, the spinner holds
-   still, the undo flash holds still and stays visible.
+4. Reduced motion at the OS level: the ants hold still, the Screenshot
+   button's lens holds still and filled and its check arrives drawn, the undo
+   flash holds still and stays visible.
 5. Edit Mode, in `test/edit-harness.html`: the panel opens attached to the
    element's right edge with no run; drag it and the run appears; tune
    something, Escape back out, and confirm the element carries no `style`

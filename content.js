@@ -8281,12 +8281,38 @@
   }
 
   // ===== Screenshot Capture =====
+  // Chromium refuses a canvas over 65535 device pixels a side or 16384² in
+  // area: drawing becomes a no-op and toBlob hands back null, which read as
+  // "toBlob failed" on any long page at a Retina scale — 32k CSS pixels is
+  // enough. The scale is clamped to what still exports, a step inside each
+  // limit so the library's own rounding cannot tip over it. A downsampled
+  // capture beats none.
+  const CANVAS_MAX_SIDE = 65535 * 0.99;
+  const CANVAS_MAX_AREA = 16384 * 16384 * 0.99;
+
+  function screenshotScale(el) {
+    const dpr = window.devicePixelRatio || 1;
+    let { width, height } = el.getBoundingClientRect();
+    // For the roots html2canvas draws the whole document, not the box.
+    if (el === document.body || el === document.documentElement) {
+      const doc = document.documentElement;
+      width = Math.max(width, doc.scrollWidth, document.body.scrollWidth);
+      height = Math.max(height, doc.scrollHeight, document.body.scrollHeight);
+    }
+    if (!width || !height) return dpr;
+    return Math.min(
+      dpr,
+      CANVAS_MAX_SIDE / Math.max(width, height),
+      Math.sqrt(CANVAS_MAX_AREA / (width * height))
+    );
+  }
+
   async function captureElementScreenshot(el) {
     const canvas = await html2canvas(el, {
       backgroundColor: resolveBackgroundColor(el),
       logging: false,
       useCORS: true,
-      scale: window.devicePixelRatio || 1,
+      scale: screenshotScale(el),
     });
 
     return new Promise((resolve, reject) => {
@@ -8315,11 +8341,42 @@
   }
 
   // ===== Button State Helpers =====
-  function setButtonLoading(btnEl) {
+  // The Screenshot button's three states, chosen in the screenshot loading
+  // round (test/screenshot-loading-round.html): the click flashes at once, the
+  // camera's own lens shutters while the capture runs, and the check draws in
+  // when it lands. Each is a class that content.css animates, so nothing is
+  // swapped into the button while it works — the icon keeps its meaning and
+  // the button its shape — and each stops dead under reduced motion.
+
+  // A capture that finishes inside this shows no loading state at all: an
+  // indicator that appears and vanishes within a frame or two reads as a
+  // flicker, not as feedback.
+  const LOADING_DELAY = 150;
+
+  // The click, acknowledged before any work starts: a wash of the accent
+  // fading over the slow duration. The class outlives the fade by a beat so
+  // the fill-mode has nothing left to hold, then goes.
+  function flashButton(btnEl) {
     if (!btnEl) return;
-    btnEl.innerHTML = `<span class="pnt-spinner" aria-hidden="true"></span><span>Copying…</span>`;
+    btnEl.classList.remove("pnt-flashing");
+    void btnEl.offsetWidth; // a click inside a previous fade restarts it
+    btnEl.classList.add("pnt-flashing");
+    const ms = parseFloat(token("--pnt-duration-slow", "260")) || 260;
+    setTimeout(() => btnEl.classList.remove("pnt-flashing"), ms + 40);
+  }
+
+  // Disables at once — a second click during a capture must not start a second
+  // capture — and shows the lens only if the work outlasts LOADING_DELAY.
+  // Returns the cancel, for the caller that finishes first.
+  function setButtonLoading(btnEl) {
+    if (!btnEl) return () => {};
     btnEl.disabled = true;
-    btnEl.style.opacity = token("--pnt-opacity-loading", "0.7");
+    const timer = setTimeout(() => {
+      btnEl.classList.add("pnt-loading");
+      const label = btnEl.querySelector("span");
+      if (label) label.textContent = "Copying…";
+    }, LOADING_DELAY);
+    return () => clearTimeout(timer);
   }
 
   // The restore is guarded on origHtml, so a caller that never recorded one
@@ -8327,26 +8384,28 @@
   // records one; this refuses rather than trusting that to stay true.
   function setButtonSuccess(btnEl, message) {
     if (!btnEl || !btnEl.dataset.origHtml) return;
+    btnEl.classList.remove("pnt-loading");
+    btnEl.classList.add("pnt-done");
     // The check in front so an icon-only button (every layout but the bar)
     // still shows that something happened once the label is hidden.
     btnEl.innerHTML = ICONS.check + `<span>${message}</span>`;
     btnEl.disabled = true;
     setTimeout(() => {
       if (btnEl && btnEl.dataset.origHtml) {
+        btnEl.classList.remove("pnt-done", "pnt-flashing");
         btnEl.innerHTML = btnEl.dataset.origHtml;
         btnEl.disabled = false;
-        btnEl.style.opacity = "";
       }
     }, 1500);
   }
 
   function resetButton(btnEl) {
     if (!btnEl) return;
+    btnEl.classList.remove("pnt-loading", "pnt-done", "pnt-flashing");
     if (btnEl.dataset.origHtml) {
       btnEl.innerHTML = btnEl.dataset.origHtml;
     }
     btnEl.disabled = false;
-    btnEl.style.opacity = "";
   }
 
   // ===== Clipboard Actions =====
@@ -8367,12 +8426,15 @@
   }
 
   async function copyScreenshot(el, btnEl) {
+    flashButton(btnEl);
+    const cancelLoading = setButtonLoading(btnEl);
     try {
-      setButtonLoading(btnEl);
       const blob = await captureElementScreenshot(el);
       const ok = await writeImageToClipboard(blob);
+      cancelLoading();
       setButtonSuccess(btnEl, ok ? "Copied!" : "Downloaded!");
     } catch (err) {
+      cancelLoading();
       resetButton(btnEl);
       showToast("Failed to capture: " + err.message, true);
     }

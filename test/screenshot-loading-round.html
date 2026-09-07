@@ -1,0 +1,457 @@
+<title>Screenshot Loading Round</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+  /* ===== Page tokens: Pointee's own palette, following the viewer's theme ===== */
+  :root {
+    --bg: #f8f6f4;
+    --bg-2: #ffffff;
+    --ink: #1d1917;
+    --ink-2: #5c534f;
+    --ink-3: #6d645f;
+    --line: #ddd6d2;
+    --line-2: #eeeae7;
+    --accent: #d13a1d;
+    --ok: #1a7f4b;
+    --sans: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+    --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #171412; --bg-2: #1e1a18; --ink: #f1ece8; --ink-2: #b3a9a3; --ink-3: #8c817b;
+      --line: #322c29; --line-2: #241f1d; --accent: #f0452b; --ok: #3ecf8e;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #171412; --bg-2: #1e1a18; --ink: #f1ece8; --ink-2: #b3a9a3; --ink-3: #8c817b;
+    --line: #322c29; --line-2: #241f1d; --accent: #f0452b; --ok: #3ecf8e;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 400 14px/1.5 var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 40px 28px 72px; }
+
+  /* ===== Header ===== */
+  .eyebrow {
+    font: 500 10px/1 var(--sans);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 0 0 14px;
+  }
+  h1 {
+    font: 600 26px/1.15 var(--sans);
+    letter-spacing: -0.01em;
+    margin: 0 0 14px;
+    text-wrap: balance;
+  }
+  .brief { max-width: 62ch; color: var(--ink-2); margin: 0; }
+  .brief b { color: var(--ink); font-weight: 500; }
+
+  /* ===== Controls ===== */
+  .controls {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px;
+    margin: 26px 0 32px; padding: 14px 0;
+    border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+    font-size: 12px; color: var(--ink-2);
+  }
+  .controls label { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; }
+  .controls input[type="checkbox"] { accent-color: var(--accent); margin: 0; width: 13px; height: 13px; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg button {
+    all: unset; padding: 4px 10px; font: 500 12px/1.3 var(--mono); color: var(--ink-2); cursor: pointer;
+    font-variant-numeric: tabular-nums;
+  }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+  .seg button:focus-visible, .play:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .play {
+    all: unset; margin-left: auto; padding: 6px 14px; border-radius: 10px; cursor: pointer;
+    background: var(--accent); color: #fff; font: 500 12px/1.3 var(--sans);
+  }
+  .play.quiet { background: transparent; color: var(--ink); border: 1px solid var(--line); padding: 5px 12px; margin-left: 0; }
+
+  /* ===== Cards ===== */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(540px, 1fr)); gap: 22px; }
+  @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 18px 18px 16px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .card-head { display: flex; align-items: baseline; gap: 10px; }
+  .handle {
+    font: 500 11px/1 var(--mono); color: var(--accent);
+    letter-spacing: 0.04em;
+  }
+  .card h2 { font: 600 15px/1.3 var(--sans); margin: 0; }
+  .card .what { margin: 0; color: var(--ink-2); font-size: 13px; }
+  .card .what b { color: var(--ink); font-weight: 500; }
+  .card-foot { display: flex; align-items: center; gap: 10px; }
+  .card dl {
+    margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px;
+    font-size: 12px; color: var(--ink-2);
+  }
+  .card dt { color: var(--ink-3); font-weight: 500; }
+  .card dd { margin: 0; }
+
+  /* ===== Stages: the host page, dark and light, with Pointee's own theme on the chrome ===== */
+  .stages { display: grid; grid-template-columns: 1fr; gap: 8px; }
+  .stage {
+    position: relative;
+    border-radius: 10px;
+    padding: 22px 14px 16px;
+    display: flex; flex-direction: column; align-items: flex-start; gap: 12px;
+    overflow-x: auto;
+    background: var(--host);
+    /* Pointee theme tokens, explicit per stage: this chrome never follows the viewer's theme */
+    --s0: var(--t-s0); --s2: var(--t-s2); --b2: var(--t-b2); --b3: var(--t-b3);
+    --t1: var(--t-t1); --t3: var(--t-t3); --ac: var(--t-ac); --on: var(--t-on);
+  }
+  .stage.dark {
+    --host: #121010;
+    --t-s0: #171412; --t-s2: #282320; --t-b2: #322c29; --t-b3: #453d39;
+    --t-t1: #f1ece8; --t-t3: #8c817b; --t-ac: #f0452b; --t-on: #2a0c05;
+    --t-shadow: 0 1px 2px rgb(0 0 0 / 0.35), 0 10px 28px -14px rgb(0 0 0 / 0.7);
+  }
+  .stage.light {
+    --host: #faf9f5;
+    --t-s0: #ffffff; --t-s2: #f0ecea; --t-b2: #ddd6d2; --t-b3: #c3b9b3;
+    --t-t1: #1d1917; --t-t3: #6d645f; --t-ac: #d13a1d; --t-on: #ffffff;
+    --t-shadow: 0 1px 2px rgb(20 20 30 / 0.08), 0 10px 28px -14px rgb(20 20 30 / 0.28);
+  }
+  .stage-tag {
+    position: absolute; bottom: 6px; right: 10px;
+    font: 500 9px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--t3);
+  }
+  /* A sliver of the selected element's outline, so the pill is seen riding an edge */
+  .edge {
+    position: absolute; left: 0; right: 0; top: 0; height: 12px;
+    border-bottom: 2px dashed rgb(from var(--ac) r g b / 0.7);
+    pointer-events: none;
+  }
+
+  /* ===== The toolbar, as content.css draws it ===== */
+  .tb {
+    display: inline-flex; align-items: center; gap: 2px;
+    padding: 3px;
+    background: rgb(from var(--s0) r g b / 0.9);
+    border: 1px solid var(--b2);
+    border-radius: 14px;
+    box-shadow: var(--t-shadow);
+    font-family: var(--sans);
+  }
+  .tb-btn {
+    all: unset;
+    position: relative;
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+    padding: 6px 9px;
+    border-radius: 10px;
+    color: var(--t1);
+    font: 500 12px/1.3 var(--sans);
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 180ms var(--ease), color 180ms var(--ease);
+  }
+  .tb-btn:hover { background: var(--s2); }
+  .tb-btn:focus-visible { outline: 2px solid rgb(from var(--ac) r g b / 0.7); outline-offset: 1px; }
+  .tb-btn.accent { color: var(--ac); }
+  .tb-btn svg { width: 14px; height: 14px; display: block; flex: none; }
+  .tb.pill .lbl { display: none; }
+  .tb .hints { display: inline-flex; align-items: center; gap: 4px; padding: 0 8px 0 6px; color: var(--t3); font-size: 11px; }
+  .tb kbd {
+    font: 500 10px/1 var(--mono); color: var(--t3);
+    border: 1px solid var(--b3); border-radius: 4px; padding: 2px 4px;
+  }
+
+  /* The live button: one icon slot, four things that can occupy it */
+  .ico { position: relative; width: 14px; height: 14px; flex: none; }
+  .ico > * { position: absolute; inset: 0; }
+  .ico .cam { color: currentColor; }
+  .ico .chk, .ico .ring, .ico .frame, .ico .scan { display: none; }
+  .lens { transform-origin: 12px 13px; transform-box: view-box; }
+
+  /* ----- Success, shared by every candidate: the check draws in ----- */
+  .is-done .cam { display: none; }
+  .is-done .chk {
+    display: block;
+    stroke-dasharray: 24; stroke-dashoffset: 24;
+    animation: draw 180ms var(--ease) forwards;
+  }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+
+  /* ----- Flash on click, optional, combines with any loop ----- */
+  .is-flash { animation: flash 260ms var(--ease-exit) forwards; }
+  @keyframes flash {
+    from { background: rgb(from var(--ac) r g b / 0.28); }
+    to   { background: transparent; }
+  }
+
+  /* ----- A · Ring: what ships ----- */
+  .is-loading[data-anim="ring"] .cam { display: none; }
+  .is-loading[data-anim="ring"] .ring {
+    display: block; inset: 1px;
+    border-radius: 50%;
+    border: 2px solid var(--b3); border-top-color: var(--ac);
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ----- B · Shutter: the lens snaps shut and opens ----- */
+  .is-loading[data-anim="shutter"] .lens {
+    stroke: var(--ac); fill: var(--ac);
+    animation: shutter 1.1s var(--ease) infinite;
+  }
+  @keyframes shutter {
+    0%   { transform: scale(1); }
+    35%  { transform: scale(0.12); }
+    55%  { transform: scale(0.12); }
+    100% { transform: scale(1); }
+  }
+
+  /* ----- C · Crawl: the outline crawls like the selection's ants ----- */
+  .is-loading[data-anim="crawl"] .cam { color: var(--ac); }
+  .is-loading[data-anim="crawl"] .body,
+  .is-loading[data-anim="crawl"] .lens {
+    stroke-dasharray: 3 2;
+    animation: crawl 1.6s linear infinite;
+  }
+  @keyframes crawl { to { stroke-dashoffset: -10; } }
+
+  /* ----- D · Scan: a hairline reads the body top to bottom ----- */
+  .is-loading[data-anim="scan"] .cam { color: var(--t3); }
+  .is-loading[data-anim="scan"] .scan {
+    display: block; fill: var(--ac);
+    animation: scan 1.2s ease-in-out infinite;
+  }
+  @keyframes scan {
+    from { transform: translateY(0); }
+    to   { transform: translateY(15px); }
+  }
+
+  /* ----- E · Breathe: the icon dims and returns ----- */
+  .is-loading[data-anim="breathe"] .cam { animation: breathe 1.4s ease-in-out infinite; }
+  @keyframes breathe {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.35; }
+  }
+
+  /* ----- F · Frame: viewfinder corners tighten around the icon ----- */
+  .is-loading[data-anim="frame"] .frame {
+    display: block; inset: -3px;
+    --c: var(--ac);
+    background:
+      linear-gradient(var(--c), var(--c)) 0 0 / 5px 1.5px no-repeat,
+      linear-gradient(var(--c), var(--c)) 0 0 / 1.5px 5px no-repeat,
+      linear-gradient(var(--c), var(--c)) 100% 0 / 5px 1.5px no-repeat,
+      linear-gradient(var(--c), var(--c)) 100% 0 / 1.5px 5px no-repeat,
+      linear-gradient(var(--c), var(--c)) 0 100% / 5px 1.5px no-repeat,
+      linear-gradient(var(--c), var(--c)) 0 100% / 1.5px 5px no-repeat,
+      linear-gradient(var(--c), var(--c)) 100% 100% / 5px 1.5px no-repeat,
+      linear-gradient(var(--c), var(--c)) 100% 100% / 1.5px 5px no-repeat;
+    animation: frame 1s ease-in-out infinite alternate;
+  }
+  @keyframes frame {
+    from { transform: scale(1.18); opacity: 0.7; }
+    to   { transform: scale(0.96); opacity: 1; }
+  }
+
+  /* ===== Stillness: the brand contract. Everything that moves on its own stops dead,
+     and each state is left in a form that still reads. Applied twice: for the OS
+     preference, and for the preview toggle. ===== */
+  @media (prefers-reduced-motion: reduce) {
+    .is-loading .ring, .is-loading .lens, .is-loading .body, .is-loading .scan,
+    .is-loading .cam, .is-loading .frame, .is-done .chk, .is-flash { animation: none; }
+    .is-done .chk { stroke-dashoffset: 0; }
+    .is-loading[data-anim="ring"] .ring { transform: rotate(-45deg); }
+    .is-loading[data-anim="shutter"] .lens { transform: scale(1); }
+    .is-loading[data-anim="scan"] .scan { transform: translateY(8px); }
+    .is-loading[data-anim="breathe"] .cam { opacity: 0.5; }
+    .is-loading[data-anim="frame"] .frame { transform: none; }
+  }
+  :root[data-still] .is-loading .ring, :root[data-still] .is-loading .lens, :root[data-still] .is-loading .body,
+  :root[data-still] .is-loading .scan, :root[data-still] .is-loading .cam, :root[data-still] .is-loading .frame,
+  :root[data-still] .is-done .chk, :root[data-still] .is-flash { animation: none; }
+  :root[data-still] .is-done .chk { stroke-dashoffset: 0; }
+  :root[data-still] .is-loading[data-anim="ring"] .ring { transform: rotate(-45deg); }
+  :root[data-still] .is-loading[data-anim="shutter"] .lens { transform: scale(1); }
+  :root[data-still] .is-loading[data-anim="scan"] .scan { transform: translateY(8px); }
+  :root[data-still] .is-loading[data-anim="breathe"] .cam { opacity: 0.5; }
+  :root[data-still] .is-loading[data-anim="frame"] .frame { transform: none; }
+
+  /* ===== Shared notes and the pick ===== */
+  .note { max-width: 62ch; color: var(--ink-2); font-size: 13px; margin: 30px 0 0; }
+  .pick { margin-top: 40px; padding-top: 22px; border-top: 1px solid var(--line); max-width: 62ch; }
+  .pick h2 { font: 600 15px/1.3 var(--sans); margin: 0 0 8px; }
+  .pick p { margin: 0 0 10px; color: var(--ink-2); }
+  .pick b { color: var(--ink); font-weight: 500; }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <clipPath id="camclip">
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+    </clipPath>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Pointee · the Screenshot button</p>
+    <h1>Screenshot Loading Round</h1>
+    <p class="brief">Click the camera and the capture runs for anything from a hundred milliseconds to a
+      few seconds. In that time the button has to say three things: <b>the click landed</b>, <b>work is
+      happening</b>, and, when it ends, <b>the picture is on the clipboard</b>. Six states below, each
+      played on the real toolbar shapes in both themes, all ending in the same check. The motion is the
+      brand's: eased, never sprung, and everything that moves on its own stops dead under reduced motion,
+      leaving a state that still reads. Click any camera to play it.</p>
+  </header>
+
+  <div class="controls">
+    <span>Capture takes</span>
+    <span class="seg" id="dur">
+      <button aria-pressed="false" data-ms="300">0.3 s</button>
+      <button aria-pressed="true" data-ms="1500">1.5 s</button>
+      <button aria-pressed="false" data-ms="4000">4 s</button>
+    </span>
+    <label><input type="checkbox" id="delay" checked> Show loading only after 150 ms</label>
+    <label><input type="checkbox" id="flash"> Flash the button on click</label>
+    <label><input type="checkbox" id="still"> Reduced motion</label>
+    <button class="play" id="playall">Play all</button>
+  </div>
+
+  <section class="grid" id="grid"></section>
+
+  <p class="note">Two things are shared by every candidate. The check <b>draws in</b> over 180 ms
+    instead of popping, and the label reads Copied! for a second and a half, as it does today. And
+    with the 150 ms delay on, a capture that finishes first shows no loading state at all: an
+    indicator that appears and vanishes inside a frame or two reads as a flicker, not as feedback.</p>
+
+  <section class="pick">
+    <h2>The pick</h2>
+    <p><b>B, Shutter.</b> It is the only one that names the action: a shutter is what a camera does.
+      It needs no new element, because the lens circle is already in the icon, so it costs six lines
+      of CSS. Its still state is a solid accent dot, which reads as recording. Set the flash on to
+      see the click acknowledged separately; the two combine.</p>
+    <p><b>Why not C.</b> The crawl borrows the selection's ants, which is a good instinct, but the
+      selection is crawling at the same moment, and two crawls in view compete.</p>
+    <p><b>Why not A.</b> The ring says busy; it does not say capturing, and it throws the camera away
+      for the duration. E is the quiet fallback if the shutter reads as too much on a busy page.</p>
+  </section>
+</div>
+
+<script>
+  const CANDIDATES = [
+    { id: "ring", handle: "A", name: "Ring", what: "<b>What ships.</b> The icon is swapped for a turning ring; the label reads Copying….",
+      still: "The ring, stopped at three-quarters.", cost: "Current code." },
+    { id: "shutter", handle: "B", name: "Shutter", what: "<b>The lens snaps shut and opens</b>, in the accent. A camera taking a picture; nothing is added to the icon.",
+      still: "The lens filled solid — a recording dot.", cost: "6 lines of CSS on the existing circle." },
+    { id: "crawl", handle: "C", name: "Crawl", what: "<b>The outline crawls</b> the way the selection's does, on the ants' own 1.6 s clock.",
+      still: "A dashed outline in the accent.", cost: "5 lines of CSS." },
+    { id: "scan", handle: "D", name: "Scan", what: "<b>A hairline reads the body</b> top to bottom, over and over, while the camera steps back to the tertiary tone.",
+      still: "The line resting across the lens.", cost: "One rect in the SVG, a clip path, 6 lines of CSS." },
+    { id: "breathe", handle: "E", name: "Breathe", what: "<b>The icon dims and returns</b>, slowly. The quietest option: a pulse the eye registers without watching it.",
+      still: "The icon held at half.", cost: "3 lines of CSS." },
+    { id: "frame", handle: "F", name: "Frame", what: "<b>Viewfinder corners</b> appear around the icon and tighten, as if the shot were being framed.",
+      still: "The corners, at rest.", cost: "One span and 12 lines of CSS." },
+  ];
+
+  const CAM = '<svg class="cam" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path class="body" d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle class="lens" cx="12" cy="13" r="4"/><rect class="scan" x="0" y="5" width="24" height="1.6" stroke="none" clip-path="url(#camclip)"/></svg>';
+  const CHK = '<svg class="chk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+  const CODE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>';
+  const EDIT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
+  const PARENT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3"/><path d="M12 20v-8"/><polyline points="9 15 12 12 15 15"/></svg>';
+
+  function toolbar(anim, layout) {
+    return `<div class="tb ${layout}">
+      <button class="tb-btn" type="button">${CODE}<span class="lbl">Copy Code</span></button>
+      <button class="tb-btn shot" type="button" data-anim="${anim}" aria-label="Screenshot">
+        <span class="ico">${CAM}${CHK}<span class="ring"></span><span class="frame"></span></span>
+        <span class="lbl">Screenshot</span>
+      </button>
+      <button class="tb-btn accent" type="button">${EDIT}<span class="lbl">Edit</span></button>
+      <button class="tb-btn accent" type="button">${PARENT}<span class="lbl">Select Parent</span></button>
+      ${layout === "bar" ? '<span class="hints"><kbd>⌥</kbd>measure<kbd>esc</kbd></span>' : ""}
+    </div>`;
+  }
+
+  function stage(anim, theme) {
+    return `<div class="stage ${theme}"><span class="edge"></span><span class="stage-tag">${theme}</span>
+      ${toolbar(anim, "pill")}${toolbar(anim, "bar")}</div>`;
+  }
+
+  const grid = document.getElementById("grid");
+  grid.innerHTML = CANDIDATES.map((c) => `
+    <article class="card" data-card="${c.id}">
+      <div class="card-head"><span class="handle">${c.handle}</span><h2>${c.name}</h2></div>
+      <p class="what">${c.what}</p>
+      <div class="stages">${stage(c.id, "dark")}${stage(c.id, "light")}</div>
+      <div class="card-foot">
+        <dl><dt>Still</dt><dd>${c.still}</dd><dt>Cost</dt><dd>${c.cost}</dd></dl>
+        <button class="play quiet" type="button" data-play="${c.id}" style="margin-left:auto">Play</button>
+      </div>
+    </article>`).join("");
+
+  // ===== The sequence engine: idle → (150 ms) → loading → done (1.5 s) → idle =====
+  const state = { ms: 1500, delay: true, flash: false };
+
+  function setLabel(btn, text) {
+    const l = btn.querySelector(".lbl");
+    if (l) l.textContent = text;
+  }
+
+  function play(btn) {
+    (btn._timers || []).forEach(clearTimeout);
+    btn.classList.remove("is-loading", "is-done", "is-flash");
+    setLabel(btn, "Screenshot");
+    void btn.offsetWidth; // restart the flash animation from the top
+    const t = [];
+    if (state.flash) {
+      btn.classList.add("is-flash");
+      t.push(setTimeout(() => btn.classList.remove("is-flash"), 300));
+    }
+    const showAt = state.delay ? 150 : 0;
+    if (state.ms > showAt) {
+      t.push(setTimeout(() => { btn.classList.add("is-loading"); setLabel(btn, "Copying…"); }, showAt));
+    }
+    t.push(setTimeout(() => {
+      btn.classList.remove("is-loading"); btn.classList.add("is-done"); setLabel(btn, "Copied!");
+    }, state.ms));
+    t.push(setTimeout(() => { btn.classList.remove("is-done"); setLabel(btn, "Screenshot"); }, state.ms + 1500));
+    btn._timers = t;
+  }
+
+  document.addEventListener("click", (e) => {
+    const shot = e.target.closest(".tb-btn.shot");
+    if (shot) { play(shot); return; }
+    const p = e.target.closest("[data-play]");
+    if (p) document.querySelectorAll(`[data-card="${p.dataset.play}"] .tb-btn.shot`).forEach(play);
+  });
+  document.getElementById("playall").addEventListener("click", () => {
+    document.querySelectorAll(".tb-btn.shot").forEach(play);
+  });
+  document.getElementById("dur").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-ms]");
+    if (!b) return;
+    state.ms = Number(b.dataset.ms);
+    for (const x of b.parentElement.children) x.setAttribute("aria-pressed", String(x === b));
+  });
+  document.getElementById("delay").addEventListener("change", (e) => { state.delay = e.target.checked; });
+  document.getElementById("flash").addEventListener("change", (e) => { state.flash = e.target.checked; });
+  document.getElementById("still").addEventListener("change", (e) => {
+    if (e.target.checked) document.documentElement.setAttribute("data-still", "");
+    else document.documentElement.removeAttribute("data-still");
+  });
+
+  // The page at rest shows the states, not six idle cameras: one pass on load.
+  setTimeout(() => document.querySelectorAll(".tb-btn.shot").forEach(play), 400);
+</script>

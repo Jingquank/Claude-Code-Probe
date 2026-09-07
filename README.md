@@ -161,7 +161,7 @@ tokens that stylesheet defines. [PRIVACY.md](PRIVACY.md) has the whole of it.
 ## Development
 
 ```sh
-npm install          # fetches html2canvas into lib/
+npm install          # fetches html2canvas-pro into lib/ if it is missing
 npm test             # every suite, browser included
 npm test -- --fast   # everything except the browser
 npm run build        # dist/pointee-chrome.zip, ready for the store

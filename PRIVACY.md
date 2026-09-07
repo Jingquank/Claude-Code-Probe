@@ -24,7 +24,7 @@ All processing happens locally in your browser:
 
 1. When you activate Point Mode, the extension reads the DOM of the active tab to display element information (tag names, CSS classes, computed styles, dimensions)
 2. When you copy an element, the information is written directly to your system clipboard using the browser's Clipboard API
-3. When you capture a screenshot, the element is rendered to a canvas locally using the bundled html2canvas library, then copied to your clipboard
+3. When you capture a screenshot, the element is rendered to a canvas locally using the bundled html2canvas-pro library, then copied to your clipboard
 
 4. When you open the Edit panel, the extension reads the page's stylesheets to work out which design tokens it uses. A stylesheet served from another origin cannot be read by a script running in the page, so for those the extension re-requests the file — see *Stylesheet fetching* below.
 

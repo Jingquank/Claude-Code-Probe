@@ -63,23 +63,44 @@
   border-color: transparent;
 }
 
-/* Everything that moves on its own has to stop here — the marquee, the ants,
-   the sweep, the flash, the loading spinner. Anything animated must be listed;
-   DESIGN.md calls this the weakest link in the contract because nothing checks
-   it. */
+/* Everything that moves on its own has to stop here — the ants, the marquee,
+   the undo flash, and the Screenshot button's three states: the shutter, the
+   click flash and the check's draw-in. Anything animated must be listed, and
+   test/cdp.mjs emulates the preference and measures every entry on the real
+   chrome.
+
+   Every selector here has to OUTRANK the rule it quiets, not merely name the
+   same element. This block sits near the top of the file, so a rule declared
+   later at the same specificity beats it on source order, and a rule with
+   more specificity beats it wherever it sits — which is how the ants (whose
+   own rule goes through their container), the marquee and the undo flash all
+   kept moving under the preference until the check existed. Each entry now
+   carries at least the ancestors its own rule does; the tether at the end of
+   this block made the argument first. */
 @media (prefers-reduced-motion: reduce) {
-  #pnt-ants path,
-  .pnt-spinner,
-  #pnt-label .pnt-marquee-inner,
-  #pnt-edit-flash.pnt-edit-flashing {
+  #pnt-overlay-container.pnt-selected #pnt-ants path,
+  #pnt-label .pnt-label-marquee .pnt-marquee-inner,
+  #pnt-overlay-container #pnt-edit-flash.pnt-edit-flashing,
+  #pnt-toolbar .pnt-bar button.pnt-loading svg circle,
+  #pnt-toolbar .pnt-bar button.pnt-flashing,
+  #pnt-toolbar .pnt-bar button.pnt-done svg polyline {
     animation: none;
+  }
+
+  /* Still, the states keep their information. The lens stays filled — its
+     accent fill is set outside the animation, so a stopped shutter is a
+     recording dot — and the check has to be drawn rather than left at the
+     offset its animation starts from. The click flash carries none: the lens
+     or the check follows it within a beat. */
+  #pnt-toolbar .pnt-bar button.pnt-done svg polyline {
+    stroke-dashoffset: 0;
   }
 
   /* The flash is the only way an undo on an off-screen element announces
      itself, so zeroing the animation would remove information rather than
      motion. It stays put and visible instead — the toast still says what
      happened, and the ring says where. */
-  #pnt-edit-flash.pnt-edit-flashing {
+  #pnt-overlay-container #pnt-edit-flash.pnt-edit-flashing {
     opacity: 1;
   }
 
@@ -88,8 +109,7 @@
      element the panel is editing, so removing it would remove information
      rather than motion, the same call made for the flash just above.
 
-     Scoped through the container on purpose. Everything else in this block
-     quiets a rule declared ABOVE it and so wins on source order; the tether's
+     Scoped through the container, as every entry above now is: the tether's
      transitions are declared below, in its own section, and a matching
      `#pnt-tether .pnt-tether-tick` at (1,1,0) would silently lose to them.
      Adding the container makes it (2,1,0) — the same specificity-over-order
@@ -855,21 +875,49 @@ html.pnt-layout-bottom #pnt-toolbar .pnt-bar {
   transition: none !important;
 }
 
-/* The loading state of a copy button: a ring in the accent, turning. */
-.pnt-spinner {
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  border: 2px solid var(--pnt-border-3);
-  border-top-color: var(--pnt-accent);
-  box-sizing: border-box;
-  flex-shrink: 0;
-  animation: pnt-spinner 0.8s linear infinite;
+/* The Screenshot button while it works: the camera's own lens, in the accent,
+   snapping shut and opening — a shutter. Nothing is swapped in, so the icon
+   keeps its meaning and the button its shape. Chosen in the screenshot loading
+   round (test/screenshot-loading-round.html) over the 1.x ring, a crawl, a
+   scan, a breathing icon and viewfinder corners. content.js adds the class
+   only once a capture has outlasted LOADING_DELAY, so a fast one never shows
+   it. Quieted at the top of this file through .pnt-bar, which outranks this. */
+#pnt-toolbar button.pnt-loading svg circle {
+  stroke: var(--pnt-accent);
+  fill: var(--pnt-accent);
+  transform-origin: 12px 13px;
+  transform-box: view-box;
+  animation: pnt-shutter 1.1s var(--pnt-ease) infinite;
 }
 
-@keyframes pnt-spinner {
-  to { transform: rotate(360deg); }
+@keyframes pnt-shutter {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(0.12); }
+  55%  { transform: scale(0.12); }
+  100% { transform: scale(1); }
+}
+
+/* The click itself, acknowledged before any work starts: a wash of the accent
+   fading over the slow duration. One-shot; content.js drops the class after. */
+#pnt-toolbar button.pnt-flashing {
+  animation: pnt-flash var(--pnt-duration-slow) var(--pnt-ease-exit) forwards;
+}
+
+@keyframes pnt-flash {
+  from { background: color-mix(in srgb, var(--pnt-accent) 28%, transparent); }
+  to   { background: transparent; }
+}
+
+/* The check draws in rather than popping. It is the only polyline a button
+   carries in its success state, so nothing else is caught by this. */
+#pnt-toolbar button.pnt-done svg polyline {
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+  animation: pnt-draw var(--pnt-duration) var(--pnt-ease) forwards;
+}
+
+@keyframes pnt-draw {
+  to { stroke-dashoffset: 0; }
 }
 
 /* An undo can land on an element other than the one being edited. It gets a

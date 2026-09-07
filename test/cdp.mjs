@@ -1584,6 +1584,186 @@ try {
     if (seen.edge <= seen.vh) fail(`the fixture's edge is on screen at ${seen.edge} of ${seen.vh}`);
     if (!seen.onScreen) fail(`the pill sits at ${seen.top}–${seen.bottom} in a ${seen.vh}px viewport`);
   });
+
+  // ===== Screenshot =====
+  // Until now the harness loaded content.js without its screenshot library,
+  // so the one action that hands a page's computed colours to a CSS parser
+  // was the one action the suite never ran. html2canvas 1.4.1 threw on every
+  // colour function newer than hsl() — and Chrome reports computed colours in
+  // the space they were written in — so a page styled in oklch() failed for
+  // every element on it, and a long page at a Retina scale failed on
+  // Chromium's canvas cap. Both go through the real button: the toast and the
+  // clipboard are what is measured.
+  const SHOOT = `
+    const btn = document.querySelector('#pnt-toolbar button[data-action="shot"]');
+    if (!btn) return { toast: "no toolbar" };
+    if (btn.dataset.origHtml) btn.innerHTML = btn.dataset.origHtml;
+    btn.disabled = false;
+    const stale = document.getElementById("pnt-toast");
+    if (stale) stale.textContent = "";
+    let blob = null;
+    const real = navigator.clipboard.write;
+    navigator.clipboard.write = async (items) => { blob = await items[0].getType("image/png"); };
+    const toast = () => { const t = document.getElementById("pnt-toast"); return t ? t.textContent.trim() : ""; };
+    btn.click();
+    const t0 = Date.now();
+    while (!blob && !toast().startsWith("Failed") && Date.now() - t0 < 15000) {
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    navigator.clipboard.write = real;
+    const bmp = blob ? await createImageBitmap(blob) : null;
+    const shot = { toast: toast(), bytes: blob ? blob.size : 0, w: bmp ? bmp.width : 0, h: bmp ? bmp.height : 0 };
+  `;
+
+  await check("screenshot · an element coloured in oklch() copies a PNG", async (fail) => {
+    const r = await evaluate(ws, `
+      const el = window.__t.select('[style*="brand-500"]');
+      await new Promise((r) => setTimeout(r, 80));
+      const color = getComputedStyle(el).color;
+      ${SHOOT}
+      window.__t.esc();
+      return { ...shot, color };
+    `);
+    if (!/^(oklch|oklab|lab|lch|color)\(/.test(r.color)) fail(`the fixture's colour is ${r.color}; the case proves nothing`);
+    if (r.toast.startsWith("Failed")) fail(r.toast);
+    else if (!r.bytes || !r.h) fail(`no PNG reached the clipboard (${r.bytes} bytes)`);
+  });
+
+  await check("screenshot · a 70000px element exports under Chromium's canvas cap", async (fail) => {
+    const r = await evaluate(ws, `
+      const tall = document.createElement("div");
+      tall.id = "tall-shot";
+      tall.style.cssText = "height:70000px;width:240px;margin:24px;background:#eee";
+      document.body.prepend(tall);
+      window.scrollTo(0, 0);
+      const rect = tall.getBoundingClientRect();
+      tall.dispatchEvent(new MouseEvent("click", { bubbles: true, clientX: rect.left + 5, clientY: rect.top + 5 }));
+      await new Promise((r) => setTimeout(r, 80));
+      const selected = document.querySelector(".pnt-selected") !== null;
+      ${SHOOT}
+      window.__t.esc();
+      tall.remove();
+      return { ...shot, selected };
+    `);
+    if (!r.selected) fail("the tall element was not selected");
+    if (r.toast.startsWith("Failed")) fail(r.toast);
+    else if (!r.h) fail("no PNG came back");
+    else if (r.h > 65535) fail(`the PNG is ${r.h}px tall`);
+    else if (r.h < 60000) fail(`the PNG is only ${r.h}px tall — clamped further than the cap asks`);
+  });
+
+  // The button's three states, in order: the click flashes before any work,
+  // the lens starts only once the capture has outlasted LOADING_DELAY, and the
+  // check replaces it when the PNG lands. The capture is held open so the
+  // middle state can be watched arriving rather than inferred.
+  await check("screenshot · the click flashes, the lens waits 150 ms, the check follows", async (fail) => {
+    const r = await evaluate(ws, `
+      window.__t.select('[style*="brand-500"]');
+      await new Promise((r) => setTimeout(r, 80));
+      const btn = document.querySelector('#pnt-toolbar button[data-action="shot"]');
+      if (btn.dataset.origHtml) btn.innerHTML = btn.dataset.origHtml;
+      btn.disabled = false;
+      const realCapture = window.html2canvas;
+      window.html2canvas = (node, opts) => realCapture(node, opts)
+        .then((canvas) => new Promise((r) => setTimeout(() => r(canvas), 500)));
+      let blob = null;
+      const realWrite = navigator.clipboard.write;
+      navigator.clipboard.write = async (items) => { blob = await items[0].getType("image/png"); };
+      const state = () => ({
+        flash: btn.classList.contains("pnt-flashing"),
+        loading: btn.classList.contains("pnt-loading"),
+        done: btn.classList.contains("pnt-done"),
+        disabled: btn.disabled,
+        label: (btn.querySelector("span") || {}).textContent,
+      });
+      btn.click();
+      const at0 = state();
+      await new Promise((r) => setTimeout(r, 60));
+      const at60 = state();
+      await new Promise((r) => setTimeout(r, 240));
+      const at300 = state();
+      const lens = btn.querySelector("svg circle");
+      const lensAnim = lens ? getComputedStyle(lens).animationName : "no lens";
+      const t0 = Date.now();
+      while (!blob && Date.now() - t0 < 10000) await new Promise((r) => setTimeout(r, 50));
+      await new Promise((r) => setTimeout(r, 40));
+      const after = state();
+      window.html2canvas = realCapture;
+      navigator.clipboard.write = realWrite;
+      window.__t.esc();
+      return { at0, at60, at300, lensAnim, after, got: Boolean(blob) };
+    `);
+    if (!r.at0.flash) fail("the click did not flash");
+    if (!r.at0.disabled) fail("the button stayed enabled during the capture");
+    if (r.at60.loading) fail("the lens started before 150 ms");
+    if (!r.at300.loading) fail("the lens had not started by 300 ms");
+    if (r.at300.label !== "Copying…") fail(`the label read ${JSON.stringify(r.at300.label)} while loading`);
+    if (r.lensAnim !== "pnt-shutter") fail(`the lens animates ${JSON.stringify(r.lensAnim)}`);
+    if (!r.got) fail("no PNG reached the clipboard");
+    if (!r.after.done || r.after.loading) fail(`after the capture: done=${r.after.done} loading=${r.after.loading}`);
+  });
+
+  // ===== Reduced motion =====
+  // DESIGN.md calls the inventory the weakest link in the contract because
+  // nothing checked it. This does: with the preference emulated, every rule
+  // the block names has to compute to no animation — measured on the real
+  // chrome, because a rule declared after the block at the same specificity
+  // beats it on source order and nothing else would ever say so.
+  await check("reduced motion · everything in the inventory holds still", async (fail) => {
+    await send(ws, "Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });
+    const r = await evaluate(ws, `
+      const anim = (el) => (el ? getComputedStyle(el).animationName : "missing");
+      window.__t.select(".card h2");
+      await new Promise((r) => setTimeout(r, 80));
+      const out = { pref: matchMedia("(prefers-reduced-motion: reduce)").matches };
+      out.ants = anim(document.querySelector("#pnt-overlay-container.pnt-selected #pnt-ants path"));
+      // The marquee is built only for a breadcrumb that overflows; stand one up.
+      const label = document.getElementById("pnt-label");
+      const m = document.createElement("span");
+      m.className = "pnt-label-marquee";
+      m.innerHTML = '<span class="pnt-label-breadcrumb pnt-marquee-inner">x</span>';
+      label.appendChild(m);
+      out.marquee = anim(m.firstChild);
+      m.remove();
+      // The three toolbar states, forced by class.
+      const btn = document.querySelector('#pnt-toolbar button[data-action="shot"]');
+      btn.classList.add("pnt-loading", "pnt-flashing");
+      const lens = btn.querySelector("svg circle");
+      out.lens = anim(lens);
+      out.lensFill = getComputedStyle(lens).fill;
+      out.flash = anim(btn);
+      btn.classList.remove("pnt-loading", "pnt-flashing");
+      btn.classList.add("pnt-done");
+      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg><span>Copied!</span>';
+      const pl = btn.querySelector("polyline");
+      out.check = anim(pl);
+      out.checkOffset = getComputedStyle(pl).strokeDashoffset;
+      btn.classList.remove("pnt-done");
+      btn.innerHTML = btn.dataset.origHtml;
+      // The undo flash, in the overlay container where content.js puts it.
+      const oc = document.getElementById("pnt-overlay-container");
+      let f = document.getElementById("pnt-edit-flash");
+      const made = !f;
+      if (made) { f = document.createElement("div"); f.id = "pnt-edit-flash"; oc.appendChild(f); }
+      f.classList.add("pnt-edit-flashing");
+      out.undo = anim(f);
+      out.undoOpacity = getComputedStyle(f).opacity;
+      f.classList.remove("pnt-edit-flashing");
+      if (made) f.remove();
+      window.__t.esc();
+      return out;
+    `);
+    await send(ws, "Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "no-preference" }] });
+    if (!r.pref) fail("the emulated preference did not reach the page");
+    const inventory = [["ants", r.ants], ["marquee", r.marquee], ["lens", r.lens],
+      ["click flash", r.flash], ["check", r.check], ["undo flash", r.undo]];
+    for (const [what, name] of inventory) {
+      if (name !== "none") fail(`${what} still animates (${name})`);
+    }
+    if (r.checkOffset !== "0px") fail(`the check is not drawn: offset ${r.checkOffset}`);
+    if (r.undoOpacity !== "1") fail(`the undo flash is not visible: opacity ${r.undoOpacity}`);
+    if (!/^rgb/.test(r.lensFill)) fail(`the lens is not filled: ${r.lensFill}`);
+  });
 } finally {
   try { if (ws) ws.close(); } catch { /* already gone */ }
   browser.kill();

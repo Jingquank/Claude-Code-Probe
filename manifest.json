@@ -34,7 +34,7 @@
         "<all_urls>"
       ],
       "js": [
-        "lib/html2canvas.min.js",
+        "lib/html2canvas-pro.min.js",
         "content.js"
       ],
       "css": [

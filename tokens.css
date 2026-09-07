@@ -112,9 +112,8 @@
   --pnt-z-overlay: 2147483646;
   --pnt-z-chrome: 2147483647;
 
-  /* States. --pnt-opacity-loading is read by JS in setButtonLoading(). */
+  /* States. */
   --pnt-opacity-disabled: 0.35;
-  --pnt-opacity-loading: 0.7;
 
   /* Derived from the active theme. Declared once, here, so no theme can have a
      glass that disagrees with its own surface or a focus ring that disagrees
