@@ -719,6 +719,22 @@ AA and the WARN tier could go, the sweep and bloom left, the fonts came
 in-package, and the panel learned to attach. The plan that carried it is
 `docs/POINTEE-PLAN.md`.
 
+**2.1 — round four of the Edit panel.** A 23-question interview
+(`docs/EDIT-PANEL-PLAN.md`) and three galleries, each also published as an
+artifact. The scrollbar (`test/edit-scroll-prototypes.html`) chose the
+overlay rail drawn by script, and the rail became the one scrollbar every
+surface the chrome scrolls draws for itself. The type scale moved up one and
+was redistributed, because the chrome's real size had been 11px with 9 and
+10.5px literals underneath. The panel (`test/edit-panel-prototypes.html`)
+chose collapsing groups of labelled cells with the two-control token form:
+the label is the edited mark, one stepper serves rows and cells and the wheel
+only scrolls — the trackpad could not use the grid's wheel stepping — and a
+capsule's cut-off name rides the tooltip. ADR 0004 put page values beside
+token families, added the rung list as the suggestion on demand, and refused
+build hashes as steps. The handoff (`test/edit-transition-prototypes.html`)
+chose the toolbar growing into the panel, adapted to the four selection
+layouts.
+
 ## 9. Verification
 
 ```sh
@@ -730,7 +746,7 @@ node test/edit-audit.mjs   # host-page writes still live in one section
 node test/edit-tokens.mjs  # the token resolver, over three real corpora
 node test/edit-color.mjs   # picker round trips, bounded by 8-bit quantisation
 node test/edit-deltas.mjs  # the shape of the block the panel copies
-node test/cdp.mjs          # everything DOM-bound, in a real browser — 37 checks
+node test/cdp.mjs          # everything DOM-bound, in a real browser
 npm test                   # all of it; `-- --fast` skips the browser
 ```
 

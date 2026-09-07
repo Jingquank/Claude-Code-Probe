@@ -80,10 +80,25 @@ in the block and a separate thing to undo.
 
 **Edit panel** — the control surface. An *inspector column*: one narrow
 column of titled groups, chosen over eleven alternatives in
-`test/edit-ui-prototypes.html`. Since 2.0 it is *attached*: flush against the
-selected element's facing edge, a tick's length away, and it goes where the
-element goes. It *floats* — draggable, as it always was — only when there is
-no room beside the element.
+`test/edit-ui-prototypes.html`. Since round four (`test/edit-panel-prototypes.html`)
+every group is a grid of labelled *cells*, the label above the value, and
+every group title opens and closes its group; a closed group says its values
+on one line. The label is the edited mark and the reset — there is no dot
+column. Since 2.0 it is *attached*: flush against the selected element's
+facing edge, a tick's length away, and it goes where the element goes. It
+*floats* — draggable, as it always was — only when there is no room beside
+the element.
+
+**Capsule** — the second control under a field: `‹ name ›` for the token
+family the value sits on, in the accent because the name exists in the
+source; `‹ page ›` for the page's own values, in the field fill because
+they have no name. Its arrows step; its name opens the rung list; its
+tooltip carries a name the capsule had to cut short.
+
+**Handoff** — the motion between Selection and Edit Mode: the toolbar's
+surface grows into the panel and shrinks back. The origin is the toolbar in
+whichever selection layout is in force.
+_Avoid_: transition (too general), morph (the mechanism, not the thing).
 
 **Tether** — what says "this panel edits that element" in Edit Mode, once the
 selection box has been taken away. Four ticks at the element's edge midpoints,

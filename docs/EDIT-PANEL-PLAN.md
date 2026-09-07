@@ -205,6 +205,16 @@ under the pointer wherever it is; the scrollbar and shadows appear only when
 there is more; Light and Dark both read; the handoff plays forward and back;
 reduced motion crossfades.
 
+## Shipped
+
+In order, each its own commit on 2026-09-06: the overflow fix (`987e0f4`),
+the rail (`adf952e`), the type scale (`4be46f9`), the panel (`d50f1a0`), page
+values with the rung list and the hash guard (`27c066a`), and the handoff
+(`16938fb`).
+DESIGN.md §2, §5, §6 and §8 and the Edit Mode section, and CONTEXT.md's
+*Edit panel*, *Token family*, *Tooltip*, *Page values*, *Capsule*, *Rung
+list* and *Handoff*, describe what shipped.
+
 ## Deferred on the way
 
 Two items of the harvest coverage did not ship in round four's token step.
