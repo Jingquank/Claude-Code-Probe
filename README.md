@@ -1,4 +1,4 @@
-![Pointee](assets/banner.png)
+![Pointee](assets/banner.jpg)
 
 Point at any element. Copy it. Paste it into your coding agent.
 
