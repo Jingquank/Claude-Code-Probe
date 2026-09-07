@@ -243,6 +243,26 @@ for (const row of contrastRows) {
   else pass(name, detail);
 }
 
+// ===== 6. No bare pixel size in a type declaration =====
+// Round four found the chrome's real type scale was not the four tokens but
+// the four tokens plus 9px, 10.5px and 11px literals underneath them — the
+// smallest text on screen, and invisible to the scale. A font or font-size
+// declaration names a token or a unitless line-height, never a pixel.
+
+const TYPE_DECL = /\b(?:font|font-size)\s*:\s*([^;{}]+)/g;
+for (const file of CONSUMERS) {
+  const css = stripComments(read(file));
+  const hits = [];
+  let m;
+  while ((m = TYPE_DECL.exec(css))) {
+    // Anything inside var(...) is a token; what is left must carry no px.
+    const bare = m[1].replace(/var\([^)]*\)/g, "");
+    if (/\d(?:\.\d+)?px\b/.test(bare)) hits.push(m[0].trim().replace(/\s+/g, " "));
+  }
+  if (hits.length) for (const h of hits) fail(`bare type size · ${file}`, h);
+  else pass(`bare type size · ${file}`, "every font and font-size names a token");
+}
+
 // ===== Report =====
 
 const pad = (s, n) => String(s).padEnd(n);

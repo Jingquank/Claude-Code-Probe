@@ -969,7 +969,7 @@ html.pnt-layout-bottom #pnt-toolbar .pnt-bar {
   border: 1px solid var(--pnt-border-2);
   border-radius: var(--pnt-radius-lg);
   box-shadow: var(--pnt-shadow-1);
-  width: 248px;
+  width: 280px;
   /* Taller than the viewport is a real case on a short window; the panel
      scrolls inside itself rather than growing past the screen, which is what
      lets the placement solver always find room for it. */
@@ -1096,7 +1096,7 @@ html.pnt-layout-bottom #pnt-toolbar .pnt-bar {
 
 #pnt-edit-panel .pnt-edit-count {
   all: initial;
-  font: var(--pnt-weight-bold) 9px/14px var(--pnt-font-mono);
+  font: var(--pnt-weight-bold) var(--pnt-text-micro)/1.4 var(--pnt-font-mono);
   font-variant-numeric: tabular-nums;
   color: var(--pnt-on-accent);
   background: var(--pnt-accent);
@@ -1157,7 +1157,7 @@ html.pnt-layout-bottom #pnt-toolbar .pnt-bar {
 #pnt-edit-panel .pnt-edit-legend {
   all: initial;
   display: block;
-  font: var(--pnt-weight-medium) var(--pnt-text-sm)/1.3 var(--pnt-font-sans);
+  font: var(--pnt-weight-medium) var(--pnt-text-lg)/1.3 var(--pnt-font-sans);
   color: var(--pnt-text-2);
   margin-bottom: var(--pnt-sm);
 }
@@ -1174,7 +1174,7 @@ html.pnt-layout-bottom #pnt-toolbar .pnt-bar {
 
 #pnt-edit-panel .pnt-edit-label {
   all: initial;
-  font: var(--pnt-text-sm)/1.4 var(--pnt-font);
+  font: var(--pnt-text-base)/1.4 var(--pnt-font);
   color: var(--pnt-text-2);
   flex: 1;
   min-width: 0;
@@ -1271,7 +1271,7 @@ html.pnt-layout-bottom #pnt-toolbar .pnt-bar {
 
 #pnt-edit-panel .pnt-edit-unit {
   all: initial;
-  font: var(--pnt-text-micro)/1.3 var(--pnt-font-mono);
+  font: var(--pnt-text-sm)/1.3 var(--pnt-font-mono);
   color: var(--pnt-text-3);
   flex: none;
 }
@@ -1304,7 +1304,7 @@ html.pnt-layout-bottom #pnt-toolbar .pnt-bar {
   border-radius: var(--pnt-radius-sm);
   background: transparent;
   color: var(--pnt-text-3);
-  font: var(--pnt-weight-medium) 9px/1.4 var(--pnt-font-sans);
+  font: var(--pnt-weight-medium) var(--pnt-text-micro)/1.4 var(--pnt-font-sans);
   letter-spacing: var(--pnt-tracking-caps);
   text-transform: uppercase;
   cursor: pointer;
@@ -1357,7 +1357,7 @@ html.pnt-layout-bottom #pnt-toolbar .pnt-bar {
   all: initial;
   min-width: 28px;
   text-align: center;
-  font: var(--pnt-weight-medium) var(--pnt-text-micro)/1 var(--pnt-font-mono);
+  font: var(--pnt-weight-medium) var(--pnt-text-sm)/1 var(--pnt-font-mono);
   color: var(--pnt-accent);
   padding: 0 1px;
 }
@@ -1508,7 +1508,7 @@ html.pnt-layout-bottom #pnt-toolbar .pnt-bar {
 
 #pnt-edit-panel .pnt-edit-hex {
   all: initial;
-  font: var(--pnt-text-sm)/1.4 var(--pnt-font);
+  font: var(--pnt-text-base)/1.4 var(--pnt-font);
   font-variant-numeric: tabular-nums;
   color: var(--pnt-text-2);
   overflow: hidden;
@@ -2222,7 +2222,7 @@ html.pnt-layout-bottom #pnt-toolbar .pnt-bar {
 }
 #pnt-edit-panel .pnt-type-cell .pnt-edit-swatch { width: 12px; height: 12px; padding: 2px; }
 #pnt-edit-panel .pnt-type-cell .pnt-edit-hex {
-  font-size: var(--pnt-text-micro);
+  font-size: var(--pnt-text-sm);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2301,7 +2301,7 @@ html.pnt-layout-bottom #pnt-toolbar .pnt-bar {
 
 #pnt-edit-panel .pnt-type-mod {
   all: initial;
-  font: var(--pnt-text-micro)/1.4 var(--pnt-font-sans);
+  font: var(--pnt-text-sm)/1.4 var(--pnt-font-sans);
   font-style: normal;
   color: var(--pnt-text-2);
   white-space: nowrap;
@@ -2332,7 +2332,7 @@ html.pnt-layout-bottom #pnt-toolbar .pnt-bar {
 #pnt-edit-panel .pnt-type-cap {
   all: initial;
   display: block;
-  font: 10.5px/1.5 var(--pnt-font-sans);
+  font: var(--pnt-text-sm)/1.5 var(--pnt-font-sans);
   color: var(--pnt-text-3);
   padding: 3px 0 0 1px;
   min-height: 13px;
@@ -2360,7 +2360,7 @@ html.pnt-layout-bottom #pnt-toolbar .pnt-bar {
   border: 1px solid var(--pnt-border-2);
   border-radius: var(--pnt-radius-sm);
   color: var(--pnt-text-2);
-  font: 9px/1 var(--pnt-font);
+  font: var(--pnt-text-sm)/1 var(--pnt-font);
   cursor: pointer;
   background: transparent;
 }
@@ -2402,7 +2402,7 @@ html.pnt-layout-bottom #pnt-toolbar .pnt-bar {
 
 #pnt-text-editor .pnt-txted-head button {
   all: initial;
-  font: 11px/1 var(--pnt-font);
+  font: var(--pnt-text-sm)/1 var(--pnt-font);
   color: var(--pnt-text-2);
   cursor: pointer;
   padding: 2px 4px;
@@ -2435,7 +2435,7 @@ html.pnt-layout-bottom #pnt-toolbar .pnt-bar {
 #pnt-text-editor .pnt-txted-count {
   all: initial;
   display: block;
-  font: var(--pnt-text-micro)/1.4 var(--pnt-font-mono);
+  font: var(--pnt-text-sm)/1.4 var(--pnt-font-mono);
   color: var(--pnt-text-3);
   text-align: right;
   margin-top: 3px;
@@ -2456,7 +2456,7 @@ html.pnt-layout-bottom #pnt-toolbar .pnt-bar {
   position: relative;
   z-index: 1;
   transition: box-shadow var(--pnt-duration-fast) var(--pnt-ease);
-  font: var(--pnt-weight-regular) var(--pnt-text-micro)/1 var(--pnt-font-sans);
+  font: var(--pnt-weight-regular) var(--pnt-text-sm)/1 var(--pnt-font-sans);
   color: var(--pnt-text-3);
   white-space: nowrap;
 }

@@ -53,10 +53,16 @@
   --pnt-font-sans: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
   --pnt-font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --pnt-font: var(--pnt-font-sans);
-  --pnt-text-micro: 10px;   /* tracked-caps micro-labels only — never prose */
-  --pnt-text-sm: 11px;      /* secondary readouts */
-  --pnt-text-base: 12px;    /* labels, controls, values */
-  --pnt-text-lg: 13px;      /* identity line, panel and section titles */
+  /* Round four moved the whole scale up one pixel and redistributed it: the
+     de facto size of the chrome had been 11px, with 9 and 10px literals under
+     it, and everything read small. Now labels and values sit on base, titles
+     on lg, units and captions on sm, and micro is for keyboard chips and the
+     settings sheet's category labels alone. Pixels, never rem — the chrome
+     sits on pages whose root size it does not control. */
+  --pnt-text-micro: 11px;   /* keyboard chips, the settings sheet's category labels — never prose */
+  --pnt-text-sm: 12px;      /* units, captions, secondary readouts */
+  --pnt-text-base: 13px;    /* labels, controls, values */
+  --pnt-text-lg: 14px;      /* identity line, panel and section titles */
   --pnt-weight-regular: 400;
   --pnt-weight-medium: 500;
   --pnt-weight-bold: 600;

@@ -51,14 +51,20 @@ simple: if it is something a person reads as a word, sans; if it is something
 they compare or copy, mono.
 
 Four sizes, in pixels because the chrome sits on pages whose root size it does
-not control:
+not control. Round four moved the whole scale up one pixel and redistributed
+it: the 2.0 scale was 10 / 11 / 12 / 13, but the chrome's de facto size had
+been 11 — twenty-five uses to base's nine — with 9 and 10.5px literals
+underneath, and everything read small.
 
 | token | px | where |
 |---|---|---|
-| `--pnt-text-lg` | 13 | the identity line, panel and section titles — bold, tight leading, `-0.01em` |
-| `--pnt-text-base` | 12 | labels, controls, values |
-| `--pnt-text-sm` | 11 | secondary readouts, legends, captions |
-| `--pnt-text-micro` | 10 | tracked-caps micro-labels only — the typography grid's cell labels, the settings sheet's category labels, keyboard chips. Never prose. |
+| `--pnt-text-lg` | 14 | the identity line, panel and section titles — bold or medium, tight leading, `-0.01em` |
+| `--pnt-text-base` | 13 | labels, controls, values |
+| `--pnt-text-sm` | 12 | units, captions, secondary readouts |
+| `--pnt-text-micro` | 11 | keyboard chips and the settings sheet's category labels. Never prose. |
+
+No `font` or `font-size` declaration carries a bare pixel value;
+`test/tokens.mjs` fails on one.
 
 Weights 400, 500 and 600; leading 1.3 for a line that stands alone and 1.45
 for a block; `0.06em` of tracking on caps and `0.01em` on numbers. The hierarchy
