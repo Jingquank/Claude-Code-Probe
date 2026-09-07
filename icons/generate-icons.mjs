@@ -1,14 +1,16 @@
-// Renders the toolbar icon sets in icons/ from assets/icon.png — the mark,
-// drawn at 1254px on a transparent ground.
+// Renders the toolbar icon from assets/icon.png — the mark, drawn at 1254px
+// on a transparent ground.
 // Run: node icons/generate-icons.mjs
 //
-// Two sets come out, named for the browser mode each is drawn for:
-//   light-{16,32,48,128}.png  the drawing with a 1px ink line around it. On a
-//                             white toolbar the cream hand is invisible
-//                             without one. The manifest's default.
-//   dark-{16,32,48,128}.png   the drawing as it is. On a dark toolbar the
-//                             line would be a smudge.
-// background.js swaps them by the colour scheme the pages report.
+// Two sets come out:
+//   icons/icon-{16,32,48,128}.png             the drawing with a 1px ink line
+//                                             around it. On a white toolbar the
+//                                             cream hand is invisible without
+//                                             one. The set that ships, in every
+//                                             browser mode.
+//   assets/icon-no-outline-{16,32,48,128}.png the drawing as it is. Kept, not
+//                                             shipped: on a dark toolbar it is
+//                                             the better picture.
 //
 // A headless Chromium does the drawing — the same browser finder the test
 // suite uses, so this needs nothing installed that the tests do not. The
@@ -29,8 +31,8 @@ const ROOT = join(HERE, "..");
 const MASTER = join(ROOT, "assets/icon.png");
 const SIZES = [16, 32, 48, 128];
 const SETS = [
-  { name: "light", outline: 1 },
-  { name: "dark", outline: 0 },
+  { name: "icon", dir: HERE, outline: 1 },
+  { name: "icon-no-outline", dir: join(ROOT, "assets"), outline: 0 },
 ];
 // The light theme's --pnt-text-1: the ink the line is drawn in. Not checked
 // against tokens.css the way the badge map is — move it by hand if the token
@@ -206,7 +208,7 @@ try {
   if (r.corners.some((a) => a !== 0)) console.warn("generate-icons: a corner of the master is not transparent — is the ground clean?");
   for (const set of SETS) {
     for (const size of SIZES) {
-      const out = join(HERE, `${set.name}-${size}.png`);
+      const out = join(set.dir, `${set.name}-${size}.png`);
       writeFileSync(out, Buffer.from(r.out[set.name][size].split(",")[1], "base64"));
       console.log(`Generated ${out}`);
     }

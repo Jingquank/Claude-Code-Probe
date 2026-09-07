@@ -183,7 +183,7 @@ Two pages let you watch the chrome without a rebuild — serve the repo over HTT
 `test/harness.html` for placement or `test/edit-harness.html` for Edit Mode.
 
 ```sh
-node icons/generate-icons.mjs   # icons/ light and dark sets from assets/icon.png
+node icons/generate-icons.mjs   # icons/ from assets/icon.png; the no-outline set lands in assets/
 ```
 
 The words the code and the docs share are in [CONTEXT.md](CONTEXT.md). The design system —

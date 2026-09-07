@@ -36,12 +36,11 @@ and the chrome reads as one family laid over it rather than as boxes stuck on.
 There is no mascot. The extension icon is the mark: a cream hand pointing
 up and to the right, with a vermilion cuff — the two colours of the identity
 and nothing else, no face. The drawing is `assets/icon.png`, at 1254px on a
-transparent ground. It ships as two sets, named for the browser they are
-drawn for, not for Pointee's theme: on a light toolbar the cream hand is next
-to invisible, so the light set draws a 1px ink line around it; on a dark
-toolbar the line would be a smudge, so the dark set is the drawing as it is.
-`icons/generate-icons.mjs` makes both, and `background.js` swaps them by the
-colour scheme the pages report — Chrome's manifest can name only one.
+transparent ground. It ships with a 1px ink line around it, in every browser
+mode: on a light toolbar the cream hand is next to invisible without one. The
+drawing without the line is kept as `assets/icon-no-outline-*.png` and not
+shipped — on a dark toolbar it is the better picture, and it stays on hand.
+`icons/generate-icons.mjs` makes both from the master.
 
 ## 2. Type
 

@@ -7,7 +7,7 @@ const DEFAULT_BADGE = "#f0452b"; // the dark theme's accent
 // already open when the extension was installed or reloaded — chrome.scripting
 // is the only way to reach those. Keep both in step with manifest.json's
 // content_scripts entry, tokens.css first so it wins the cascade order.
-const INJECT_JS = ["lib/html2canvas.min.js", "content.js"];
+const INJECT_JS = ["lib/html2canvas-pro.min.js", "content.js"];
 const INJECT_CSS = ["tokens.css", "content.css"];
 
 // The badge is browser chrome, not page chrome, so it can't read tokens.css.
@@ -29,31 +29,6 @@ const BADGE_ACCENT = {
 // background.js — change all three.
 const LEGACY_THEME_IDS = { "terracotta-dark": "dark", "terracotta-light": "light" };
 const migrateThemeId = (id) => LEGACY_THEME_IDS[id] || id;
-
-// ===== Toolbar icon =====
-// Two sets, drawn for the browser's own mode rather than Pointee's theme: on
-// a light toolbar the cream hand needs its ink line to be seen at all; on a
-// dark one the line is a smudge and the drawing stands on its own. Chrome's
-// manifest can name only one set (Firefox's theme_icons has no counterpart
-// here), so the worker swaps them. A service worker has no matchMedia: each
-// page's content script — and the settings page — reports the scheme it
-// sees, and the latest report sets the global icon. The manifest's default is
-// the light set, which holds up on dark too until the first report lands.
-const ICON_SETS = {
-  light: { 16: "icons/light-16.png", 32: "icons/light-32.png", 48: "icons/light-48.png", 128: "icons/light-128.png" },
-  dark: { 16: "icons/dark-16.png", 32: "icons/dark-32.png", 48: "icons/dark-48.png", 128: "icons/dark-128.png" },
-};
-// What the action shows now. Null until the first report after the worker
-// wakes; Chrome keeps the icon across worker restarts, so a repeat costs one
-// redundant setIcon at most.
-let iconScheme = null;
-
-function applyIconScheme(dark) {
-  const scheme = dark ? "dark" : "light";
-  if (scheme === iconScheme) return;
-  iconScheme = scheme;
-  chrome.action.setIcon({ path: ICON_SETS[scheme] }).catch(() => {});
-}
 
 async function badgeColor() {
   try {
@@ -111,10 +86,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === "DEACTIVATE" && sender.tab) {
     activeTabs.delete(sender.tab.id);
     chrome.action.setBadgeText({ tabId: sender.tab.id, text: "" });
-  }
-
-  if (msg.type === "COLOR_SCHEME") {
-    applyIconScheme(Boolean(msg.dark));
   }
 
   // The gear in the page can't open the options page itself —

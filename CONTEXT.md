@@ -15,10 +15,11 @@ Cursor and Codex are examples in the README, never part of the name, the
 chrome, or the payload.
 _Avoid_: Claude Code Probe, the probe — the name until 2.0.
 
-**Icon set** — the toolbar icon in the version drawn for the *browser's* mode:
-the light set has an ink line around the cream hand, the dark set is the
-drawing bare. Named for the browser, not the theme — Pointee's own palette can
-be any of the roster while the browser is either.
+**Icon** — the toolbar icon: the mark with a 1px ink line around the cream
+hand, the one set that ships, whatever the browser's mode. The drawing without
+the line is kept in `assets/` and not shipped.
+_Avoid_: the light set, the dark set — briefly the two sets the icon shipped
+as, swapped by the browser's mode, before the line became the default.
 
 ## Modes
 
@@ -159,6 +160,17 @@ things an element genuinely cannot report: which *class* means which value
 (`.p-4` is 1rem), and the *text of the declaration* that won — the only place a
 `var()` can be seen, and so the only way to know a value is a token rather than
 merely equal to one.
+
+**Page values** — the distinct values a property actually takes on this page,
+read off the elements that carry them: the sizes, weights and leadings of the
+text that is here, the colours of the text and the fills that are here. Sorted
+and de-duplicated they are a scale too, and a stepper can walk them on any page
+whatever its stylesheets say. They have no names. A step that lands on a page
+value reports the value; only a token family can lend a name, and only when the
+source really references it — a page value that happens to equal a token is
+still a value. Decided 2026-09-06, when the source-only layer turned out to be
+silent on most production pages.
+_Avoid_: observed tokens, harvested tokens (they are not tokens), page scale.
 
 **Own chrome** — the DOM this extension injects, all `pnt-`-prefixed. Kept
 distinct from the page's own DOM everywhere: in hit-testing, in what the info
