@@ -39,6 +39,13 @@
   let editPanelEl = null;
   // The panel body's rail (rail.js), attached with the panel and detached with it.
   let editRail = null;
+  // True while the rows are being torn down and rebuilt. Chrome fires blur on
+  // a focused field as it is removed — before the node is detached — and a
+  // field's blur commits what it shows, which at that moment is the value
+  // from before the change that caused the rebuild. Committing it would write
+  // that stale number over a ladder step or an undo, so the blur handlers
+  // look here first.
+  let editRebuilding = false;
   let editPanelPos = null;
   // The panel is attached — flush against the selected element's facing edge
   // and following it — until the user drags it, after which it floats where it
@@ -450,6 +457,18 @@
     back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>',
     check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
     alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12.5"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
+    // The panel's own glyphs since round four: drawn, one stroke weight, so
+    // no character stands in for an icon anywhere in the chrome.
+    reset: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4.5 4.5v5h5"/></svg>',
+    caret: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>',
+    expand: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-7 7M10 20H4v-6M4 20l7-7"/></svg>',
+    link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>',
+    unlink: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 11.5l3-3a4 4 0 0 0-5.7-5.7l-1.5 1.5"/><path d="M11 12.5l-3 3a4 4 0 0 0 5.7 5.7l1.5-1.5"/><path d="M8 8L4 4M16 16l4 4"/></svg>',
+    close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+    alignLeft: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h10M4 18h16"/></svg>',
+    alignCenter: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M7 12h10M4 18h16"/></svg>',
+    alignRight: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M10 12h10M4 18h16"/></svg>',
+    grip: '<svg viewBox="0 8 8 14" fill="currentColor" stroke="none"><circle cx="2" cy="10" r="1.1"/><circle cx="6" cy="10" r="1.1"/><circle cx="2" cy="15" r="1.1"/><circle cx="6" cy="15" r="1.1"/><circle cx="2" cy="20" r="1.1"/><circle cx="6" cy="20" r="1.1"/></svg>',
   };
 
   // ===== Style formatting helpers =====
@@ -3589,6 +3608,10 @@
   // state, not element state: it is a way of looking at the element, so it
   // resets with the panel rather than following the element around.
   const editSplit = new Set();
+  // Which groups are open. Panel state like editSplit: a way of looking at
+  // the element, seeded from what the element has when the panel opens and
+  // kept across re-renders. An edited property always shows its group.
+  const editOpenGroups = new Map();
 
   // ===== box-shadow parts =====
   // One property, four decisions. The panel edits the parts and writes the
@@ -3833,6 +3856,12 @@
       exitEditMode();
     });
 
+    // The header is the drag handle, and says so when the pointer arrives.
+    const grip = document.createElement("i");
+    grip.className = "pnt-edit-grip";
+    grip.innerHTML = ICONS.grip;
+    grip.setAttribute("aria-hidden", "true");
+
     const identity = document.createElement("span");
     identity.className = "pnt-edit-id";
     identity.innerHTML = editPanelIdentity(selectedElement);
@@ -3842,7 +3871,7 @@
     degraded.setAttribute("aria-hidden", "true");
 
     const copy = document.createElement("button");
-    copy.className = "pnt-edit-act pnt-edit-copy";
+    copy.className = "pnt-edit-act pnt-edit-copy pnt-edit-primary";
     // origHtml is what setButtonSuccess puts back, and without it the button
     // never came back at all: it stayed disabled, wearing its success state,
     // for as long as the panel was open. The count badge lives inside the
@@ -3860,7 +3889,7 @@
 
     const resetAll = document.createElement("button");
     resetAll.className = "pnt-edit-act pnt-edit-resetall";
-    resetAll.textContent = "↺";
+    resetAll.innerHTML = ICONS.reset;
     resetAll.title = "Reset every edit";
     resetAll.setAttribute("aria-label", "Reset every edit");
     resetAll.addEventListener("click", (e) => {
@@ -3871,6 +3900,7 @@
     });
 
     head.appendChild(back);
+    head.appendChild(grip);
     head.appendChild(identity);
     head.appendChild(degraded);
     head.appendChild(copy);
@@ -3902,6 +3932,18 @@
     editPanelEl.appendChild(head);
     editPanelEl.appendChild(body);
 
+    // Anything in the panel carrying data-tip names itself in the tooltip
+    // root: a capsule whose name was cut off, the degraded ring's reason.
+    // Delegated, because the rows are rebuilt on every render.
+    editPanelEl.addEventListener("pointerover", (e) => {
+      const named = e.target.closest("[data-tip]");
+      if (named && editPanelEl.contains(named) && named.dataset.tip) showTip(named, { above: true });
+    });
+    editPanelEl.addEventListener("pointerout", (e) => {
+      const named = e.target.closest("[data-tip]");
+      if (named && !named.contains(e.relatedTarget)) hideTip();
+    });
+
     // The keyboard ladder for this mode, made visible — and only what is
     // bound: one undo timeline, its redo, and Escape back to the selection.
     const foot = document.createElement("div");
@@ -3910,11 +3952,13 @@
     foot.innerHTML =
       `<span><kbd class="pnt-kbd">⌘Z</kbd>undo</span>` +
       `<span><kbd class="pnt-kbd">⇧⌘Z</kbd>redo</span>` +
+      `<span><kbd class="pnt-kbd">⌥↑↓</kbd>step</span>` +
       `<span><kbd class="pnt-kbd">esc</kbd>back</span>`;
     editPanelEl.appendChild(foot);
     document.documentElement.appendChild(editPanelEl);
 
     seedSplitControls(selectedElement);
+    seedGroupState(selectedElement);
     renderEditControls();
     paintDegradedMarker();
     placeEditPanel();
@@ -4005,55 +4049,147 @@
     const reason = degradedReason();
     marker.classList.toggle("pnt-edit-on", Boolean(reason));
     marker.title = reason || "";
+    marker.dataset.tip = reason || "";
   }
 
   // ===== Edit Controls =====
-  // Stacked sections, one row per property: a dirty dot, a label, and the
-  // control. The dot is both the "this is edited" mark and the way to take one
-  // property back, which is why it sits with the row rather than in a menu.
+  // Round four's panel (test/edit-panel-prototypes.html, 04): every group is
+  // a titled grid of labelled cells — the label above the value, two across
+  // for most groups and three for Typography — and every group title is a
+  // caret row that opens and closes. Groups the element already has open by
+  // default; the rest start closed with a one-line summary of their values in
+  // place of a body, so the panel is as tall as what is open and on most
+  // elements never scrolls. The label is the edited mark and the reset: it
+  // turns accent when the property carries an edit and takes the edit back on
+  // click. The dirty-dot column of rounds one to three is gone.
+
+  function seedGroupState(el) {
+    editOpenGroups.clear();
+    if (!el || !el.isConnected) return;
+    const style = getComputedStyle(el);
+    const px = (prop) => parseFloat(style.getPropertyValue(prop)) || 0;
+    const anySide = (base) => ["top", "right", "bottom", "left"].some((s) => px(`${base}-${s}`) !== 0);
+    const fill = resolveColor(style.backgroundColor);
+    editOpenGroups.set("typography", true);
+    editOpenGroups.set("spacing",
+      anySide("padding") || anySide("margin") || px("row-gap") > 0 || px("column-gap") > 0);
+    // Size is auto on most elements, which is nothing to look at until it is
+    // not; the summary says the numbers anyway.
+    editOpenGroups.set("size", false);
+    editOpenGroups.set("surface", Boolean(fill && fill.a > 0) || parseFloat(style.opacity) < 1);
+    for (const group of EDIT_GROUPS) {
+      if (group.has) editOpenGroups.set(group.key, Boolean(group.has(el)));
+    }
+    editOpenGroups.set("advanced", advancedOpen);
+  }
+
+  function isGroupOpen(key) {
+    return editOpenGroups.has(key) ? editOpenGroups.get(key) : true;
+  }
+
+  function toggleGroup(key, open) {
+    const next = typeof open === "boolean" ? open : !isGroupOpen(key);
+    editOpenGroups.set(key, next);
+    const section = editPanelEl && editPanelEl.querySelector(`.pnt-edit-group[data-group="${key}"]`);
+    if (section) {
+      section.classList.toggle("pnt-edit-closed", !next);
+      const title = section.querySelector(".pnt-edit-title");
+      if (title) title.setAttribute("aria-expanded", String(next));
+    }
+    if (key === "advanced") {
+      advancedOpen = next;
+      postShaderMessage("PNT_SHADER_WATCH", { on: next && hasDrivenUniforms() });
+    }
+    // Opening grows the panel; a panel that grew past the viewport bottom
+    // leaves its new rows unreachable, so re-clamp exactly as a resize does.
+    // After the glide, because the clamp needs the final height.
+    setTimeout(() => {
+      if (!editing) return;
+      placeEditPanel();
+      renderTether({ instant: true });
+      repositionColorPicker();
+      if (editRail) editRail.update();
+    }, 220);
+  }
+
+  // The shell every group shares: a caret title carrying the summary a closed
+  // group shows, and a body the caret opens and closes.
+  function buildGroupShell(key, label) {
+    const section = document.createElement("div");
+    section.className = "pnt-edit-group";
+    section.dataset.group = key;
+    const open = isGroupOpen(key);
+    section.classList.toggle("pnt-edit-closed", !open);
+
+    const title = document.createElement("button");
+    title.className = "pnt-edit-title";
+    title.type = "button";
+    title.setAttribute("aria-expanded", String(open));
+    const caret = document.createElement("i");
+    caret.className = "pnt-edit-caret";
+    caret.innerHTML = ICONS.caret;
+    caret.setAttribute("aria-hidden", "true");
+    const name = document.createElement("span");
+    name.className = "pnt-edit-name";
+    name.textContent = label;
+    const sum = document.createElement("span");
+    sum.className = "pnt-edit-sum";
+    title.appendChild(caret);
+    title.appendChild(name);
+    title.appendChild(sum);
+    title.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleGroup(key);
+    });
+
+    const body = document.createElement("div");
+    body.className = "pnt-edit-groupbody";
+    section.appendChild(title);
+    section.appendChild(body);
+    return { section, body, sum };
+  }
+
+  function buildCells(columns) {
+    const cells = document.createElement("div");
+    cells.className = `pnt-edit-cells pnt-edit-c${columns}`;
+    return cells;
+  }
 
   function renderEditControls() {
     if (!editPanelEl || !selectedElement) return;
     const body = editPanelEl.querySelector(".pnt-edit-body");
-    body.textContent = "";
+    editRebuilding = true;
+    try {
+      body.textContent = "";
+    } finally {
+      editRebuilding = false;
+    }
+    hideTip();
 
     for (const group of groupsFor(selectedElement)) {
-      // Typography wears the grid: the group the panel spends most of its
-      // height on, and the one with a composite style to name. Everything
-      // else keeps the classic rows.
-      if (group.key === "typography") {
-        body.appendChild(renderTypographySection(group));
-        continue;
+      // An edit reveals its group: a closed group hiding a changed value
+      // would be a panel lying about what it has done.
+      if (!isGroupOpen(group.key) && groupHasEdits(group, selectedElement)) {
+        editOpenGroups.set(group.key, true);
       }
-      const section = document.createElement("div");
-      section.className = "pnt-edit-group";
+      const shell = buildGroupShell(group.key, group.label);
 
-      const legend = document.createElement("p");
-      legend.className = "pnt-edit-legend";
-      legend.textContent = group.label;
-      section.appendChild(legend);
-
-      // A group whose property the element does not have yet. In standard mode
-      // it offers to add one, so the affordance is always in the same place;
-      // in adaptive mode the group is simply not there, and the panel is only
-      // as tall as this element needs.
+      // A group whose property the element does not have yet. In standard
+      // mode it offers to add one, so the affordance is always in the same
+      // place; in adaptive mode the group is simply not there, and the panel
+      // is only as tall as this element needs.
       if (group.add && group.has && !group.has(selectedElement) &&
           !isEditedProp(selectedElement, Object.keys(group.add)[0])) {
         if (editPrefs.editGroups === "adaptive") continue;
-        section.appendChild(buildAddRow(group));
-        body.appendChild(section);
+        shell.body.appendChild(buildAddRow(group));
+        body.appendChild(shell.section);
         continue;
       }
 
-      for (const control of controlsOf(group, selectedElement)) {
-        section.appendChild(buildEditRow(control));
-        if (control.sides && editSplit.has(control.prop)) {
-          for (let i = 0; i < control.sides.length; i++) {
-            section.appendChild(buildEditRow(sideControl(control, i), true));
-          }
-        }
-      }
-      body.appendChild(section);
+      if (group.key === "typography") fillTypographyGroup(shell.body, group);
+      else fillGroup(shell.body, group);
+      body.appendChild(shell.section);
     }
 
     // Advanced sits last and only when detection found something — never an
@@ -4064,165 +4200,82 @@
 
     refreshEditControls();
     // This render just destroyed every swatch, the open picker's anchor among
-    // them — reachable from a theme change, the reset dot, a split link, or an
-    // undo taken mid-pick. Re-find the anchor, or close if its row is gone.
+    // them — reachable from a theme change, a reset, a split link, or an undo
+    // taken mid-pick. Re-find the anchor, or close if its row is gone.
     repositionColorPicker();
     if (editRail) editRail.update();
   }
 
-  // ===== Typography Grid =====
-  // The round-three design: text row (with the long-text editor's ⤢), the
-  // style row when a composite is in force, then a three-up grid of
-  // micro-labelled cells. The tick vocabulary: a filled corner tick means
-  // the value comes from the claimed style, a hollow one means the cell sits
-  // on its own single-prop token, a dashed border means covered-but-drifted.
-  // The caption line under the grid names whatever the pointer touches.
+  function groupHasEdits(group, el) {
+    for (const control of group.controls) {
+      const prop = control.shadowPart ? "box-shadow" : control.prop;
+      if (isEditedProp(el, prop)) return true;
+      if (control.sides && control.sides.some((s) => isEditedProp(el, s))) return true;
+    }
+    return group.key === "typography" && isEditedProp(el, "type-style");
+  }
 
-  const TYPE_CELL_LABEL = {
-    "font-size": "size", "font-weight": "weight", "line-height": "leading",
-    "letter-spacing": "tracking", "text-align": "align", color: "colour",
-  };
+  // The ordinary group: two cells across, a split control's four sides in a
+  // row of four under it, and an odd last cell stretched across the row so
+  // nothing sits alone.
+  function fillGroup(body, group) {
+    const cells = buildCells(2);
+    let placed = 0;
+    for (const control of controlsOf(group, selectedElement)) {
+      cells.appendChild(buildEditRow(control));
+      placed++;
+      if (control.sides && editSplit.has(control.prop)) {
+        const sides = buildCells(4);
+        for (let i = 0; i < control.sides.length; i++) {
+          sides.appendChild(buildEditRow(sideControl(control, i), true));
+        }
+        cells.appendChild(sides);
+        placed = 0; // the row of sides spans the grid; the count starts over
+      }
+    }
+    if (placed % 2 === 1) cells.lastElementChild.classList.add("pnt-edit-span2");
+    body.appendChild(cells);
+  }
 
-  function renderTypographySection(group) {
+  // Typography wears three across, with the words and the composite style
+  // spanning the row above the six metrics.
+  function fillTypographyGroup(body, group) {
     const el = selectedElement;
-    const section = document.createElement("div");
-    section.className = "pnt-edit-group pnt-type";
-
-    const legend = document.createElement("p");
-    legend.className = "pnt-edit-legend";
-    legend.textContent = group.label;
-    section.appendChild(legend);
-
+    const cells = buildCells(3);
     const controls = controlsOf(group, el);
 
-    // The words, with a way out for long ones.
     const textControl = controls.find((c) => c.kind === "text");
     if (textControl) {
-      const row = buildEditRow(textControl);
-      const expand = document.createElement("button");
-      expand.className = "pnt-edit-expand";
-      expand.textContent = "⤢";
-      expand.title = "Edit the full text";
-      expand.setAttribute("aria-label", "Edit the full text");
-      expand.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (textEditorEl) closeTextEditor();
-        else openTextEditor(textControl);
-      });
-      row.appendChild(expand);
-      section.appendChild(row);
+      const cell = buildEditRow(textControl);
+      cell.classList.add("pnt-edit-span3");
+      cells.appendChild(cell);
     }
 
-    // The composite, when one is in force.
     editTypeInForce = computeTypeInForce(el);
     editTypeClaim = detectTypeStyle(el);
-    if (editTypeClaim) section.appendChild(buildTypeStyleRow(editTypeClaim));
+    if (editTypeClaim) cells.appendChild(buildTypeStyleCell(editTypeClaim));
 
-    // The grid.
-    const grid = document.createElement("div");
-    grid.className = "pnt-type-grid";
     for (const control of controls) {
       if (control.kind === "text") continue;
-      grid.appendChild(buildTypeCell({ ...control, gridCell: true }));
+      cells.appendChild(buildEditRow(control));
     }
-    section.appendChild(grid);
-
-    const cap = document.createElement("p");
-    cap.className = "pnt-type-cap";
-    section.appendChild(cap);
-    section.addEventListener("pointerover", (e) => {
-      const named = e.target.closest("[data-cap]");
-      if (named) cap.innerHTML = named.dataset.cap;
-    });
-    section.addEventListener("pointerout", () => paintTypeCaption());
-
+    body.appendChild(cells);
     refreshTypographyState();
-    return section;
   }
 
-  // A cell: micro-label above the control, the label doubling as the reset
-  // the dot is elsewhere — it colours when the property is edited and takes
-  // the edit back on click.
-  function buildTypeCell(control) {
+  // The composite's seat: a cell spanning the row, the chip naming the style
+  // in force, drifted or not, with the ladder's arrows when it has one.
+  function buildTypeStyleCell(claim) {
     const cell = document.createElement("div");
-    cell.className = "pnt-edit-row pnt-type-cell";
-    cell.dataset.prop = control.shadowPart ? "box-shadow" : control.prop;
-    cell.dataset.control = control.prop;
-
-    const k = document.createElement("button");
-    k.className = "pnt-type-k";
-    k.textContent = TYPE_CELL_LABEL[control.prop] || control.label;
-    k.title = `Reset ${control.label}`;
-    k.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const owner = controlTarget(control);
-      if (!owner || !isEditedProp(owner, cell.dataset.prop)) return;
-      resetEditProp(owner, cell.dataset.prop);
-      renderEditControls();
-    });
-    cell.appendChild(k);
-
-    cell.appendChild(
-      control.kind === "color" ? buildColorControl(control)
-        : control.kind === "segment" ? buildSegmentControl(control)
-        : buildNumericControl(control)
-    );
-
-    // Loose tokenized values step on the wheel — the grid has no room for
-    // the ‹ › stepper, and the caption carries the naming.
-    const family = editPrefs.editTokenControls === "value"
-      ? null
-      : familyForControl(selectedElement, control);
-    if (family && !control.kind) {
-      cell.addEventListener("wheel", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        stepControlToken(control, family, e.deltaY < 0 ? 1 : -1);
-      }, { passive: false });
-    }
-    return cell;
-  }
-
-  function buildTypeStyleRow(claim) {
-    const row = document.createElement("div");
-    row.className = "pnt-edit-row pnt-type-stylerow";
-    row.dataset.prop = "type-style";
-    row.dataset.control = "type-style";
-
-    const dot = document.createElement("button");
-    dot.className = "pnt-edit-dot";
-    dot.title = "Reset style";
-    dot.setAttribute("aria-label", "Reset style");
-    dot.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (!selectedElement || !isEditedProp(selectedElement, "type-style")) return;
-      resetEditProp(selectedElement, "type-style");
-      renderEditControls();
-    });
-
-    const label = document.createElement("span");
-    label.className = "pnt-edit-label";
-    label.textContent = "style";
+    cell.className = "pnt-edit-row pnt-edit-cell pnt-edit-span3 pnt-type-stylerow";
+    cell.dataset.prop = "type-style";
+    cell.dataset.control = "type-style";
+    cell.appendChild(buildLabel({ prop: "type-style", label: "style" }, "type-style"));
 
     const chip = document.createElement("span");
     chip.className = "pnt-type-chip";
     const ladder = typeLadderFor(claim);
-
-    if (ladder) {
-      const down = document.createElement("button");
-      down.className = "pnt-type-st";
-      down.textContent = "‹";
-      down.title = "Step the style down";
-      down.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        stepTypeStyle(claim, ladder, -1);
-      });
-      chip.appendChild(down);
-    }
+    if (ladder) chip.appendChild(styleStepButton(claim, ladder, -1, "‹", "Step the style down"));
 
     const name = document.createElement("b");
     name.className = "pnt-type-name";
@@ -4232,8 +4285,12 @@
     if (!claim.on) {
       const mod = document.createElement("i");
       mod.className = "pnt-type-mod";
-      mod.textContent = "· modified";
+      mod.textContent = `modified · ${claim.drifted.map(labelOfTypeProp).join(", ")}`;
       chip.appendChild(mod);
+      const conform = document.createElement("i");
+      conform.className = "pnt-type-conform";
+      conform.textContent = "conform";
+      chip.appendChild(conform);
       chip.classList.add("pnt-type-drifted");
       chip.title = `Conform to ${claim.style.name}`;
       chip.addEventListener("click", (e) => {
@@ -4244,94 +4301,104 @@
       });
     }
 
-    if (ladder) {
-      const up = document.createElement("button");
-      up.className = "pnt-type-st";
-      up.textContent = "›";
-      up.title = "Step the style up";
-      up.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        stepTypeStyle(claim, ladder, 1);
-      });
-      chip.appendChild(up);
-    }
-
-    row.appendChild(dot);
-    row.appendChild(label);
-    row.appendChild(chip);
-    return row;
+    if (ladder) chip.appendChild(styleStepButton(claim, ladder, 1, "›", "Step the style up"));
+    cell.appendChild(chip);
+    return cell;
   }
 
-  // Live state the generic refresh loop cannot know: the claim (drift moves
-  // with every scrub), the ticks it implies, and the caption's idle text.
-  function refreshTypographyState() {
-    if (!editPanelEl || !selectedElement || !selectedElement.isConnected) return;
-    const el = selectedElement;
-    if (!editPanelEl.querySelector(".pnt-type")) return;
-    editTypeClaim = detectTypeStyle(el);
-    const claim = editTypeClaim;
-
-    for (const cell of editPanelEl.querySelectorAll(".pnt-type-cell")) {
-      const prop = cell.dataset.control;
-      cell.classList.remove("pnt-type-fromstyle", "pnt-type-drift", "pnt-type-owntok");
-      if (claim && claim.style.constituents[prop] !== undefined) {
-        const drifted = claim.drifted.includes(prop);
-        const safe = escapeHtml(claim.style.name);
-        cell.classList.add(drifted ? "pnt-type-drift" : "pnt-type-fromstyle");
-        cell.dataset.cap = drifted
-          ? `<b>${TYPE_CELL_LABEL[prop]}</b> — drifted from ${safe}`
-          : `<b>${TYPE_CELL_LABEL[prop]}</b> — from ${safe}`;
-      } else {
-        const control = typeControlFor(prop);
-        const family = control && !control.kind && editPrefs.editTokenControls !== "value"
-          ? familyForControl(el, control)
-          : null;
-        if (family) {
-          cell.classList.add("pnt-type-owntok");
-          const onRung = matchToken(family.members, numericState(el, control).value);
-          cell.dataset.cap = onRung
-            ? `<b>${escapeHtml(onRung.name)}</b> — wheel steps the ${escapeHtml(family.prefix)} scale`
-            : `off the <b>${escapeHtml(family.prefix)}</b> scale — wheel steps to a rung`;
-        } else {
-          delete cell.dataset.cap;
-        }
-      }
-    }
-
-    const styleRow = editPanelEl.querySelector(".pnt-type-stylerow");
-    if (styleRow) {
-      const edited = isEditedProp(el, "type-style");
-      styleRow.classList.toggle("pnt-edit-dirty", edited);
-      const dot = styleRow.querySelector(".pnt-edit-dot");
-      if (dot) dot.classList.toggle("pnt-edit-on", edited);
-      if (claim) {
-        const safe = escapeHtml(claim.style.name);
-        styleRow.dataset.cap = claim.on
-          ? `on <b>${safe}</b> — ${Object.keys(claim.style.constituents)
-              .map((p) => TYPE_CELL_LABEL[p]).join(" + ")}`
-          : `<b>${safe}</b> — drifted: ${claim.drifted
-              .map((p) => TYPE_CELL_LABEL[p]).join(", ")} · click to conform`;
-      }
-    }
-    paintTypeCaption();
+  function styleStepButton(claim, ladder, dir, glyph, title) {
+    const button = document.createElement("button");
+    button.className = "pnt-type-st";
+    button.type = "button";
+    button.textContent = glyph;
+    button.title = title;
+    button.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      stepTypeStyle(claim, ladder, dir);
+    });
+    return button;
   }
 
-  function typeControlFor(prop) {
+  function labelOfTypeProp(prop) {
     const group = EDIT_GROUPS.find((g) => g.key === "typography");
     const control = group && group.controls.find((c) => c.prop === prop);
-    return control ? { ...control, gridCell: true } : null;
+    return control ? control.label : prop;
   }
 
-  function paintTypeCaption() {
-    const cap = editPanelEl && editPanelEl.querySelector(".pnt-type-cap");
-    if (!cap) return;
-    const claim = editTypeClaim;
-    cap.innerHTML = claim
-      ? (claim.on
-        ? `<b>${escapeHtml(claim.style.name)}</b>`
-        : `<b>${escapeHtml(claim.style.name)}</b> · modified`)
-      : "";
+  // Live state the generic refresh cannot know: the claim moves with every
+  // scrub, and the style cell's mark has to follow the composite's own edit.
+  function refreshTypographyState() {
+    if (!editPanelEl || !selectedElement || !selectedElement.isConnected) return;
+    const styleCell = editPanelEl.querySelector(".pnt-type-stylerow");
+    if (!styleCell) return;
+    editTypeClaim = detectTypeStyle(selectedElement);
+    const edited = isEditedProp(selectedElement, "type-style");
+    styleCell.classList.toggle("pnt-edit-dirty", edited);
+    const label = styleCell.querySelector(".pnt-edit-label");
+    if (label) label.classList.toggle("pnt-edit-on", edited);
+  }
+
+  // An edit reveals its group. A render already opens any group with edits;
+  // a refresh — one keystroke into a field of a closed group, an undo landing
+  // there — has to do the same without rebuilding.
+  function revealEditedGroups() {
+    if (!editPanelEl || !selectedElement || !selectedElement.isConnected) return;
+    for (const group of EDIT_GROUPS) {
+      if (isGroupOpen(group.key) || !groupHasEdits(group, selectedElement)) continue;
+      toggleGroup(group.key, true);
+    }
+  }
+
+  // What a closed group says about itself: its values on one line.
+  function paintGroupSummaries() {
+    if (!editPanelEl || !selectedElement || !selectedElement.isConnected) return;
+    for (const section of editPanelEl.querySelectorAll(".pnt-edit-group[data-group]")) {
+      const sum = section.querySelector(".pnt-edit-sum");
+      if (sum) sum.textContent = groupSummary(section.dataset.group, selectedElement);
+    }
+  }
+
+  function groupSummary(key, el) {
+    const style = getComputedStyle(el);
+    const px = (prop) => Math.round(parseFloat(style.getPropertyValue(prop)) || 0);
+    const hex = (prop) => {
+      const c = resolveColor(style.getPropertyValue(prop));
+      return !c || c.a === 0 ? "none" : formatHex(c);
+    };
+    switch (key) {
+      case "typography": {
+        const parts = [`${px("font-size")}px`, style.fontWeight];
+        if (editTypeClaim) parts.push(editTypeClaim.style.name);
+        return parts.join(" · ");
+      }
+      case "spacing": {
+        const parts = [`pad ${px("padding-top")}`, `mar ${px("margin-top")}`];
+        if (/flex|grid/.test(style.display)) parts.push(`gap ${px("row-gap")}`);
+        return parts.join(" · ");
+      }
+      case "size": {
+        const auto = !el.style.getPropertyValue("width") && !el.style.getPropertyValue("height");
+        return `${px("width")} × ${px("height")}${auto ? " · auto" : ""}`;
+      }
+      case "surface":
+        return `${hex("background-color")} · ${Math.round((parseFloat(style.opacity) || 0) * 100)}%`;
+      case "border":
+        return px("border-top-width") > 0
+          ? `${px("border-top-width")}px · ${hex("border-top-color")}`
+          : "none";
+      case "shadow": {
+        if (style.boxShadow === "none") return "none";
+        const group = EDIT_GROUPS.find((g) => g.key === "shadow");
+        return group.controls
+          .filter((c) => c.shadowPart && c.shadowPart !== "color")
+          .map((c) => `${Math.round(numericState(el, c).value)}`)
+          .join(" ") + "px";
+      }
+      case "advanced":
+        return advancedSummaryText();
+    }
+    return "";
   }
 
   // ===== Long-text editor =====
@@ -4350,7 +4417,7 @@
     const title = document.createElement("span");
     title.textContent = "Text";
     const close = document.createElement("button");
-    close.textContent = "×";
+    close.innerHTML = ICONS.close;
     close.title = "Close";
     close.setAttribute("aria-label", "Close text editor");
     close.addEventListener("click", (e) => {
@@ -4459,13 +4526,22 @@
     };
   }
 
+  // A group the element does not have yet: one disclosure row that adds it,
+  // in the same vocabulary as every other "there is more here" in the panel.
   function buildAddRow(group) {
-    const row = document.createElement("div");
-    row.className = "pnt-edit-row pnt-edit-addrow";
-    const button = document.createElement("button");
-    button.className = "pnt-edit-add";
-    button.textContent = `+ add ${group.label.toLowerCase()}`;
-    button.addEventListener("click", (e) => {
+    const row = document.createElement("button");
+    row.className = "pnt-edit-disc pnt-edit-add";
+    row.type = "button";
+    const caret = document.createElement("i");
+    caret.className = "pnt-edit-caret";
+    caret.innerHTML = ICONS.caret;
+    caret.setAttribute("aria-hidden", "true");
+    const name = document.createElement("span");
+    name.className = "pnt-edit-name";
+    name.textContent = `Add ${group.label.toLowerCase()}`;
+    row.appendChild(caret);
+    row.appendChild(name);
+    row.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
       const el = selectedElement;
@@ -4477,52 +4553,68 @@
         });
         commitEditGesture();
       }
+      editOpenGroups.set(group.key, true);
       renderEditControls();
     });
-    row.appendChild(button);
     return row;
   }
 
-  function buildEditRow(control, isSide) {
-    const row = document.createElement("div");
-    row.className = "pnt-edit-row" + (isSide ? " pnt-edit-side" : "");
-    // Shadow parts all write box-shadow, and a vec uniform's components all
-    // write the whole uniform — so the row's dirty state and its reset both
-    // key off the one property the registry actually holds.
-    const resetProp = control.shadowPart ? "box-shadow" : (control.uniformKey || control.prop);
-    row.dataset.prop = resetProp;
-    row.dataset.control = control.prop;
-
-    const dot = document.createElement("button");
-    dot.className = "pnt-edit-dot";
-    dot.title = `Reset ${control.label}`;
-    dot.setAttribute("aria-label", `Reset ${control.label}`);
-    dot.addEventListener("click", (e) => {
+  // The label: the property's name, the edited mark, and the reset. It turns
+  // accent when the property carries an edit and takes the edit back on
+  // click; a split control's link toggle rides at its right end.
+  function buildLabel(control, resetProp) {
+    const label = document.createElement("span");
+    label.className = "pnt-edit-label";
+    const name = document.createElement("span");
+    name.className = "pnt-edit-name";
+    name.textContent = control.label;
+    label.appendChild(name);
+    if (control.driven) {
+      const tag = document.createElement("i");
+      tag.className = "pnt-edit-driven";
+      tag.textContent = "driven";
+      label.appendChild(tag);
+    }
+    const undo = document.createElement("i");
+    undo.className = "pnt-edit-undo";
+    undo.innerHTML = ICONS.reset;
+    undo.setAttribute("aria-hidden", "true");
+    label.appendChild(undo);
+    label.title = `Reset ${control.label}`;
+    label.addEventListener("click", (e) => {
+      if (e.target.closest(".pnt-edit-link")) return;
       e.preventDefault();
       e.stopPropagation();
-      // A uniform's edits live on the probed canvas, not the selection.
       const owner = controlTarget(control);
       if (!owner || !isEditedProp(owner, resetProp)) return;
       resetEditProp(owner, resetProp);
       renderEditControls();
     });
+    return label;
+  }
 
-    const label = document.createElement("span");
-    label.className = "pnt-edit-label";
-    label.textContent = control.label;
+  function buildEditRow(control, isSide) {
+    const cell = document.createElement("div");
+    cell.className = "pnt-edit-row pnt-edit-cell" + (isSide ? " pnt-edit-side" : "");
+    // Shadow parts all write box-shadow, and a vec uniform's components all
+    // write the whole uniform — so the cell's edited state and its reset both
+    // key off the one property the registry actually holds.
+    const resetProp = control.shadowPart ? "box-shadow" : (control.uniformKey || control.prop);
+    cell.dataset.prop = resetProp;
+    cell.dataset.control = control.prop;
+    if (control.driven) cell.dataset.driven = "";
 
-    row.appendChild(dot);
-    row.appendChild(label);
+    const label = buildLabel(control, resetProp);
 
-    // The link toggle turns one value into four and back. It sits before the
-    // control so the row still lines up down the same edge either way.
+    // The link toggle turns one value into four and back.
     if (control.sides) {
       const split = editSplit.has(control.prop);
       const differ = selectedElement && selectedElement.isConnected &&
         sidesDiffer(getComputedStyle(selectedElement), control);
       const link = document.createElement("button");
       link.className = "pnt-edit-link";
-      link.textContent = split ? "⊟" : "⊞";
+      link.type = "button";
+      link.innerHTML = split ? ICONS.unlink : ICONS.link;
       // Going back to a single value when the sides disagree is not a change
       // of view, it is an edit — it throws three of them away. The button says
       // which one it is about to do.
@@ -4542,28 +4634,39 @@
         }
         renderEditControls();
       });
-      row.appendChild(link);
+      label.appendChild(link);
     }
+    cell.appendChild(label);
 
     if (control.sides && editSplit.has(control.prop)) {
-      // Split: the parent row is a heading for the four beneath it.
-      row.classList.add("pnt-edit-parent");
-      return row;
+      // Split: the parent cell stands for the four beneath it.
+      cell.classList.add("pnt-edit-parent");
+      const quiet = document.createElement("span");
+      quiet.className = "pnt-edit-num pnt-edit-inert";
+      const text = document.createElement("span");
+      text.className = "pnt-edit-static";
+      text.textContent = "4 sides";
+      quiet.appendChild(text);
+      cell.appendChild(quiet);
+      return cell;
     }
 
-    row.appendChild(
+    cell.appendChild(
       control.kind === "color" ? buildColorControl(control)
         : control.kind === "segment" ? buildSegmentControl(control)
         : control.kind === "text" ? buildTextControl(control)
         : buildNumericControl(control)
     );
-    return row;
+    return cell;
   }
 
   // The words themselves. Live like a scrub — every keystroke lands on the
   // page — with the same three exits typing a number has: Enter commits,
-  // Escape abandons back to where this gesture started, blur commits.
+  // Escape abandons back to where this gesture started, blur commits. The
+  // way out to the long-text editor sits beside it.
   function buildTextControl(control) {
+    const row = document.createElement("span");
+    row.className = "pnt-edit-textrow";
     const wrap = document.createElement("span");
     wrap.className = "pnt-edit-textwrap";
 
@@ -4608,53 +4711,101 @@
       e.stopPropagation();
     });
     input.addEventListener("blur", () => {
+      if (editRebuilding) return;
       commitEditGesture();
       refreshEditControls();
     });
 
     wrap.appendChild(input);
-    return wrap;
-  }
+    row.appendChild(wrap);
 
-  function buildColorControl(control) {
-    const wrap = document.createElement("span");
-    wrap.className = "pnt-edit-color";
-
-    const swatch = document.createElement("button");
-    swatch.className = "pnt-edit-swatch";
-    swatch.title = `Change ${control.label}`;
-    swatch.setAttribute("aria-label", `Change ${control.label}`);
-    const fill = document.createElement("i");
-    swatch.appendChild(fill);
-
-    const readout = document.createElement("span");
-    readout.className = "pnt-edit-hex";
-
-    swatch.addEventListener("click", (e) => {
+    const expand = document.createElement("button");
+    expand.className = "pnt-edit-expand";
+    expand.type = "button";
+    expand.innerHTML = ICONS.expand;
+    expand.title = "Edit the full text";
+    expand.setAttribute("aria-label", "Edit the full text");
+    expand.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      // Clicking the open swatch shuts the picker. It used to reopen it: the
+      if (textEditorEl) closeTextEditor();
+      else openTextEditor(control);
+    });
+    row.appendChild(expand);
+    return row;
+  }
+
+  // The field for a colour: a swatch and the value, one chip that opens the
+  // picker. Under it, the capsule naming the token the colour sits on — a
+  // colour token is a palette rather than a ladder, so the capsule has no
+  // arrows. The name found on entry is remembered on the cell; an edit's own
+  // token, or the lack of one, takes over from there.
+  function buildColorControl(control) {
+    const holder = document.createElement("span");
+    holder.className = "pnt-edit-fieldwrap";
+
+    const chip = document.createElement("button");
+    chip.className = "pnt-edit-color";
+    chip.type = "button";
+    chip.title = `Change ${control.label}`;
+    chip.setAttribute("aria-label", `Change ${control.label}`);
+    const swatch = document.createElement("span");
+    swatch.className = "pnt-edit-swatch";
+    swatch.appendChild(document.createElement("i"));
+    const readout = document.createElement("span");
+    readout.className = "pnt-edit-hex";
+    chip.appendChild(swatch);
+    chip.appendChild(readout);
+    chip.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      // Clicking the open chip shuts the picker. It used to reopen it: the
       // first thing openColorPicker does is close, so the picker was torn down
       // and rebuilt identically and the gesture looked like it did nothing.
       if (editPopoverEl && editPopoverProp === control.prop) {
         closeColorPicker();
         return;
       }
-      openColorPicker(control, swatch);
+      openColorPicker(control, chip);
     });
+    holder.appendChild(chip);
 
-    wrap.appendChild(swatch);
-    wrap.appendChild(readout);
-    return wrap;
+    const cap = document.createElement("span");
+    cap.className = "pnt-edit-tok pnt-edit-tok-color";
+    cap.appendChild(document.createElement("b"));
+    cap.style.display = "none";
+    holder.appendChild(cap);
+
+    if (!control.uniform && selectedElement && selectedElement.isConnected && tokenIndex) {
+      const prop = control.reads || control.prop;
+      const found = detectPropertyToken(selectedElement, prop,
+        getComputedStyle(selectedElement).getPropertyValue(prop).trim(), tokenIndex);
+      if (found) holder.dataset.token = found.name;
+    }
+    return holder;
   }
 
   // Type, arrow, or scrub — the same three ways Figma offers, because each
   // suits a different question: typing when you know the number, arrows when
-  // you are counting steps, scrubbing when you are judging by eye.
+  // you are counting steps, scrubbing when you are judging by eye. The chip's
+  // ends carry the arrows: faint at rest, the hint that it scrubs; a control
+  // on hover — a rung along the ladder where a scale exists, a step of the
+  // number where it does not.
   function buildNumericControl(control) {
+    const holder = document.createElement("span");
+    holder.className = "pnt-edit-fieldwrap";
+
     const wrap = document.createElement("span");
     wrap.className = "pnt-edit-num";
     wrap.dataset.prop = control.prop;
+
+    // The stepper only exists when this element's value is actually sitting
+    // on one of the page's scales. Offering "‹ — ›" over a value that belongs
+    // to no scale would promise a move that cannot happen.
+    const family = control.uniform || editPrefs.editTokenControls === "value"
+      ? null
+      : familyForControl(selectedElement, control);
+    wrap.dataset.kind = family ? "tok" : "none";
 
     const input = document.createElement("input");
     input.className = "pnt-edit-input";
@@ -4663,6 +4814,7 @@
     input.spellcheck = false;
     input.setAttribute("aria-label", control.label);
 
+    wrap.appendChild(arrowButton(control, family, -1));
     wrap.appendChild(input);
     if (control.unit) {
       const unit = document.createElement("i");
@@ -4670,6 +4822,7 @@
       unit.textContent = control.unit;
       wrap.appendChild(unit);
     }
+    wrap.appendChild(arrowButton(control, family, 1));
 
     input.addEventListener("keydown", (e) => onNumericKey(e, control));
     input.addEventListener("blur", () => commitNumericInput(control, input));
@@ -4678,18 +4831,16 @@
     wrap.addEventListener("pointerdown", (e) => onNumericScrubStart(e, control, input));
 
     // "token" hides the raw number once a scale is available: the whole point
-    // of a design system is that the pixel count is not the decision. A grid
-    // cell keeps its number regardless — with no stepper beside it, hiding
-    // the value would leave the cell blank.
-    if (!control.gridCell && editPrefs.editTokenControls === "token" &&
-        familyForControl(selectedElement, control)) {
-      wrap.classList.add("pnt-edit-quiet");
-    }
+    // of a design system is that the pixel count is not the decision.
+    if (editPrefs.editTokenControls === "token" && family) wrap.classList.add("pnt-edit-quiet");
 
-    const extra = [];
     if (control.auto) {
+      const pair = document.createElement("span");
+      pair.className = "pnt-edit-autowrap";
+      pair.appendChild(wrap);
       const auto = document.createElement("button");
       auto.className = "pnt-edit-auto";
+      auto.type = "button";
       auto.textContent = "auto";
       auto.title = `Let ${control.label} size itself`;
       auto.addEventListener("click", (e) => {
@@ -4697,25 +4848,23 @@
         e.stopPropagation();
         toggleAuto(control);
       });
-      extra.push(auto);
+      pair.appendChild(auto);
+      holder.appendChild(pair);
+    } else {
+      holder.appendChild(wrap);
     }
 
-    // The stepper only exists when this element's value is actually sitting on
-    // one of the page's scales. Offering "‹ — ›" over a value that belongs to
-    // no scale would promise a move that cannot happen. Grid cells have no
-    // room for it — there, the wheel steps and the caption names.
-    const family = control.gridCell || editPrefs.editTokenControls === "value"
-      ? null
-      : familyForControl(selectedElement, control);
     if (family) {
       const stepper = document.createElement("span");
       stepper.className = "pnt-edit-tok";
       stepper.dataset.family = family.prefix;
       const down = document.createElement("button");
+      down.type = "button";
       down.textContent = "‹";
       down.title = `Step ${control.label} down the ${family.prefix} scale`;
       const name = document.createElement("b");
       const up = document.createElement("button");
+      up.type = "button";
       up.textContent = "›";
       up.title = `Step ${control.label} up the ${family.prefix} scale`;
       down.addEventListener("click", (e) => {
@@ -4727,15 +4876,38 @@
       stepper.appendChild(down);
       stepper.appendChild(name);
       stepper.appendChild(up);
-      extra.push(stepper);
+      holder.appendChild(stepper);
     }
-
-    if (extra.length === 0) return wrap;
-    const holder = document.createElement("span");
-    holder.className = "pnt-edit-numwrap";
-    holder.appendChild(wrap);
-    for (const node of extra) holder.appendChild(node);
     return holder;
+  }
+
+  function arrowButton(control, family, dir) {
+    const button = document.createElement("button");
+    button.className = "pnt-edit-arrow " + (dir > 0 ? "pnt-edit-up" : "pnt-edit-dn");
+    button.type = "button";
+    button.tabIndex = -1;
+    button.title = family
+      ? `Step ${control.label} ${dir > 0 ? "up" : "down"} the ${family.prefix} scale`
+      : `${dir > 0 ? "Increase" : "Decrease"} ${control.label}`;
+    button.setAttribute("aria-label", button.title);
+    button.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (family) stepControlToken(control, family, dir);
+      else nudgeNumeric(control, dir, e.shiftKey);
+    });
+    return button;
+  }
+
+  // One step of the number, as an undo entry of its own. Shift makes it ten.
+  function nudgeNumeric(control, dir, big) {
+    const target = controlTarget(control);
+    if (!target || !target.isConnected) return;
+    const step = control.step * (big ? 10 : 1);
+    beginEditGesture(target, control.prop);
+    applyNumeric(control, roundTo(numericState(target, control).value + dir * step, control.decimals || 0));
+    commitEditGesture();
+    refreshEditControls();
   }
 
   // A step along a scale, not an arithmetic nudge. When the target rung is a
@@ -4796,6 +4968,8 @@
     renderEditControls();
   }
 
+  const SEGMENT_ICONS = { left: "alignLeft", center: "alignCenter", right: "alignRight" };
+
   function buildSegmentControl(control) {
     const seg = document.createElement("span");
     seg.className = "pnt-edit-seg";
@@ -4805,11 +4979,13 @@
 
     for (const option of control.options) {
       const button = document.createElement("button");
+      button.type = "button";
       button.dataset.value = option;
       button.setAttribute("role", "radio");
       button.title = option;
-      button.textContent = { left: "≡", center: "≡", right: "≡" }[option] || option;
-      button.classList.add(`pnt-edit-align-${option}`);
+      // Alignment is drawn; anything else the segment says in words.
+      if (SEGMENT_ICONS[option]) button.innerHTML = ICONS[SEGMENT_ICONS[option]];
+      else button.textContent = option;
       button.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -4853,7 +5029,7 @@
     pop.innerHTML = `
       <div class="pnt-edit-pophead">
         <span class="pnt-edit-poptitle"></span>
-        <button class="pnt-edit-popclose" title="Close" aria-label="Close colour picker">×</button>
+        <button class="pnt-edit-popclose" title="Close" aria-label="Close colour picker">${ICONS.close}</button>
       </div>
       <div class="pnt-edit-sat"><i class="pnt-edit-sat-dot"></i></div>
       <div class="pnt-edit-rails">
@@ -5244,6 +5420,21 @@
 
   function onNumericKey(e, control) {
     const input = e.currentTarget;
+    // ⌥↑↓ walks the ladder, where there is one; the field is rebuilt by the
+    // step, so focus is handed back to its successor.
+    if ((e.key === "ArrowUp" || e.key === "ArrowDown") && e.altKey) {
+      e.preventDefault();
+      e.stopPropagation();
+      const family = control.uniform || editPrefs.editTokenControls === "value"
+        ? null
+        : familyForControl(selectedElement, control);
+      if (!family) return;
+      stepControlToken(control, family, e.key === "ArrowUp" ? 1 : -1);
+      const again = editPanelEl && editPanelEl.querySelector(
+        `.pnt-edit-row[data-control="${control.prop}"] .pnt-edit-input`);
+      if (again) again.focus();
+      return;
+    }
     if (e.key === "ArrowUp" || e.key === "ArrowDown") {
       e.preventDefault();
       e.stopPropagation();
@@ -5283,6 +5474,10 @@
   }
 
   function commitNumericInput(control, input) {
+    // A field that is being rebuilt blurs as it leaves the DOM. That blur is
+    // not the user leaving the field, and the value it holds is whatever it
+    // showed before the change that rebuilt it — see editRebuilding.
+    if (editRebuilding || !input.isConnected) return;
     const el = controlTarget(control);
     if (!el || !el.isConnected) return;
     const typed = parseFloat(input.value);
@@ -5298,6 +5493,8 @@
   // few pixels, and only then takes the focus away and starts scrubbing.
   function onNumericScrubStart(e, control, input) {
     if (e.button !== 0) return;
+    // The arrows at the chip's ends are buttons; a press on one is a click.
+    if (e.target.closest(".pnt-edit-arrow")) return;
     e.stopPropagation();
     const el = controlTarget(control);
     if (!el || !el.isConnected) return;
@@ -5374,8 +5571,8 @@
 
         const edited = isEditedProp(target, row.dataset.prop);
         row.classList.toggle("pnt-edit-dirty", edited);
-        const dot = row.querySelector(".pnt-edit-dot");
-        if (dot) dot.classList.toggle("pnt-edit-on", edited);
+        const label = row.querySelector(".pnt-edit-label");
+        if (label) label.classList.toggle("pnt-edit-on", edited);
 
         if (control.kind === "color") {
           const raw = readColorValue(target, control);
@@ -5383,11 +5580,19 @@
           const fill = row.querySelector(".pnt-edit-swatch i");
           if (fill) fill.style.background = raw || "transparent";
           const hex = row.querySelector(".pnt-edit-hex");
-          if (hex) {
+          if (hex) hex.textContent = parsed ? (parsed.a === 0 ? "none" : formatHex(parsed)) : raw;
+          // The capsule names the token the colour sits on: the edit's own
+          // when there is an edit, the one found on entry when there is not.
+          const cap = row.querySelector(".pnt-edit-tok-color");
+          if (cap) {
             const entry = editRegistry.get(target)?.props.get(row.dataset.prop);
-            const token = entry && entry.after && entry.after.token;
-            hex.textContent = token ? token.name : parsed ? formatHex(parsed) : raw;
-            hex.classList.toggle("pnt-edit-token", Boolean(token));
+            const holder = row.querySelector(".pnt-edit-fieldwrap");
+            const name = entry
+              ? (entry.after && entry.after.token ? entry.after.token.name : null)
+              : (holder && holder.dataset.token) || null;
+            cap.style.display = name ? "" : "none";
+            cap.querySelector("b").textContent = name ? shortTokenName(name) : "";
+            cap.dataset.tip = name || "";
           }
           continue;
         }
@@ -5428,8 +5633,9 @@
         const auto = row.querySelector(".pnt-edit-auto");
         if (auto) auto.setAttribute("aria-checked", String(Boolean(isAuto)));
 
-        // The stepper reads out where the value sits now — a rung's name, or a
-        // dash when a raw scrub has left it between rungs.
+        // The capsule reads out where the value sits now — a rung's name, or a
+        // dash when a raw scrub has left it between rungs. The full name rides
+        // the tooltip, since a capsule can cut it short.
         const stepper = row.querySelector(".pnt-edit-tok");
         if (stepper) {
           const family = editTokenFamilies &&
@@ -5437,26 +5643,30 @@
           const onRung = family ? matchToken(family.members, state.value) : null;
           stepper.querySelector("b").textContent = onRung ? shortTokenName(onRung.name) : "—";
           stepper.classList.toggle("pnt-edit-offscale", !onRung);
-          stepper.title = onRung ? onRung.name : `Off the ${stepper.dataset.family} scale`;
+          stepper.dataset.tip = onRung ? onRung.name : `Off the ${stepper.dataset.family} scale`;
+          if (wrap) wrap.dataset.state = onRung ? "on" : "off";
         }
       }
     }
 
-    // The typography grid carries state the sweep cannot know: the style
-    // claim moves with every scrub, and the ticks and caption move with it.
+    // The style cell carries state the sweep cannot know: the claim moves
+    // with every scrub.
     refreshTypographyState();
 
-    // The vec heading rows are not controls, so the sweep above never reaches
-    // their dots; they key off the whole uniform the same way their component
-    // rows do.
+    // The vec heading cells are not controls, so the sweep above never
+    // reaches their labels; they key off the whole uniform the same way their
+    // component cells do.
     if (advancedState && advancedState.canvasEl) {
       for (const head of editPanelEl.querySelectorAll("[data-adv-parent]")) {
         const edited = isEditedProp(advancedState.canvasEl, head.dataset.advParent);
         head.classList.toggle("pnt-edit-dirty", edited);
-        const dot = head.querySelector(".pnt-edit-dot");
-        if (dot) dot.classList.toggle("pnt-edit-on", edited);
+        const label = head.querySelector(".pnt-edit-label");
+        if (label) label.classList.toggle("pnt-edit-on", edited);
       }
     }
+
+    revealEditedGroups();
+    paintGroupSummaries();
 
     // Both header actions are global, so the badge counts elements rather than
     // properties: it answers "how much is this copy about to carry", which is
@@ -6816,7 +7026,7 @@
   // Collapsed by default; whether it is open is remembered for the session,
   // because it is a way of looking at the panel rather than element state.
   let advancedState = null;
-  let advancedOpen = false;
+  let advancedOpen = true;
   let advancedControls = [];
   // What the delta block needs to say about a canvas after the panel has
   // moved on: which kind of program drew it, and whether it was probed as a
@@ -7035,40 +7245,26 @@
     return parts.join(" · ");
   }
 
-  // The vec heading row: a dot for the whole uniform above its component
-  // rows, the same arrangement a split padding control draws.
+  // The vec heading of a multi-component uniform: a label with no field,
+  // standing over its components the way a split control's parent does.
   function buildAdvancedVecHead(control) {
-    const row = document.createElement("div");
-    row.className = "pnt-edit-row pnt-edit-parent";
-    row.dataset.prop = control.uniformKey;
-    row.dataset.advParent = control.uniformKey;
-
-    const dot = document.createElement("button");
-    dot.className = "pnt-edit-dot";
-    dot.title = `Reset ${control.vecHead}`;
-    dot.setAttribute("aria-label", `Reset ${control.vecHead}`);
-    dot.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const owner = controlTarget(control);
-      if (!owner || !isEditedProp(owner, control.uniformKey)) return;
-      resetEditProp(owner, control.uniformKey);
-      renderEditControls();
-    });
-
-    const label = document.createElement("span");
-    label.className = "pnt-edit-label";
-    label.textContent = control.vecHead;
-
-    row.appendChild(dot);
-    row.appendChild(label);
-    return row;
+    const cell = document.createElement("div");
+    cell.className = "pnt-edit-cell pnt-edit-headcell";
+    cell.dataset.prop = control.uniformKey;
+    cell.dataset.advParent = control.uniformKey;
+    cell.appendChild(buildLabel({
+      label: control.vecHead, prop: control.uniformKey,
+      uniform: control.uniform, driven: control.driven,
+    }, control.uniformKey));
+    return cell;
   }
 
-  function appendAdvancedRows(body, controls) {
-    for (const control of controls) {
-      if (control.vecHead) body.appendChild(buildAdvancedVecHead(control));
-      body.appendChild(buildEditRow(control, Boolean(control.uniform && control.uniform.comps > 1 && control.uniform.part >= 0)));
+  function appendAdvancedCells(cells, controls, driven) {
+    for (const raw of controls) {
+      const control = driven ? { ...raw, driven: true } : raw;
+      if (control.vecHead) cells.appendChild(buildAdvancedVecHead(control));
+      cells.appendChild(buildEditRow(control,
+        Boolean(control.uniform && control.uniform.comps > 1 && control.uniform.part >= 0)));
     }
   }
 
@@ -7081,85 +7277,41 @@
     const { params, driven } = buildAdvancedControls();
     advancedControls = params.concat(driven);
 
-    const section = document.createElement("div");
-    section.className = "pnt-edit-group pnt-adv-group";
-
-    const details = document.createElement("details");
-    details.className = "pnt-adv";
-    details.open = advancedOpen;
-    details.addEventListener("toggle", () => {
-      advancedOpen = details.open;
-      postShaderMessage("PNT_SHADER_WATCH", { on: details.open && hasDrivenUniforms() });
-      // Opening grows the panel; a panel that grew past the viewport bottom
-      // leaves its new rows unreachable, so re-clamp exactly as a resize
-      // does. After the glide, because the clamp needs the final height.
-      setTimeout(() => {
-        if (!editing) return;
-        placeEditPanel();
-        renderTether({ instant: true });
-        repositionColorPicker();
-      }, 220);
-    });
-
-    const summary = document.createElement("summary");
-    summary.className = "pnt-adv-summary";
-    const caret = document.createElement("i");
-    caret.className = "pnt-adv-caret";
-    caret.setAttribute("aria-hidden", "true");
-    const legend = document.createElement("p");
-    legend.className = "pnt-edit-legend pnt-adv-legend";
-    legend.textContent = "Advanced";
-    const count = document.createElement("span");
-    count.className = "pnt-adv-count";
-    count.textContent = advancedSummaryText();
-    summary.appendChild(caret);
-    summary.appendChild(legend);
-    summary.appendChild(count);
-    details.appendChild(summary);
-
-    const body = document.createElement("div");
-    body.className = "pnt-adv-body";
+    const shell = buildGroupShell("advanced", "Advanced");
+    shell.section.classList.add("pnt-adv-group");
+    const body = shell.body;
 
     if (st.canvasEl && st.uniforms.size > 0 && st.canvasEl !== selectedElement) {
       const note = document.createElement("p");
-      note.className = "pnt-adv-note";
+      note.className = "pnt-edit-note";
       note.innerHTML = `shader on ${editPanelIdentity(st.canvasEl)} inside the selection`;
       body.appendChild(note);
     }
     if (st.gone) {
       const note = document.createElement("p");
-      note.className = "pnt-adv-note";
+      note.className = "pnt-edit-note";
       note.textContent = "the page rebuilt its shader — these controls have let go";
       body.appendChild(note);
     } else if (st.uniforms.size > 0 && !st.live) {
       const note = document.createElement("p");
-      note.className = "pnt-adv-note";
+      note.className = "pnt-edit-note";
       note.textContent = "this shader drew once and stopped — values shown, not tunable";
       body.appendChild(note);
     }
 
-    appendAdvancedRows(body, params);
-
-    if (driven.length > 0) {
-      const cluster = document.createElement("div");
-      cluster.className = "pnt-adv-driven";
-      const micro = document.createElement("p");
-      micro.className = "pnt-adv-driven-legend";
-      micro.textContent = "driven by the page";
-      cluster.appendChild(micro);
-      appendAdvancedRows(cluster, driven);
-      body.appendChild(cluster);
-    }
+    const cells = buildCells(2);
+    appendAdvancedCells(cells, params, false);
+    // A value the page rewrites every frame reads a shade quieter until a
+    // cell is touched, and says "driven" in its label.
+    appendAdvancedCells(cells, driven, true);
+    body.appendChild(cells);
 
     // Read-only inventories keep their rows honest: visible, valued, inert.
     if ((st.uniforms.size > 0 && !st.live) || st.gone) {
       body.classList.add("pnt-adv-readonly");
       for (const node of body.querySelectorAll("input, button")) node.disabled = true;
     }
-
-    details.appendChild(body);
-    section.appendChild(details);
-    return section;
+    return shell.section;
   }
 
   // Uniform edits are session-bound in a way CSS edits are not: without a live
@@ -7498,10 +7650,11 @@
   // centred, kept inside the viewport, or below it when the top has no room;
   // beside a spine button — to its right, else its left — so it covers no
   // readout line. Never inside the card, so it never moves the chrome.
-  function showTip(button) {
+  function showTip(button, opts) {
     const text = button.dataset.tip;
     if (!tipEl || !text) return;
-    const label = button.querySelector("span");
+    const above = Boolean(opts && opts.above);
+    const label = above ? null : button.querySelector("span");
     if (label && label.offsetWidth > 0) return hideTip(); // the label already says it
 
     const M = GEOMETRY.margin, GAP = GEOMETRY.gap;
@@ -7512,7 +7665,7 @@
     const r = button.getBoundingClientRect();
     const w = tipEl.offsetWidth, h = tipEl.offsetHeight;
     let top, left, side;
-    if (chromePrefs.selectionLayout === "beside") {
+    if (!above && chromePrefs.selectionLayout === "beside") {
       top = Math.max(M, Math.min(r.top + r.height / 2 - h / 2, vh - M - h));
       left = r.right + GAP;
       side = "right";

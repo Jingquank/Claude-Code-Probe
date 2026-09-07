@@ -138,6 +138,11 @@
   --pnt-focus: color-mix(in srgb, var(--pnt-accent) 70%, transparent);
   --pnt-scrim: rgb(0 0 0 / 0.12);
   --pnt-rail-tint: rgb(from var(--pnt-accent) r g b / 0.55);
+  /* The field — every value chip in the panel, and the picker's and the text
+     editor's inputs. Mixed from the raised chip and the ground so it reads as
+     a field on the glass in every theme without a theme block changing. */
+  --pnt-field: color-mix(in srgb, var(--pnt-surface-2) 70%, var(--pnt-surface-0));
+  --pnt-field-border: color-mix(in srgb, var(--pnt-border-2) 70%, var(--pnt-surface-0));
   /* The shadow a pinned header or footer casts on the rows scrolling under it.
      Black at low alpha reads on every ground, so it is not themed, for the
      same reason as --pnt-scrim just above. */

@@ -191,24 +191,15 @@ const HELPERS = `
     esc: () => document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })),
     undo: (shift) => document.dispatchEvent(
       new KeyboardEvent("keydown", { key: "z", metaKey: true, shiftKey: !!shift, bubbles: true })),
-    // Two stepping mechanisms, one gesture: the classic rows carry ‹ ›
-    // buttons, the typography grid steps its cells on the wheel.
+    // One stepper since round four: the capsule under the field carries the
+    // ‹ › in rows and cells alike. The wheel only scrolls.
     step: (name, dir) => {
-      const row = window.__t.row(name);
-      const tok = row.querySelector(".pnt-edit-tok");
-      if (tok) {
-        tok.querySelectorAll("button")[dir > 0 ? 1 : 0].click();
-        return;
-      }
-      row.dispatchEvent(new WheelEvent("wheel", {
-        deltaY: dir > 0 ? -100 : 100, bubbles: true, cancelable: true,
-      }));
+      const tok = window.__t.row(name).querySelector(".pnt-edit-tok");
+      tok.querySelectorAll("button")[dir > 0 ? 1 : 0].click();
     },
-    // ...and two reset affordances: the dot on classic rows, the micro-label
-    // on grid cells.
+    // ...and one reset: the label is the edited mark and takes the edit back.
     resetProp: (name) => {
-      const row = window.__t.row(name);
-      (row.querySelector(".pnt-edit-dot") || row.querySelector(".pnt-type-k")).click();
+      window.__t.row(name).querySelector(".pnt-edit-label").click();
     },
     type: (name, value) => {
       const input = window.__t.row(name).querySelector(".pnt-edit-input");
@@ -1116,7 +1107,7 @@ try {
       input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
       const dirty = window.__t.row("text").classList.contains("pnt-edit-dirty");
       const block = await window.__t.copy();
-      window.__t.row("text").querySelector(".pnt-edit-dot").click();
+      window.__t.row("text").querySelector(".pnt-edit-label").click();
       const restored = el.textContent;
       window.__t.esc();
       window.__t.esc();
@@ -1124,7 +1115,7 @@ try {
     `);
     if (r.shown !== "emil-design-eng") fail(`field shows ${JSON.stringify(r.shown)}, not the element's words`);
     if (r.after !== "Renamed by the probe") fail(`typing did not land: ${JSON.stringify(r.after)}`);
-    if (!r.dirty) fail("no dirty dot on an edited text row");
+    if (!r.dirty) fail("no edited mark on an edited text cell");
     if (!r.block.includes('# text: "emil-design-eng" → "Renamed by the probe"')) {
       fail(`delta line missing: ${JSON.stringify(r.block.slice(0, 260))}`);
     }
@@ -1784,7 +1775,7 @@ try {
           scrollWidth: body.scrollWidth,
           clientWidth: body.clientWidth,
           overflowX: getComputedStyle(body).overflowX,
-          grid: Boolean(document.querySelector("#pnt-edit-panel .pnt-type-grid")),
+          grid: Boolean(document.querySelector("#pnt-edit-panel .pnt-edit-c3")),
         };
       }
       window.__t.esc();
@@ -1792,7 +1783,7 @@ try {
     `);
     for (const theme of ["light", "dark"]) {
       const t = r[theme];
-      if (!t.grid) { fail(`${theme}: no typography grid on the heading`); continue; }
+      if (!t.grid) { fail(`${theme}: no typography cells on the heading`); continue; }
       if (t.scrollWidth > t.clientWidth) {
         fail(`${theme}: the body is ${t.scrollWidth - t.clientWidth}px wider than it shows — a horizontal scrollbar`);
       }
@@ -1823,7 +1814,10 @@ try {
         };
         if (rail) {
           out.onAtOpen = rail.classList.contains("pnt-rail-on");
-          body.scrollTop = 80;
+          // Somewhere inside the overflow, not past it: with the groups the
+          // element lacks closed by default the panel is short, and 80px
+          // could be the end.
+          body.scrollTop = Math.max(1, Math.min(80, Math.floor(out.overflow / 2)));
           body.dispatchEvent(new Event("scroll"));
           out.above = panel.classList.contains("pnt-more-above");
           out.below = panel.classList.contains("pnt-more-below");
@@ -1850,13 +1844,142 @@ try {
     if (r.native !== "none") fail(`the native bar is still on: scrollbar-width is ${r.native}`);
     if (!r.rail) return fail("no rail was drawn in the panel");
     if (!r.onAtOpen) fail("the rail did not flash on open");
-    if (!r.above) fail("scrolled 80px in, the header casts no shadow (no pnt-more-above)");
-    if (!r.below) fail("scrolled 80px in, the footer casts no shadow (no pnt-more-below)");
+    if (!r.above) fail("scrolled in, the header casts no shadow (no pnt-more-above)");
+    if (!r.below) fail("scrolled in, the footer casts no shadow (no pnt-more-below)");
     if (!/translateY\((?!0px)/.test(r.thumb)) fail(`the thumb did not move: ${r.thumb || "no transform"}`);
     if (r.belowAtEnd) fail("at the end, the footer still casts a shadow");
     if (!r.aboveAtEnd) fail("at the end, the header casts no shadow");
     if (!r.editorRail) fail("the long-text editor has no rail");
     if (r.editorNative !== "none") fail(`the textarea keeps its native bar: ${r.editorNative}`);
+  });
+  // ===== Round four's panel =====
+  // Collapsing groups, the label as the mark, one stepper, no wheel. Each is a
+  // behaviour the gallery promised and the build has to keep.
+  await check("groups open and close, and an edit reveals its group", async (fail) => {
+    await loadHarness(ws);
+    const r = await evaluate(ws, `
+      // The shipped defaults: an earlier case may have left another mode on.
+      window.__t.prefs({ editTokenControls: "both", editGroups: "standard" });
+      window.__t.probeOn();
+      window.__t.select(".card h2");
+      window.__t.edit();
+      const group = (key) => document.querySelector('#pnt-edit-panel .pnt-edit-group[data-group="' + key + '"]');
+      const out = {};
+      out.sizeClosed = group("size").classList.contains("pnt-edit-closed");
+      out.sizeSummary = group("size").querySelector(".pnt-edit-sum").textContent;
+      out.typographyOpen = !group("typography").classList.contains("pnt-edit-closed");
+      group("size").querySelector(".pnt-edit-title").click();
+      out.sizeAfterClick = !group("size").classList.contains("pnt-edit-closed");
+      group("size").querySelector(".pnt-edit-title").click();
+      out.sizeAfterSecondClick = group("size").classList.contains("pnt-edit-closed");
+      // An edit inside a closed group: Surface is closed on a transparent h2.
+      out.surfaceClosed = group("surface").classList.contains("pnt-edit-closed");
+      window.__t.type("opacity", 80);
+      out.surfaceAfterEdit = !group("surface").classList.contains("pnt-edit-closed");
+      out.opacityLabelOn = window.__t.row("opacity").querySelector(".pnt-edit-label").classList.contains("pnt-edit-on");
+      window.__t.resetProp("opacity");
+      out.opacityAfterReset = window.__t.css(".card h2", "opacity");
+      window.__t.esc();
+      window.__t.esc();
+      return out;
+    `);
+    if (!r.sizeClosed) fail("Size is open on an auto-sized heading; it should start closed");
+    if (!/^\d+ × \d+ · auto$/.test(r.sizeSummary)) fail(`Size's summary reads "${r.sizeSummary}"`);
+    if (!r.typographyOpen) fail("Typography starts closed on a heading");
+    if (!r.sizeAfterClick) fail("clicking the title did not open Size");
+    if (!r.sizeAfterSecondClick) fail("clicking the title again did not close Size");
+    if (!r.surfaceClosed) fail("Surface is open on a transparent heading; it should start closed");
+    if (!r.surfaceAfterEdit) fail("editing opacity did not open the closed Surface group");
+    if (!r.opacityLabelOn) fail("the edited opacity's label is not the mark");
+    if (r.opacityAfterReset !== "1") fail(`the label did not reset opacity: ${r.opacityAfterReset}`);
+  });
+
+  await check("one stepper: arrows nudge or step, ⌥↑ steps, the wheel does nothing", async (fail) => {
+    const r = await evaluate(ws, `
+      const out = { at: "start" };
+      window.addEventListener("error", (e) => { out.pageError = (out.pageError || "") + " · " + e.message + " @" + e.lineno; });
+      try {
+        window.__t.prefs({ editTokenControls: "both", editGroups: "standard" });
+        window.__t.probeOn();
+        window.__t.select(".card h2");
+        window.__t.edit();
+        const size = () => window.__t.css(".card h2", "font-size");
+        const lead = () => window.__t.css(".card h2", "line-height");
+        const q = (name, sel) => {
+          const row = window.__t.row(name);
+          const node = row && row.querySelector(sel);
+          if (!node) throw new Error("no " + sel + " in the " + name + " cell");
+          return node;
+        };
+        const snap = (label) => {
+          const row = window.__t.row("font-size");
+          out["trace_" + label] = [size(), document.querySelector(".card h2").getAttribute("style"),
+            Boolean(row && row.querySelector(".pnt-edit-tok")),
+            row && row.querySelector(".pnt-edit-num") ? row.querySelector(".pnt-edit-num").dataset.kind : null].join(" | ");
+        };
+        out.at = "kind";
+        snap("0open");
+        out.sizeKind = q("font-size", ".pnt-edit-num").dataset.kind;
+        // font-size sits on --title-sm: the field's arrow walks the ladder.
+        out.at = "arrow";
+        q("font-size", ".pnt-edit-arrow.pnt-edit-up").click();
+        out.sizeAfterArrow = size();
+        snap("1arrow");
+        window.__t.undo();
+        snap("2undo");
+        // line-height sits on no scale: the arrow nudges by the control's step.
+        out.at = "nudge";
+        out.leadBefore = lead();
+        q("line-height", ".pnt-edit-arrow.pnt-edit-up").click();
+        out.leadAfterArrow = lead();
+        snap("3nudge");
+        window.__t.undo();
+        snap("4undo");
+        // ⌥↑ on the size field steps the ladder from the keyboard.
+        out.at = "alt";
+        const input = q("font-size", ".pnt-edit-input");
+        input.focus();
+        input.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", altKey: true, bubbles: true }));
+        out.sizeAfterAlt = size();
+        // The step rebuilt the field under the focus; the value it showed
+        // must not have been committed over the step by the blur that fired
+        // as it left.
+        out.styleAfterAlt = document.querySelector(".card h2").getAttribute("style");
+        snap("5alt");
+        window.__t.undo();
+        snap("6undo");
+        // The wheel over a cell scrolls; it no longer steps anything.
+        out.at = "wheel";
+        window.__t.row("font-size").dispatchEvent(
+          new WheelEvent("wheel", { deltaY: -100, bubbles: true, cancelable: true }));
+        out.sizeAfterWheel = size();
+        snap("7wheel");
+        // The capsule carries the full name for the tooltip.
+        out.at = "tip";
+        out.capTip = q("font-size", ".pnt-edit-tok").dataset.tip;
+        out.at = "done";
+      } catch (err) {
+        out.error = String(err.message || err);
+      }
+      window.__t.esc();
+      window.__t.esc();
+      return out;
+    `);
+    if (r.pageError) fail(`the page threw: ${r.pageError}`);
+    if (r.error) {
+      const trace = Object.keys(r).filter((k) => k.startsWith("trace_")).sort()
+        .map((k) => `${k.slice(6)}: ${r[k]}`).join(" ‖ ");
+      return fail(`at "${r.at}": ${r.error} — ${trace}`);
+    }
+    if (r.sizeKind !== "tok") fail(`the size field is not marked as sitting on a token: ${r.sizeKind}`);
+    if (r.sizeAfterArrow !== "22px") fail(`the arrow did not step the ladder: ${r.sizeAfterArrow}`);
+    if (r.leadAfterArrow === r.leadBefore) fail("the arrow did not nudge a value with no ladder");
+    if (r.sizeAfterAlt !== "22px") fail(`⌥↑ did not step the ladder: ${r.sizeAfterAlt}`);
+    if (r.styleAfterAlt !== "font-size: var(--title-md);") {
+      fail(`after ⌥↑ the element wears ${JSON.stringify(r.styleAfterAlt)} — the rebuilt field's blur wrote over the step`);
+    }
+    if (r.sizeAfterWheel !== "18px") fail(`the wheel still steps: ${r.sizeAfterWheel}`);
+    if (r.capTip !== "--title-sm") fail(`the capsule's tooltip is "${r.capTip}", not the full name`);
   });
 } finally {
   try { if (ws) ws.close(); } catch { /* already gone */ }

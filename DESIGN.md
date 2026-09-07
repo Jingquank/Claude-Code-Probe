@@ -257,16 +257,33 @@ in `danger` with the border tinted to match. Positioned from script beside the
 toolbar, or in the corner when there is none; arrives on the standard curve,
 leaves on the exit.
 
-**Edit panel.** Glass, 248px, an inspector column of titled groups. Since 2.0
-it opens *attached*: `computeEditPanelPlacement()` puts it a tick's clearance
-outside the selected element — right, then left, then below, then above —
-top-aligned and pulled inside the viewport, and it follows the element through
-scrolls and reflows until the user drags it, after which it floats where it was
-put. When no side has room it floats from the start. Legends are sentence-case
-sans at the secondary tone; every value, token and colour is mono; chips are
-raised on surface-1 with hairline borders and the 8px radius; the dirty dot is
-the accent with a soft halo. The footer shows the mode's real keys — **⌘Z**,
-**⇧⌘Z**, **esc** — and nothing else.
+**Edit panel.** Glass, 280px, an inspector column of titled groups — and
+since round four (`test/edit-panel-prototypes.html`, 04) every group is a grid
+of labelled cells, the label above the value, two across for most groups and
+three for Typography, and every group title is a caret row that opens and
+closes. Groups the element already has open by default; the rest start closed
+with a one-line summary of their values in mono at the tertiary tone, so the
+panel is exactly as tall as what is open and on most elements never scrolls.
+An edit reveals its group. The label is the edited mark and the reset: it
+turns accent when the property carries an edit and takes the edit back on
+click, a small reset glyph beside it on hover; the dirty-dot column of rounds
+one to three is gone. Every value is one field on `--pnt-field`, with a faint
+pair of chevrons at its ends that are the hint that it scrubs and, on hover,
+a control — one rung along the ladder where the value sits on a scale, one
+step of the number where it does not; `⌥↑↓` does the same from the keyboard,
+and the wheel only scrolls. Under a field that sits on a token, the capsule:
+`‹ name ›` on the accent's soft fill, the second control of the two-control
+token form, with the full name in the tooltip because a capsule can cut it
+short. Sentence case throughout; no tracked caps. The header carries two
+drawn icons, copy in the accent with its count, a grip that appears on hover
+because the header is the drag handle, and a 12px dashed ring whose reason
+rides the tooltip when the token layer could not read the page. The footer
+shows the mode's real keys — **⌘Z**, **⇧⌘Z**, **⌥↑↓**, **esc** — and nothing
+else. It opens *attached*: `computeEditPanelPlacement()` puts it a tick's
+clearance outside the selected element — right, then left, then below, then
+above — top-aligned and pulled inside the viewport, and it follows the element
+through scrolls and reflows until the user drags it, after which it floats
+where it was put. When no side has room it floats from the start.
 
 **Tether.** Four 2px ticks in the accent at the element's edge midpoints,
 lying along their edge a `tetherGap` outside it so they can only ever be
@@ -617,14 +634,16 @@ guards), the step falls back to writing the rung's values and the line
 reports values, not the name — a claimed swap that did nothing would be
 advice that does nothing in the source either.
 
-The typography group is the only consumer so far, wearing the round-three
-grid: micro-labelled cells, filled ticks for style-owned values, hollow for a
-cell's own single-prop token, a dashed border for covered-but-drifted, and a
-caption that names whatever the pointer touches. Loose tokenized cells step
-on the wheel — the grid has no room for the ‹ › stepper, and the caption
-carries the naming. The model is deliberately property-agnostic: shadow and
-spacing composites are the same entity with different constituents, waiting
-on nothing but their own UI round.
+The typography group is the only consumer so far. Round four gave every group
+the grid the round-three prototypes drew for Typography alone, and with it
+one stepper: the style chip spans the row above the six metrics and names the
+composite in force, `modified · leading` and a `conform` on hover when it has
+drifted, with the ladder's arrows at its ends; the metrics beneath carry the
+same field and capsule as every other value, so a cell's own single-prop token
+steps by its arrows or `⌥↑↓` rather than on the wheel, and the tick vocabulary
+and the caption of round three are gone. The model is deliberately
+property-agnostic: shadow and spacing composites are the same entity with
+different constituents, waiting on nothing but their own UI round.
 
 ---
 

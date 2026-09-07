@@ -571,43 +571,58 @@
                 </svg>
               </button>
               <span class="pnt-edit-id"><b class="pnt-edit-id-tag">h2</b><b class="pnt-edit-id-class">.card-title</b></span>
-              <button type="button" class="pnt-edit-act" tabindex="-1">
+              <button type="button" class="pnt-edit-act pnt-edit-primary" tabindex="-1">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                      stroke-linecap="round" stroke-linejoin="round">
                   <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
                 </svg><i class="pnt-edit-count">2</i>
               </button>
-              <button type="button" class="pnt-edit-act pnt-edit-on" tabindex="-1">↺</button>
+              <button type="button" class="pnt-edit-act pnt-edit-on" tabindex="-1">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4.5 4.5v5h5"/>
+                </svg>
+              </button>
             </div>
             <div class="pnt-edit-body">
-              <div class="pnt-edit-group" data-ep="typography">
-                <p class="pnt-edit-legend">Typography</p>
-                <div class="pnt-edit-row pnt-edit-dirty" data-ep-row="token">
-                  <button type="button" class="pnt-edit-dot pnt-edit-on" tabindex="-1"></button>
-                  <span class="pnt-edit-label">size</span>
-                  <span class="pnt-edit-numwrap">
-                    <span class="pnt-edit-num"><input class="pnt-edit-input" value="28" readonly tabindex="-1"><i class="pnt-edit-unit">px</i></span>
-                    <span class="pnt-edit-tok"><button type="button" tabindex="-1">‹</button><b>lg</b><button type="button" tabindex="-1">›</button></span>
-                  </span>
-                </div>
-                <div class="pnt-edit-row">
-                  <button type="button" class="pnt-edit-dot" tabindex="-1"></button>
-                  <span class="pnt-edit-label">weight</span>
-                  <span class="pnt-edit-num"><input class="pnt-edit-input" value="600" readonly tabindex="-1"></span>
-                </div>
-                <div class="pnt-edit-row">
-                  <button type="button" class="pnt-edit-dot" tabindex="-1"></button>
-                  <span class="pnt-edit-label">colour</span>
-                  <span class="pnt-edit-color">
-                    <button type="button" class="pnt-edit-swatch" tabindex="-1"><i></i></button>
-                    <span class="pnt-edit-hex pnt-edit-token">--ink</span>
-                  </span>
+              <div class="pnt-edit-group" data-ep="typography" data-group="typography">
+                <button type="button" class="pnt-edit-title" tabindex="-1">
+                  <i class="pnt-edit-caret"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg></i>
+                  <span class="pnt-edit-name">Typography</span>
+                </button>
+                <div class="pnt-edit-groupbody">
+                  <div class="pnt-edit-cells pnt-edit-c3">
+                    <div class="pnt-edit-row pnt-edit-cell pnt-edit-dirty" data-ep-row="token">
+                      <span class="pnt-edit-label pnt-edit-on"><span class="pnt-edit-name">size</span></span>
+                      <span class="pnt-edit-fieldwrap">
+                        <span class="pnt-edit-num" data-kind="tok" data-state="on"><button type="button" class="pnt-edit-arrow pnt-edit-dn" tabindex="-1"></button><input class="pnt-edit-input" value="28" readonly tabindex="-1"><i class="pnt-edit-unit">px</i><button type="button" class="pnt-edit-arrow pnt-edit-up" tabindex="-1"></button></span>
+                        <span class="pnt-edit-tok"><button type="button" tabindex="-1">‹</button><b>lg</b><button type="button" tabindex="-1">›</button></span>
+                      </span>
+                    </div>
+                    <div class="pnt-edit-row pnt-edit-cell">
+                      <span class="pnt-edit-label"><span class="pnt-edit-name">weight</span></span>
+                      <span class="pnt-edit-fieldwrap">
+                        <span class="pnt-edit-num" data-kind="none"><button type="button" class="pnt-edit-arrow pnt-edit-dn" tabindex="-1"></button><input class="pnt-edit-input" value="600" readonly tabindex="-1"><button type="button" class="pnt-edit-arrow pnt-edit-up" tabindex="-1"></button></span>
+                      </span>
+                    </div>
+                    <div class="pnt-edit-row pnt-edit-cell">
+                      <span class="pnt-edit-label"><span class="pnt-edit-name">colour</span></span>
+                      <span class="pnt-edit-fieldwrap">
+                        <button type="button" class="pnt-edit-color" tabindex="-1"><span class="pnt-edit-swatch"><i></i></span><span class="pnt-edit-hex">#1d1917</span></button>
+                        <span class="pnt-edit-tok pnt-edit-tok-color"><b>--ink</b></span>
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div class="pnt-edit-group" data-ep="border">
-                <p class="pnt-edit-legend">Border</p>
-                <div class="pnt-edit-row">
-                  <button type="button" class="pnt-edit-add" tabindex="-1">+ add border</button>
+              <div class="pnt-edit-group pnt-edit-closed" data-ep="border" data-group="border">
+                <button type="button" class="pnt-edit-title" tabindex="-1">
+                  <i class="pnt-edit-caret"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg></i>
+                  <span class="pnt-edit-name">Border</span>
+                  <span class="pnt-edit-sum">none</span>
+                </button>
+                <div class="pnt-edit-groupbody">
+                  <button type="button" class="pnt-edit-disc pnt-edit-add" tabindex="-1"><i class="pnt-edit-caret"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg></i><span class="pnt-edit-name">Add border</span></button>
                 </div>
               </div>
             </div>

@@ -880,16 +880,8 @@ body {
 
 .ep-mock[data-tokens="value"] #pnt-edit-panel .pnt-edit-tok { display: none; }
 
-.ep-mock[data-tokens="token"] #pnt-edit-panel [data-ep-row="token"] .pnt-edit-num {
-  width: 34px;
-  border-color: transparent;
-  background: transparent;
-}
 .ep-mock[data-tokens="token"] #pnt-edit-panel [data-ep-row="token"] .pnt-edit-input {
   color: var(--pnt-text-3);
-}
-.ep-mock[data-tokens="token"] #pnt-edit-panel [data-ep-row="token"] .pnt-edit-unit {
-  display: none;
 }
 
 /* Spotlight, the same lesson the measuring rows give: hovering a row in the
