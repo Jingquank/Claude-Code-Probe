@@ -1764,6 +1764,41 @@ try {
     if (r.undoOpacity !== "1") fail(`the undo flash is not visible: opacity ${r.undoOpacity}`);
     if (!/^rgb/.test(r.lensFill)) fail(`the lens is not filled: ${r.lensFill}`);
   });
+  // ===== The panel never scrolls sideways =====
+  // Round four opened on a horizontal scrollbar under the rows. Two things
+  // made it: the typography grid's colour cell kept the row control's fixed
+  // 82px inside a 71px column, and a body that declares only overflow-y
+  // computes overflow-x to auto, so eleven pixels of overflow grew a bar. The
+  // cell is now as wide as its column and the body clips sideways. Held in
+  // both themes, with the grid and every group on screen.
+  await check("the panel body never scrolls sideways", async (fail) => {
+    const r = await evaluate(ws, `
+      window.__t.probeOn();
+      window.__t.select(".card h2");
+      window.__t.edit();
+      const body = document.querySelector("#pnt-edit-panel .pnt-edit-body");
+      const out = {};
+      for (const theme of ["light", "dark"]) {
+        document.documentElement.setAttribute("data-pnt-theme", theme);
+        out[theme] = {
+          scrollWidth: body.scrollWidth,
+          clientWidth: body.clientWidth,
+          overflowX: getComputedStyle(body).overflowX,
+          grid: Boolean(document.querySelector("#pnt-edit-panel .pnt-type-grid")),
+        };
+      }
+      window.__t.esc();
+      return out;
+    `);
+    for (const theme of ["light", "dark"]) {
+      const t = r[theme];
+      if (!t.grid) { fail(`${theme}: no typography grid on the heading`); continue; }
+      if (t.scrollWidth > t.clientWidth) {
+        fail(`${theme}: the body is ${t.scrollWidth - t.clientWidth}px wider than it shows — a horizontal scrollbar`);
+      }
+      if (t.overflowX !== "hidden") fail(`${theme}: overflow-x is ${t.overflowX}, not hidden`);
+    }
+  });
 } finally {
   try { if (ws) ws.close(); } catch { /* already gone */ }
   browser.kill();

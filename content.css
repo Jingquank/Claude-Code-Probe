@@ -1110,6 +1110,11 @@ html.pnt-layout-bottom #pnt-toolbar .pnt-bar {
   color: var(--pnt-text-1);
   padding: var(--pnt-gap-section) var(--pnt-md) var(--pnt-md);
   overflow-y: auto;
+  /* Declaring only overflow-y makes overflow-x compute to auto as well, so
+     anything a pixel too wide grew a horizontal scrollbar under the rows.
+     Nothing in the panel may scroll sideways. (Not `clip`: paired with an
+     auto on the other axis it computes to hidden anyway.) */
+  overflow-x: hidden;
   min-height: 0;
 }
 
@@ -2181,6 +2186,10 @@ html.pnt-layout-bottom #pnt-toolbar .pnt-bar {
   display: flex;
   align-items: center;
   gap: 4px;
+  /* The row control is a fixed 82px; a grid column is 71. Without this the
+     colour cell overflowed the grid by eleven pixels, and that overflow was
+     the horizontal scrollbar. A cell is as wide as its column. */
+  width: auto;
   border: 1px solid var(--pnt-border-1);
   border-radius: var(--pnt-radius-sm);
   background: var(--pnt-surface-1);
