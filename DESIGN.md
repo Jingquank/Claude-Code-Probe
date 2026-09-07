@@ -106,7 +106,7 @@ redesign of the hierarchy; §2 is that redesign, and the tier is gone.
 ## 4. Tokens
 
 **Two tiers, and only one of them is themed.** `tokens.css` is a `:root` block
-of 55 theme-invariant scales — type, space, radius, the glass material,
+of 59 theme-invariant scales — type, space, radius, the glass material,
 motion, layers, opacities, the never-themed constants and the alpha variants
 derived from whichever theme is active — followed by one block per theme
 holding the 21 semantic colours and shadows. A theme cannot change a scale,
@@ -180,8 +180,10 @@ section opening. Everything in the first list is in the
 positional and are not disabled, with one exception — the tether's, listed so
 a stated preference for stillness also stops the glide — and the undo flash
 stays *visible* and still rather than vanishing, because it is the only way an
-undo on an off-screen element announces itself. The settings page keeps its
-own inventory under the same contract at the end of `settings/settings.css`.
+undo on an off-screen element announces itself. The rail's fade and the
+scroll shadows' are state changes on the fast duration, and under the
+preference they switch rather than ease. The settings page keeps its own
+inventory under the same contract at the end of `settings/settings.css`.
 
 Anything animated must be listed, and the listing has to *outrank* the rule it
 quiets: the block sits near the top of `content.css`, so an equal selector
@@ -271,6 +273,20 @@ against is the association. `test/tether.mjs` sweeps both properties.
 the same glass, so neither is clipped by the panel's overflow or paints over
 the rows it is tuning. The picker's saturation square, hue rail and alpha rail
 are never themed — they are the colour space, not decoration.
+
+**Scrollbar.** Every surface the chrome scrolls — the panel body, the
+long-text editor's textarea, the settings page and its payload box — draws
+its own: the native bar is switched off and `rail.js` draws a 3px rail inside
+the scroller's right padding, the thumb sized from the scroller's own numbers,
+tinted with the accent at 55%, shown while scrolling and gone 800ms after the
+last event, with one flash on attach so the fact of overflow is announced
+before any gesture. It takes no width, so the column of chips never shifts.
+The same script sets `pnt-more-above` and `pnt-more-below` on the host while
+rows sit under the pinned header or footer, and those cast a short shadow on
+the rows — the cue that there is more. Chosen in round four's scrollbar
+gallery (`test/edit-scroll-prototypes.html`, 03) over a `::-webkit-scrollbar`
+rail with a reserved gutter and a hairline that showed only on hover. The
+thumb is not draggable; Chrome before 121 shows its own bar beside the rail.
 
 **Redlines.** Held-Option measurements: 1px lines in the accent, dashed guides
 at 60%, value pills in the accent with mono numbers. Nothing here self-
