@@ -178,10 +178,11 @@ is going.
 
 **The inventory.** Things that move on their own: the selection's ants
 (`#pnt-ants path`, 1.6s), the label's breadcrumb marquee, the Screenshot
-button's shutter, click flash and check draw-in, the undo flash. Things that
-glide: the overlay boxes, the label and toolbar between placements, the
-redline nodes and the tether nodes between targets, the edit panel's Advanced
-section opening. Everything in the first list is in the
+button's shutter, click flash and check draw-in, the undo flash, and the
+tether's ticks drawing in as Edit Mode opens. Things that glide: the overlay
+boxes, the label and toolbar between placements, the redline nodes and the
+tether nodes between targets, a panel group opening and closing, and the
+handoff's surface travelling from the toolbar to the panel and back. Everything in the first list is in the
 `prefers-reduced-motion` block of `content.css` and stops dead; the glides are
 positional and are not disabled, with one exception — the tether's, listed so
 a stated preference for stillness also stops the glide — and the undo flash
@@ -256,6 +257,18 @@ toolbar docks over it.
 in `danger` with the border tinted to match. Positioned from script beside the
 toolbar, or in the corner when there is none; arrives on the standard curve,
 leaves on the exit.
+
+**The handoff.** Since round four (`test/edit-transition-prototypes.html`,
+02) the toolbar grows into the panel: a surface of the same glass sets off from
+the toolbar's rect and travels to the panel's over the standard duration while
+the readout, the actions and the ants fade on the exit duration, the panel's
+contents fade in a beat behind, and the ticks draw in as it lands — done by
+220ms. The origin is the toolbar in whichever selection layout is in force:
+the pill on the edge, and the whole card for the three layouts that mount the
+toolbar inside it, whose identity line rides the surface into the panel's
+header so the name reads as staying put. Escape plays it backwards on the
+exit curve. Under reduced motion nothing travels: the crossfades remain,
+because they are how the mode changes hands.
 
 **Edit panel.** Glass, 280px, an inspector column of titled groups — and
 since round four (`test/edit-panel-prototypes.html`, 04) every group is a grid

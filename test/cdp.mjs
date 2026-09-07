@@ -2106,6 +2106,108 @@ try {
     if (!r.captions.includes("in the source") || !r.captions.includes("on the page")) fail(`captions: ${JSON.stringify(r.captions)}`);
     if (!/on this page \d+ time/.test(r.firstTitle || "")) fail(`a page swatch's title reads ${JSON.stringify(r.firstTitle)}`);
   });
+  // ===== The handoff =====
+  // The toolbar grows into the panel: a surface set at the toolbar's rect on
+  // entry, gone with the panel visible 260ms later; back the other way on
+  // Escape; and nothing travels under the reduced-motion preference.
+  await check("handoff · the toolbar grows into the panel, and shrinks back", async (fail) => {
+    await loadHarness(ws);
+    const r = await evaluate(ws, `
+      const near = (a, b) => Math.abs(a - b) <= 2;
+      window.__t.prefs({ selectionLayout: "edge" });
+      window.__t.probeOn();
+      window.__t.select(".card h2");
+      const bar = document.getElementById("pnt-toolbar").getBoundingClientRect();
+      window.__t.edit();
+      const out = {};
+      const morph = document.getElementById("pnt-edit-morph");
+      out.morph = Boolean(morph);
+      if (morph) {
+        const m = morph.getBoundingClientRect();
+        out.startsAtToolbar = near(m.left, bar.left) && near(m.top, bar.top) && near(m.width, bar.width);
+      }
+      const panel = document.getElementById("pnt-edit-panel");
+      out.arriving = panel.classList.contains("pnt-edit-arriving");
+      out.ticksEnter = document.getElementById("pnt-tether").classList.contains("pnt-tether-enter");
+      // Mid-flight: the surface has left the toolbar and not yet reached the
+      // panel, and the panel's contents are still fading in.
+      await new Promise((r) => setTimeout(r, 90));
+      const mid = document.getElementById("pnt-edit-morph");
+      const target = panel.getBoundingClientRect();
+      if (mid) {
+        const m = mid.getBoundingClientRect();
+        out.midLeftToolbar = !(near(m.left, bar.left) && near(m.top, bar.top) && near(m.width, bar.width) && near(m.height, bar.height));
+        out.midShortOfPanel = !(near(m.left, target.left) && near(m.top, target.top) && near(m.width, target.width) && near(m.height, target.height));
+      }
+      out.midMorph = Boolean(mid);
+      out.midOpacity = getComputedStyle(panel).opacity;
+      await new Promise((r) => setTimeout(r, 230));
+      out.morphGone = !document.getElementById("pnt-edit-morph");
+      out.panelOpacity = getComputedStyle(panel).opacity;
+      out.labelHidden = getComputedStyle(document.getElementById("pnt-label")).visibility;
+      out.antsOpacity = getComputedStyle(document.getElementById("pnt-ants")).opacity;
+      const panelRect = panel.getBoundingClientRect();
+      window.__t.esc();
+      await new Promise((r) => setTimeout(r, 40));
+      const back = document.getElementById("pnt-edit-morph");
+      out.backMorph = Boolean(back);
+      if (back) {
+        const b = back.getBoundingClientRect();
+        out.backOut = back.classList.contains("pnt-morph-out");
+        out.backHeadsHome = b.width < panelRect.width || near(b.width, bar.width);
+      }
+      await new Promise((r) => setTimeout(r, 300));
+      out.backGone = !document.getElementById("pnt-edit-morph");
+      out.labelBack = getComputedStyle(document.getElementById("pnt-label")).visibility;
+      window.__t.esc();
+      return out;
+    `);
+    if (!r.morph) return fail("no surface was drawn on entry");
+    if (!r.startsAtToolbar) fail("the surface did not start at the toolbar's rect");
+    if (!r.arriving) fail("the panel did not hold its contents back for the surface");
+    if (!r.ticksEnter) fail("the ticks did not get their entrance");
+    if (!r.midMorph) fail("the surface was gone 90ms in");
+    else {
+      if (!r.midLeftToolbar) fail("90ms in, the surface had not left the toolbar");
+      if (!r.midShortOfPanel) fail("90ms in, the surface had already reached the panel");
+    }
+    if (!(parseFloat(r.midOpacity) < 1)) fail(`90ms in, the panel is already at opacity ${r.midOpacity}`);
+    if (!r.morphGone) fail("the surface is still there 320ms in");
+    if (r.panelOpacity !== "1") fail(`the panel is at opacity ${r.panelOpacity} after the handoff`);
+    if (r.labelHidden !== "hidden") fail(`the label is ${r.labelHidden} while editing`);
+    if (r.antsOpacity !== "0") fail(`the ants are at opacity ${r.antsOpacity} while editing`);
+    if (!r.backMorph) fail("no surface travelled back on Escape");
+    else {
+      if (!r.backOut) fail("the way back is not on the exit curve");
+      if (!r.backHeadsHome) fail("the surface did not head back toward the toolbar");
+    }
+    if (!r.backGone) fail("the returning surface is still there 340ms later");
+    if (r.labelBack !== "visible") fail(`the label is ${r.labelBack} after the handoff back`);
+  });
+
+  await check("handoff · reduced motion crossfades and draws no surface", async (fail) => {
+    await send(ws, "Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });
+    let r;
+    try {
+      r = await evaluate(ws, `
+        window.__t.probeOn();
+        window.__t.select(".card h2");
+        window.__t.edit();
+        const out = { morph: Boolean(document.getElementById("pnt-edit-morph")) };
+        await new Promise((r) => setTimeout(r, 300));
+        out.panelOpacity = getComputedStyle(document.getElementById("pnt-edit-panel")).opacity;
+        out.tickAnimation = getComputedStyle(document.querySelector("#pnt-tether .pnt-tether-tick")).animationName;
+        window.__t.esc();
+        window.__t.esc();
+        return out;
+      `);
+    } finally {
+      await send(ws, "Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "no-preference" }] });
+    }
+    if (r.morph) fail("a surface travelled under the reduced-motion preference");
+    if (r.panelOpacity !== "1") fail(`the panel did not arrive: opacity ${r.panelOpacity}`);
+    if (r.tickAnimation !== "none") fail(`the ticks still animate: ${r.tickAnimation}`);
+  });
 } finally {
   try { if (ws) ws.close(); } catch { /* already gone */ }
   browser.kill();

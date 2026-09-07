@@ -105,6 +105,7 @@
     "pnt-toast",
     "pnt-edit-panel",
     "pnt-rung-list",
+    "pnt-edit-morph",
     "pnt-color-picker",
     "pnt-text-editor",
     "pnt-probe-cell",
@@ -591,6 +592,7 @@
 
   function deactivate() {
     probeActive = false;
+    clearMorph();
 
     // Through deselectElement rather than nulling selectedElement here: that is
     // the one place carrying the invariant that ending a selection also ends
@@ -3407,6 +3409,8 @@
 
   function enterEditMode() {
     if (!probeActive || !selectedElement || editing) return;
+    // Measured before the chrome hides: the rect the panel grows from.
+    const origin = handoffOriginRect();
     editing = true;
     document.documentElement.classList.add("pnt-editing");
 
@@ -3446,11 +3450,15 @@
     // start from, so the tether is drawn after showEditPanel(), not with it.
     renderTether({ instant: true });
     updateSettingsButtonVisibility();
+    playHandoffIn(origin);
   }
 
   function exitEditMode() {
     if (!editing) return;
     commitEditGesture();
+    // Where the panel was, for the surface to travel back from.
+    const from = editPanelEl && editPanelEl.isConnected ? editPanelEl.getBoundingClientRect() : null;
+    clearMorph();
     editing = false;
     document.documentElement.classList.remove("pnt-editing");
 
@@ -3487,6 +3495,7 @@
     // still be quoting the values the element had before it was tuned.
     if (selectedElement && selectedElement.isConnected) updateOverlay(selectedElement);
     updateSettingsButtonVisibility();
+    playHandoffOut(from);
   }
 
   // Anything aimed at our own chrome passes; everything else dies here.
@@ -3509,6 +3518,139 @@
       (settingsButtonEl && settingsButtonEl.contains(node)) ||
       (toastEl && toastEl.contains(node))
     );
+  }
+
+  // ===== Handoff =====
+  // Selection → Edit Mode in one motion, chosen in round four's gallery
+  // (test/edit-transition-prototypes.html, 02): the toolbar's surface travels
+  // and resizes from its own rect to the panel's while the readout and the
+  // icons fade out and the panel's contents fade in; the ants fade, the
+  // ticks arrive; done by 220ms. The origin is the toolbar in whichever
+  // selection layout is in force — the pill on the edge, and the whole label
+  // card for the three layouts that mount the toolbar inside it, whose
+  // identity line rides the surface into the panel's header so the name
+  // reads as staying put. Back plays the same choreography reversed on the
+  // exit curve. Under reduced motion nothing moves or morphs: a crossfade
+  // remains. When the panel floats because no side had room it lands on the
+  // toolbar's own slot, and the travel is short.
+  //
+  // The script measures two rects and toggles classes; every duration is a
+  // token and every movement a CSS transition, as ADR 0003 requires.
+  let morphEl = null;
+  let morphTimer = 0;
+
+  const reducedMotion = () =>
+    Boolean(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+
+  // The rect the panel grows from and shrinks back to.
+  function handoffOriginRect() {
+    const node = chromePrefs.selectionLayout === "edge" ? toolbarEl : labelEl;
+    if (!node || !node.isConnected) return null;
+    const r = node.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 ? r : null;
+  }
+
+  function placeMorph(node, r) {
+    node.style.top = `${Math.round(r.top)}px`;
+    node.style.left = `${Math.round(r.left)}px`;
+    node.style.width = `${Math.round(r.width)}px`;
+    node.style.height = `${Math.round(r.height)}px`;
+  }
+
+  function clearMorph() {
+    clearTimeout(morphTimer);
+    morphTimer = 0;
+    if (morphEl) {
+      morphEl.remove();
+      morphEl = null;
+    }
+    if (editPanelEl) editPanelEl.classList.remove("pnt-edit-arriving");
+    if (tetherEl) tetherEl.classList.remove("pnt-tether-enter");
+  }
+
+  function buildMorph(from, withIdentity) {
+    const node = document.createElement("div");
+    node.id = "pnt-edit-morph";
+    node.setAttribute("aria-hidden", "true");
+    placeMorph(node, from);
+    if (withIdentity && selectedElement) {
+      const id = document.createElement("span");
+      id.className = "pnt-edit-morph-id";
+      id.innerHTML = editPanelIdentity(selectedElement);
+      node.appendChild(id);
+    }
+    document.documentElement.appendChild(node);
+    return node;
+  }
+
+  // Where the identity sits inside a surface, as an offset from its corner.
+  function identityOffset(surface, line) {
+    if (!surface || !line) return null;
+    const s = surface.getBoundingClientRect();
+    const l = line.getBoundingClientRect();
+    if (l.width === 0) return null;
+    return { x: l.left - s.left, y: l.top - s.top };
+  }
+
+  function playHandoffIn(from) {
+    clearMorph();
+    if (!editPanelEl || !from) return;
+    const to = editPanelEl.getBoundingClientRect();
+    if (tetherEl) tetherEl.classList.add("pnt-tether-enter");
+    // The panel's contents arrive a beat after the surface starts moving;
+    // the class holds them at zero and its removal starts the fade.
+    editPanelEl.classList.add("pnt-edit-arriving");
+    if (reducedMotion()) {
+      // Stillness: the panel crossfades in, nothing travels.
+      requestAnimationFrame(() => {
+        if (editPanelEl) editPanelEl.classList.remove("pnt-edit-arriving");
+      });
+      morphTimer = setTimeout(clearMorph, 260);
+      return;
+    }
+    const carded = chromePrefs.selectionLayout !== "edge";
+    morphEl = buildMorph(from, carded);
+    const ride = morphEl.querySelector(".pnt-edit-morph-id");
+    const start = carded ? identityOffset(labelEl, labelEl && labelEl.querySelector(".pnt-line-identity")) : null;
+    const end = identityOffset(editPanelEl, editPanelEl.querySelector(".pnt-edit-id"));
+    if (ride && start) {
+      ride.style.left = `${Math.round(start.x)}px`;
+      ride.style.top = `${Math.round(start.y)}px`;
+    } else if (ride) {
+      ride.remove();
+    }
+    // Two frames: one for the start rect to paint, one for the transition to
+    // read the change.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (!morphEl || !editPanelEl) return;
+      placeMorph(morphEl, to);
+      if (ride && ride.isConnected && end) {
+        ride.style.left = `${Math.round(end.x)}px`;
+        ride.style.top = `${Math.round(end.y)}px`;
+      }
+      editPanelEl.classList.remove("pnt-edit-arriving");
+    }));
+    morphTimer = setTimeout(clearMorph, 260);
+  }
+
+  function playHandoffOut(from) {
+    clearMorph();
+    if (!from || reducedMotion() || !selectedElement) return;
+    // The chrome is laid out again by now; measure where the surface goes on
+    // the next frame, once the label and the toolbar have their places.
+    requestAnimationFrame(() => {
+      if (editing) return;
+      const to = handoffOriginRect();
+      if (!to) return;
+      morphEl = buildMorph(from, false);
+      morphEl.classList.add("pnt-morph-out");
+      requestAnimationFrame(() => {
+        if (!morphEl) return;
+        placeMorph(morphEl, to);
+        morphEl.classList.add("pnt-morph-gone");
+      });
+      morphTimer = setTimeout(clearMorph, 220);
+    });
   }
 
   // ===== Edit Panel =====

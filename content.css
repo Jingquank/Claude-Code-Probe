@@ -129,6 +129,13 @@
   #pnt-edit-panel .pnt-edit-groupbody {
     transition: none;
   }
+
+  /* The handoff: content.js draws no travelling surface under the
+     preference, and the ticks simply appear. The crossfades of the label,
+     the toolbar, the ants and the panel remain — they are how the mode
+     changes hands, not motion for its own sake. */
+  #pnt-edit-morph { display: none; }
+  #pnt-tether.pnt-tether-enter .pnt-tether-tick { animation: none; }
 }
 
 /* ===== Redline =====
@@ -338,13 +345,19 @@
    judge a 2px stroke through an accent stroke, or watch a corner round under
    one. The whole outline goes, and the tether takes over the job of saying
    which element this panel belongs to, working only in the space outside it. */
+/* Since round four the readout and the actions fade rather than vanish — the
+   handoff's first beat — and stay hidden for as long as the mode does. The
+   visibility flips only once the fade is over, on the exit duration going in
+   and at once coming back, so the return fades in on the label's own timing. */
 .pnt-editing #pnt-label,
 .pnt-editing #pnt-toolbar {
+  opacity: 0;
   visibility: hidden;
   pointer-events: none;
+  transition: opacity var(--pnt-duration-exit) var(--pnt-ease-exit),
+              visibility 0s linear var(--pnt-duration-exit);
 }
 .pnt-editing #pnt-toolbar * {
-  visibility: hidden !important;
   pointer-events: none !important;
 }
 /* Scoped through the container *and* .pnt-selected on purpose: the rule that
@@ -355,7 +368,8 @@
    on source order, which would break the first time these sections were
    reordered. */
 .pnt-editing #pnt-overlay-container.pnt-selected #pnt-ants {
-  display: none;
+  opacity: 0;
+  transition: opacity var(--pnt-duration-exit) var(--pnt-ease-exit);
 }
 /* The box-model tints go with it. They are drawn on the element's own padding
    and content areas, which is the interior the tether exists to keep clear. */
@@ -363,6 +377,70 @@
 .pnt-editing #pnt-overlay-container.pnt-selected #pnt-padding-box,
 .pnt-editing #pnt-overlay-container.pnt-selected #pnt-content-box {
   display: none;
+}
+
+/* ===== Handoff =====
+   The surface that travels from the toolbar to the panel and back
+   (test/edit-transition-prototypes.html, 02). The same glass as both, at
+   the panel's corner, so nothing squares on the way. Forward on the arrival
+   curve at the standard duration; back on the exit curve at the exit
+   duration, fading as it lands. The identity line rides it on the three
+   layouts whose toolbar lives in the card. */
+#pnt-edit-morph {
+  all: initial;
+  box-sizing: border-box;
+  position: fixed;
+  z-index: var(--pnt-z-chrome);
+  pointer-events: none;
+  background: var(--pnt-glass);
+  -webkit-backdrop-filter: blur(var(--pnt-blur)) saturate(1.15);
+  backdrop-filter: blur(var(--pnt-blur)) saturate(1.15);
+  border: 1px solid var(--pnt-border-2);
+  border-radius: var(--pnt-radius-lg);
+  box-shadow: var(--pnt-shadow-1);
+  overflow: hidden;
+  transition: top var(--pnt-duration) var(--pnt-ease),
+              left var(--pnt-duration) var(--pnt-ease),
+              width var(--pnt-duration) var(--pnt-ease),
+              height var(--pnt-duration) var(--pnt-ease),
+              opacity var(--pnt-duration-fast) var(--pnt-ease);
+}
+
+#pnt-edit-morph.pnt-morph-out {
+  transition: top var(--pnt-duration-exit) var(--pnt-ease-exit),
+              left var(--pnt-duration-exit) var(--pnt-ease-exit),
+              width var(--pnt-duration-exit) var(--pnt-ease-exit),
+              height var(--pnt-duration-exit) var(--pnt-ease-exit),
+              opacity var(--pnt-duration-fast) var(--pnt-ease-exit) 60ms;
+}
+
+#pnt-edit-morph.pnt-morph-gone { opacity: 0; }
+
+#pnt-edit-morph .pnt-edit-morph-id {
+  all: initial;
+  position: absolute;
+  font: var(--pnt-weight-bold) var(--pnt-text-lg)/var(--pnt-leading-tight) var(--pnt-font-sans);
+  letter-spacing: -0.01em;
+  color: var(--pnt-text-1);
+  white-space: nowrap;
+  transition: top var(--pnt-duration) var(--pnt-ease),
+              left var(--pnt-duration) var(--pnt-ease);
+}
+
+#pnt-edit-morph .pnt-edit-id-tag { color: var(--pnt-accent); font-weight: var(--pnt-weight-bold); }
+#pnt-edit-morph .pnt-edit-id-id { color: var(--pnt-syntax-id); font-weight: var(--pnt-weight-medium); }
+#pnt-edit-morph .pnt-edit-id-class { color: var(--pnt-syntax-class); font-weight: var(--pnt-weight-medium); }
+
+/* The ticks arrive as the surface lands. An animation rather than a
+   transition, because renderTether snaps a new node into place with
+   transitions off. */
+#pnt-tether.pnt-tether-enter .pnt-tether-tick {
+  animation: pnt-tick-in var(--pnt-duration-fast) var(--pnt-ease) 100ms both;
+}
+
+@keyframes pnt-tick-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 /* Measuring while editing hushes the panel exactly as it hushes the toolbar,
@@ -610,7 +688,8 @@
   font-family: var(--pnt-font-sans);
   box-sizing: border-box;
   transition: top var(--pnt-duration) var(--pnt-ease),
-              left var(--pnt-duration) var(--pnt-ease);
+              left var(--pnt-duration) var(--pnt-ease),
+              opacity var(--pnt-duration-fast) var(--pnt-ease);
 }
 
 /* Mounted inside the card it is a part of it: in flow, and clickable even
@@ -989,6 +1068,14 @@ html.pnt-layout-bottom #pnt-toolbar .pnt-bar {
   /* The panel is dragged by its header, and a drag that selects text as it
      goes feels broken. */
   user-select: none;
+  /* The handoff: the contents fade in a beat after the surface sets off. No
+     positional transition, ever — see above. */
+  transition: opacity var(--pnt-duration-fast) var(--pnt-ease) 100ms;
+}
+
+#pnt-edit-panel.pnt-edit-arriving {
+  opacity: 0;
+  transition: none;
 }
 
 /* ----- Header ----- */
