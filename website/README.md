@@ -31,7 +31,15 @@ Import the repository into Vercel and select **Root Directory: `website`**. The 
 
 Canonical and social image URLs use `SITE_URL`, if provided, or Vercel's `VERCEL_PROJECT_PRODUCTION_URL` system variable. Keep [system environment variables exposed](https://vercel.com/docs/environment-variables/system-environment-variables). Local builds omit domain-specific metadata instead of guessing a domain. The repository banner is included as the social image.
 
-No Vercel project has been linked or deployed by this change.
+Production is live at [pointee.vercel.app](https://pointee.vercel.app), in Vercel project `kddesign/pointee`.
+
+The initial production deployment was created from this directory with the CLI. To deploy another version:
+
+```sh
+npx vercel deploy --project pointee --scope kddesign --prod --yes
+```
+
+Git-triggered deployments have not been connected. If enabling the repository integration later, set its Root Directory to `website`.
 
 ## Validation
 
